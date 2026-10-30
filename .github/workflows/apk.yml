@@ -38,13 +38,13 @@ jobs:
 
       - name: Build
         env:
-          KEY_PASS: ${{ secrets.KEY_PASS }}
+          KEY_PASS: ${{ secrets.KEY_PASS || vars.KEY_PASS }}
         run: |
           set -o pipefail
           V=$(python3 -c "import json; print(json.load(open('game/version.json'))['v'])")
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then TASK=assembleRelease; else TASK=assembleDebug; fi
           if [[ "$TASK" == assembleRelease && -z "$KEY_PASS" ]]; then
-            echo "::error::The signing password is missing: add the secret KEY_PASS (Settings → Secrets and variables → Actions)"
+            echo "::error::The signing password is missing: add KEY_PASS as a secret or a variable (Settings → Secrets and variables → Actions)"
             exit 1
           fi
           cd android
