@@ -34,6 +34,9 @@ Browser 3D survival game (three.js r128, one page) shipped two ways:
   shouldInterceptRequest from downloaded updates, then APK assets `game/…`; CDN hosts from assets `cdn/…`), file chooser for
   the editor's uploads, back button → editor/pause (BACK_JS), renderer crash → reload.
 - Updater: version.json compare, changed files to files/stage then files/game, SHA-1 checked; newer APK clears downloads.
+  Two APKs per release: CallOfSurvival.apk (game inside, 110 MB) and CallOfSurvival-lite.apk (<1 MB, no game/ assets: the first
+  start downloads the whole current version, then updates the same way). The owner's phone refused the 110 MB one as an
+  «invalid package» (valid v1+v2+v3 signatures); the lite one installs — point people to the lite APK.
 - Signing: `android/release.p12` (PKCS12, alias `cos`), password in the repository variable `KEY_PASS` (Settings → Secrets and
   variables → Actions; the secret form failed for the owner) — never in files.
 - versionCode = game version (`-PgameVersion`), so a newer APK installs over an older one and keeps the saves.
