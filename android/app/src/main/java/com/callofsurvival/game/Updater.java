@@ -117,6 +117,53 @@ public class Updater {
         }).start();
     }
 
+    /** the small APK, opened the first time: the whole game is downloaded (its size said first) */
+    void firstRun() {
+        if (busy) return;
+        busy = true;
+        new Thread(() -> {
+            JSONObject remote = null;
+            try {
+                String url = raw("main", "version.json") + "?t=" + (System.currentTimeMillis() / 60000);
+                remote = new JSONObject(new String(get(url), StandardCharsets.UTF_8));
+            } catch (Exception e) { /* no connection */ }
+            final JSONObject r = remote;
+            act.runOnUiThread(() -> {
+                busy = false;
+                if (act.isFinishing()) return;
+                if (r == null || r.optJSONObject("files") == null) { firstFailed(); return; }
+                final List<String> all = new ArrayList<>();
+                long bytes = 0;
+                JSONObject files = r.optJSONObject("files");
+                for (Iterator<String> it = files.keys(); it.hasNext(); ) {
+                    String p = it.next();
+                    JSONArray e = files.optJSONArray(p);
+                    if (e == null || p.contains("..")) continue;
+                    all.add(p);
+                    bytes += e.optLong(1);
+                }
+                final long total = bytes;
+                new AlertDialog.Builder(act, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Call of Survival")
+                        .setMessage("أهلاً بك. تُنزَّل اللعبة الآن مرة واحدة (" + mb(total) + ")، ثم تعمل بلا إنترنت وتصلها التحديثات من داخلها.")
+                        .setCancelable(false)
+                        .setPositiveButton("تنزيل", (d, w) -> download(r, all, total, true))
+                        .setNegativeButton("خروج", (d, w) -> act.finish())
+                        .show();
+            });
+        }).start();
+    }
+
+    private void firstFailed() {
+        new AlertDialog.Builder(act, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("تحتاج اتصالاً بالإنترنت")
+                .setMessage("تُنزَّل اللعبة مرة واحدة عند أول فتح. اتصل بالإنترنت ثم أعد المحاولة.")
+                .setCancelable(false)
+                .setPositiveButton("أعد المحاولة", (d, w) -> firstRun())
+                .setNegativeButton("خروج", (d, w) -> act.finish())
+                .show();
+    }
+
     private void offer(JSONObject remote) {
         final int v = version(remote);
         if (v <= current()) return;
@@ -149,16 +196,16 @@ public class Updater {
         new AlertDialog.Builder(act, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("تحديث جديد للعبة")
                 .setMessage("الإصدار " + ar(v) + " جاهز" + size + ". تحديث الآن؟")
-                .setPositiveButton("تحديث", (d, w) -> download(remote, need, total))
+                .setPositiveButton("تحديث", (d, w) -> download(remote, need, total, false))
                 .setNegativeButton("لاحقاً", null)
                 .show();
     }
 
     // ── the changed files, checked, then put in place together ──
-    private void download(final JSONObject remote, final List<String> need, final long total) {
+    private void download(final JSONObject remote, final List<String> need, final long total, final boolean first) {
         if (busy) return;
         busy = true;
-        final Progress pr = new Progress(total);
+        final Progress pr = new Progress(total, first ? "تنزيل اللعبة" : "تحديث اللعبة");
         final String ref = remote.optString("ref", "main");
         new Thread(() -> {
             String err = null;
@@ -209,7 +256,10 @@ public class Updater {
                 if (fail == null) {
                     applied = remote;
                     act.reloadGame();
-                    Toast.makeText(act, "تم التحديث إلى الإصدار " + ar(version(remote)), Toast.LENGTH_LONG).show();
+                    Toast.makeText(act, first ? "اللعبة جاهزة" : "تم التحديث إلى الإصدار " + ar(version(remote)), Toast.LENGTH_LONG).show();
+                } else if (first) {
+                    wipe(stage);
+                    firstFailed();
                 } else {
                     wipe(stage);
                     new AlertDialog.Builder(act, android.R.style.Theme_DeviceDefault_Dialog_Alert)
@@ -230,7 +280,7 @@ public class Updater {
         final long total;
         long last;
 
-        Progress(long total) {
+        Progress(long total, String title) {
             this.total = total;
             LinearLayout box = new LinearLayout(act);
             box.setOrientation(LinearLayout.VERTICAL);
@@ -244,7 +294,7 @@ public class Updater {
             box.addView(txt);
             box.addView(bar);
             dlg = new AlertDialog.Builder(act, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("تحديث اللعبة")
+                    .setTitle(title)
                     .setView(box)
                     .setCancelable(false)
                     .create();

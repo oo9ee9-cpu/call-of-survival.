@@ -30,13 +30,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Put the game inside the app
-        run: |
-          mkdir -p android/app/src/main/assets
-          cp -r game android/app/src/main/assets/game
-          cp -r cdn android/app/src/main/assets/cdn
-
-      - name: Build
+      - name: Build the full APK (the game inside) and the small one (the game downloaded at first start)
         env:
           KEY_PASS: ${{ secrets.KEY_PASS || vars.KEY_PASS }}
         run: |
@@ -46,8 +40,14 @@ jobs:
             exit 1
           fi
           V=$(python3 -c "import json; print(json.load(open('game/version.json'))['v'])")
-          cd android
-          gradle :app:assembleRelease -PgameVersion="$V" --no-daemon --stacktrace 2>&1 | tee ../build.log
+          A=android/app/src/main/assets
+          mkdir -p $A && cp -r cdn $A/cdn && cp -r game $A/game
+          (cd android && gradle :app:assembleRelease -PgameVersion="$V" --no-daemon --stacktrace 2>&1) | tee build.log
+          cp android/app/build/outputs/apk/release/app-release.apk full-unsigned.apk
+          rm -rf $A/game
+          (cd android && gradle :app:assembleRelease -PgameVersion="$V" --no-daemon --stacktrace 2>&1) | tee -a build.log
+          cp android/app/build/outputs/apk/release/app-release.apk lite-unsigned.apk
+          ls -la full-unsigned.apk lite-unsigned.apk
 
       - name: Report errors
         if: failure()
@@ -56,20 +56,22 @@ jobs:
           grep -E "error:|What went wrong|FAILURE|Could not|Execution failed|e: |\.java:[0-9]+" build.log | grep -v "^> Task" | head -10 | while IFS= read -r l; do echo "::error::${l:0:500}"; done
           grep -A6 "What went wrong" build.log | head -14 | while IFS= read -r l; do echo "::warning::${l:0:500}"; done
 
-      - name: Sign with every scheme and check it like an installer
+      - name: Sign with every scheme and check like an installer
         env:
           KEY_PASS: ${{ secrets.KEY_PASS || vars.KEY_PASS }}
         run: |
           # Gradle leaves out the old JAR signature (v1) when minSdk >= 24; some phones' installers still want it
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$BT/apksigner" sign --ks android/release.p12 --ks-type PKCS12 --ks-key-alias cos \
-            --ks-pass env:KEY_PASS --key-pass env:KEY_PASS \
-            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
-            --out CallOfSurvival.apk android/app/build/outputs/apk/release/app-release.apk
           enc() { sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g'; }
-          echo "::notice title=apksigner::$("$BT/apksigner" verify --verbose CallOfSurvival.apk 2>&1 | head -8 | enc)"
-          "$BT/apksigner" verify CallOfSurvival.apk
-          "$BT/zipalign" -c 4 CallOfSurvival.apk
+          for k in full:CallOfSurvival.apk lite:CallOfSurvival-lite.apk; do
+            "$BT/apksigner" sign --ks android/release.p12 --ks-type PKCS12 --ks-key-alias cos \
+              --ks-pass env:KEY_PASS --key-pass env:KEY_PASS \
+              --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
+              --out "${k#*:}" "${k%%:*}-unsigned.apk"
+            "$BT/apksigner" verify --min-sdk-version 21 "${k#*:}"
+            "$BT/zipalign" -c 4 "${k#*:}"
+            echo "::notice title=${k#*:}::$(stat -c %s "${k#*:}") bytes%0A$("$BT/apksigner" verify --verbose --min-sdk-version 21 "${k#*:}" 2>&1 | head -5 | enc)"
+          done
 
       - name: Release
         env:
@@ -79,11 +81,11 @@ jobs:
           TAG="v$V"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then TAG="$GITHUB_REF_NAME"; fi
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" CallOfSurvival.apk --clobber
+            gh release upload "$TAG" CallOfSurvival.apk CallOfSurvival-lite.apk --clobber
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             gh release create "$TAG" --title "Call of Survival $TAG" \
               --notes "نزّل CallOfSurvival.apk وثبّته على هاتفك (اسمح بتثبيت التطبيقات من هذا المصدر). التحديثات التالية تصل من داخل اللعبة."
-            gh release upload "$TAG" CallOfSurvival.apk --clobber
+            gh release upload "$TAG" CallOfSurvival.apk CallOfSurvival-lite.apk --clobber
           else
             echo "::notice::No release $TAG yet; the APK stays a workflow artifact"
           fi
@@ -91,5 +93,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: CallOfSurvival-apk
-          path: CallOfSurvival.apk
+          path: CallOfSurvival*.apk
           retention-days: 3

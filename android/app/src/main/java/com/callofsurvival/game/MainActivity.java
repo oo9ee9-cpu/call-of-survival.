@@ -70,8 +70,14 @@ public class MainActivity extends Activity {
         updater.prepare();
         web = makeWebView();
         frame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        web.loadUrl(START);
-        updater.check();
+        if (updater.current() > 0) {
+            web.loadUrl(START);
+            updater.check();
+        } else {
+            // the small APK carries no game: it is downloaded the first time (then it updates like the full one)
+            web.loadUrl("about:blank");
+            updater.firstRun();
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
