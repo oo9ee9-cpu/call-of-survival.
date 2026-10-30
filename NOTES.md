@@ -225,3 +225,8 @@ Publish target: update artifact https://claude.ai/artifact/6gq2bVqVUv19bWBas36eY
   meshopt error, save, reload), u2.json (cloud: two at once, save to db, reload from db, test mode), s3.json (editor touch).
 - PUBLISHED 2026-10-30: Version 18 (1793352523-0bf7), capabilities db rules (the 12 + devworld + devmodels: read view, write owner), assets {}, user {},
   room topics invite/act at interact. Files: index.html + assets/ui/ed/*.webp (196) + assets/rooms/kingshall.json, hintze.json.
+- Android app (2026-10-30): this repository (github.com/oo9ee9-cpu/call-of-survival.) holds the game (game/), its source (src/,
+  tools/) and the app (android/). Release v18 (tag created by the owner on GitHub; this session cannot push tags) built
+  CallOfSurvival.apk (110 MB, signed with android/release.p12, password in the repository variable KEY_PASS). Later versions
+  reach installed apps over the air: tools/release.sh <N> (files committed, version.json → that commit, pushed to main).
+  See CLAUDE.md.
