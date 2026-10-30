@@ -1,0 +1,44 @@
+# Checks a released APK the way a phone's installer does (signatures, manifest, zip layout) and reports in annotations.
+name: Verify APK
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/verify.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v18 -R "$GITHUB_REPOSITORY" -p CallOfSurvival.apk
+
+      - name: Inspect
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          enc() { sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g'; }
+          echo "::notice title=size::$(stat -c %s CallOfSurvival.apk) bytes, build-tools $(basename $BT)"
+          echo "::notice title=apksigner::$("$BT/apksigner" verify --verbose --print-certs CallOfSurvival.apk 2>&1 | head -40 | enc)"
+          echo "::notice title=badging::$("$BT/aapt2" dump badging CallOfSurvival.apk 2>&1 | head -12 | enc)"
+          echo "::notice title=zipalign::$("$BT/zipalign" -c -v 4 CallOfSurvival.apk 2>&1 | grep -v '(OK' | tail -15 | enc)"
+          python3 - <<'EOF' > zipreport.txt
+          import zipfile, collections
+          z = zipfile.ZipFile('CallOfSurvival.apk')
+          names = [i.filename for i in z.infolist()]
+          dup = [n for n, c in collections.Counter(names).items() if c > 1]
+          big = sorted(z.infolist(), key=lambda i: -i.file_size)[:5]
+          z64 = [i.filename for i in z.infolist() if i.file_size >= 0xFFFFFFFF or i.compress_size >= 0xFFFFFFFF or i.header_offset >= 0xFFFFFFFF]
+          print('entries', len(names), 'duplicates', dup[:5], 'zip64', z64[:5])
+          print('methods', dict(collections.Counter(i.compress_type for i in z.infolist())))
+          print('top level', sorted(set(n.split('/')[0] for n in names)))
+          for i in big: print('big', i.filename, i.file_size, i.compress_type)
+          bad = [n for n in names if any(ord(ch) > 126 or ch in '\\:*?"<>|' for ch in n)]
+          print('odd names', bad[:5])
+          EOF
+          echo "::notice title=zip::$(cat zipreport.txt | enc)"
