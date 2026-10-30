@@ -16,10 +16,13 @@ Browser 3D survival game (three.js r128, one page) shipped two ways:
 
 ## Releasing a new version (both targets)
 1. Change `src/`, lint, build `game/index.html`, test.
-2. Android + over-the-air: `tools/release.sh <N> "message"` (N = previous `v` in game/version.json + 1): manifest, commit, tag `v<N>`, push.
-   The tag runs `.github/workflows/apk.yml`: signed `CallOfSurvival.apk` on release `v<N>`. Installed apps read
-   `raw.githubusercontent.com/oo9ee9-cpu/call-of-survival./main/game/version.json` at start and download only changed files from tag `v<N>`.
-   Bump `"shell"` (manifest arg 2) and `SHELL` in android/app/build.gradle only when the Java side must change for the content.
+2. Android over the air: `tools/release.sh <N> "message"` (N = previous `v` in game/version.json + 1) commits the files, then
+   game/version.json with `ref` = that commit, and pushes main. Installed apps read
+   `raw.githubusercontent.com/oo9ee9-cpu/call-of-survival./main/game/version.json` at start and download only changed files from `ref`.
+   This session cannot push tags (the git proxy answers 403). A new APK (for new installs, or when the Java side changed) comes from
+   a release the owner creates on GitHub: Releases → Draft a new release → new tag `v<N>` → Publish; the tag runs
+   `.github/workflows/apk.yml`, which attaches `CallOfSurvival.apk`. Bump `"shell"` (manifest arg 2) and `SHELL` in
+   android/app/build.gradle only when the Java side must change for the content.
 3. Artifact: publish `game/index.html` with `files` = new/changed assets, url above, and the full capabilities:
    db rules (profiles, links, invites, worlds, clans, clanmembers: `{path:X, read:'view', write:'owner'}` + `{path:'X/{self}', write:'interact'}`;
    devworld and devmodels: read view, write owner), `assets: {}`, `user: {}`, `room: {topics: {invite: 'interact', act: 'interact'}}`.
@@ -30,9 +33,10 @@ Browser 3D survival game (three.js r128, one page) shipped two ways:
   shouldInterceptRequest from downloaded updates, then APK assets `game/…`; CDN hosts from assets `cdn/…`), file chooser for
   the editor's uploads, back button → editor/pause (BACK_JS), renderer crash → reload.
 - Updater: version.json compare, changed files to files/stage then files/game, SHA-1 checked; newer APK clears downloads.
-- Signing: `android/release.p12` (PKCS12, alias `cos`), password in the repo secret `KEY_PASS` (never in files).
+- Signing: `android/release.p12` (PKCS12, alias `cos`), password in the repository variable `KEY_PASS` (Settings → Secrets and
+  variables → Actions; the secret form failed for the owner) — never in files.
 - versionCode = game version (`-PgameVersion`), so a newer APK installs over an older one and keeps the saves.
 
 ## Rules
-- Never commit tokens or passwords. The keystore password lives only in the `KEY_PASS` secret.
+- Never commit tokens or passwords. The keystore password lives only in the `KEY_PASS` repository variable.
 - The owner's game characters (Jett, Judy, Malenia, Tifa) are excluded; third-party content only with its licence credited (settings).
