@@ -56,13 +56,20 @@ jobs:
           grep -E "error:|What went wrong|FAILURE|Could not|Execution failed|e: |\.java:[0-9]+" build.log | grep -v "^> Task" | head -10 | while IFS= read -r l; do echo "::error::${l:0:500}"; done
           grep -A6 "What went wrong" build.log | head -14 | while IFS= read -r l; do echo "::warning::${l:0:500}"; done
 
-      - name: Check the APK like an installer
+      - name: Sign with every scheme and check it like an installer
+        env:
+          KEY_PASS: ${{ secrets.KEY_PASS || vars.KEY_PASS }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk CallOfSurvival.apk
+          # Gradle leaves out the old JAR signature (v1) when minSdk >= 24; some phones' installers still want it
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" sign --ks android/release.p12 --ks-type PKCS12 --ks-key-alias cos \
+            --ks-pass env:KEY_PASS --key-pass env:KEY_PASS \
+            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
+            --out CallOfSurvival.apk android/app/build/outputs/apk/release/app-release.apk
           enc() { sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g'; }
           echo "::notice title=apksigner::$("$BT/apksigner" verify --verbose CallOfSurvival.apk 2>&1 | head -8 | enc)"
           "$BT/apksigner" verify CallOfSurvival.apk
+          "$BT/zipalign" -c 4 CallOfSurvival.apk
 
       - name: Release
         env:
