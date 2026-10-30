@@ -21,7 +21,8 @@ Browser 3D survival game (three.js r128, one page) shipped two ways:
    `raw.githubusercontent.com/oo9ee9-cpu/call-of-survival./main/game/version.json` at start and download only changed files from `ref`.
    This session cannot push tags (the git proxy answers 403). A new APK (for new installs, or when the Java side changed) comes from
    a release the owner creates on GitHub: Releases → Draft a new release → new tag `v<N>` → Publish; the tag runs
-   `.github/workflows/apk.yml`, which attaches `CallOfSurvival.apk`. Bump `"shell"` (manifest arg 2) and `SHELL` in
+   `.github/workflows/apk.yml`, which attaches `CallOfSurvival.apk`. A push to main that changes android/ (or the workflow)
+   rebuilds it and replaces the APK on the existing release `v<version in game/version.json>`. Bump `"shell"` (manifest arg 2) and `SHELL` in
    android/app/build.gradle only when the Java side must change for the content.
 3. Artifact: publish `game/index.html` with `files` = new/changed assets, url above, and the full capabilities:
    db rules (profiles, links, invites, worlds, clans, clanmembers: `{path:X, read:'view', write:'owner'}` + `{path:'X/{self}', write:'interact'}`;

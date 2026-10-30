@@ -1,6 +1,7 @@
-# The Android app. A tag v<N> (tools/release.sh) builds the signed APK with the whole game inside and puts it on the
-# release v<N> as CallOfSurvival.apk (…/releases/latest/download/CallOfSurvival.apk is always the newest).
-# A change to android/ on main builds a quick test APK without the game, to check the code compiles.
+# The Android app: the signed APK with the whole game inside, CallOfSurvival.apk on the release of the game's version
+# (…/releases/latest/download/CallOfSurvival.apk is always the newest). A tag v<N> (a release the owner creates) builds it
+# and creates the release if needed; a change to android/ on main builds it again and replaces the APK on the release
+# v<version in game/version.json> when that release exists.
 name: Android APK
 
 on:
@@ -30,7 +31,6 @@ jobs:
           gradle-version: '8.9'
 
       - name: Put the game inside the app
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p android/app/src/main/assets
           cp -r game android/app/src/main/assets/game
@@ -41,38 +41,48 @@ jobs:
           KEY_PASS: ${{ secrets.KEY_PASS || vars.KEY_PASS }}
         run: |
           set -o pipefail
-          V=$(python3 -c "import json; print(json.load(open('game/version.json'))['v'])")
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then TASK=assembleRelease; else TASK=assembleDebug; fi
-          if [[ "$TASK" == assembleRelease && -z "$KEY_PASS" ]]; then
+          if [[ -z "$KEY_PASS" ]]; then
             echo "::error::The signing password is missing: add KEY_PASS as a secret or a variable (Settings → Secrets and variables → Actions)"
             exit 1
           fi
+          V=$(python3 -c "import json; print(json.load(open('game/version.json'))['v'])")
           cd android
-          gradle ":app:$TASK" -PgameVersion="$V" --no-daemon --stacktrace 2>&1 | tee ../build.log
+          gradle :app:assembleRelease -PgameVersion="$V" --no-daemon --stacktrace 2>&1 | tee ../build.log
 
       - name: Report errors
         if: failure()
         run: |
           [ -f build.log ] || exit 0
-          grep -E "error:|warning: \[|What went wrong|FAILURE|Could not|Execution failed|e: |\.java:[0-9]+" build.log | grep -v "^> Task" | head -10 | while IFS= read -r l; do echo "::error::${l:0:500}"; done
+          grep -E "error:|What went wrong|FAILURE|Could not|Execution failed|e: |\.java:[0-9]+" build.log | grep -v "^> Task" | head -10 | while IFS= read -r l; do echo "::error::${l:0:500}"; done
           grep -A6 "What went wrong" build.log | head -14 | while IFS= read -r l; do echo "::warning::${l:0:500}"; done
 
+      - name: Check the APK like an installer
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk CallOfSurvival.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          enc() { sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g'; }
+          echo "::notice title=apksigner::$("$BT/apksigner" verify --verbose CallOfSurvival.apk 2>&1 | head -8 | enc)"
+          "$BT/apksigner" verify CallOfSurvival.apk
+
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk CallOfSurvival.apk
-          ls -la CallOfSurvival.apk
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" \
-            --title "Call of Survival $GITHUB_REF_NAME" \
-            --notes "نزّل CallOfSurvival.apk وثبّته على هاتفك (اسمح بتثبيت التطبيقات من هذا المصدر). التحديثات التالية تصل من داخل اللعبة."
-          gh release upload "$GITHUB_REF_NAME" CallOfSurvival.apk --clobber
+          V=$(python3 -c "import json; print(json.load(open('game/version.json'))['v'])")
+          TAG="v$V"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then TAG="$GITHUB_REF_NAME"; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" CallOfSurvival.apk --clobber
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            gh release create "$TAG" --title "Call of Survival $TAG" \
+              --notes "نزّل CallOfSurvival.apk وثبّته على هاتفك (اسمح بتثبيت التطبيقات من هذا المصدر). التحديثات التالية تصل من داخل اللعبة."
+            gh release upload "$TAG" CallOfSurvival.apk --clobber
+          else
+            echo "::notice::No release $TAG yet; the APK stays a workflow artifact"
+          fi
 
-      - name: Test APK
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: CallOfSurvival-apk
+          path: CallOfSurvival.apk
           retention-days: 3
