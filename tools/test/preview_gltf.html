@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#202428;overflow:hidden}#t{position:fixed;left:8px;top:6px;color:#ffd060;font:14px monospace;z-index:2}</style></head><body><div id="t"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../../dl/three-r128/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+// three views of a glTF model, fitted to its bounds: front, three-quarter, top (?m=<path to scene.gltf>)
+const Q = new URLSearchParams(location.search), url = Q.get('m');
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.setScissorTest(true);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x3a4048);
+scene.add(new THREE.HemisphereLight(0xdfeaff, 0x40382c, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dd, 2.4); sun.position.set(-3, 5, 4); scene.add(sun);
+window.__done = false;
+function glbFrom(json, bin) {
+  const js = new TextEncoder().encode(JSON.stringify(json)), jp = (4 - js.length % 4) % 4, bp = (4 - bin.length % 4) % 4;
+  const total = 28 + js.length + jp + bin.length + bp, buf = new ArrayBuffer(total), dv = new DataView(buf), u8 = new Uint8Array(buf);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, total, true);
+  dv.setUint32(12, js.length + jp, true); dv.setUint32(16, 0x4E4F534A, true); u8.set(js, 20); u8.fill(0x20, 20 + js.length, 20 + js.length + jp);
+  const o = 20 + js.length + jp; dv.setUint32(o, bin.length + bp, true); dv.setUint32(o + 4, 0x004E4942, true); u8.set(bin, o + 8);
+  return buf;
+}
+const loadAny = (u, ok, bad) => {
+  if (!u.endsWith('.json')) return new THREE.GLTFLoader().load(u, ok, undefined, bad);
+  fetch(u).then((r) => r.json()).then((d) => { const b = atob(d.bin), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); new THREE.GLTFLoader().parse(glbFrom(d.gltf, a), u.slice(0, u.lastIndexOf('/') + 1), ok, bad); }).catch(bad);
+};
+const VIEWS = Q.get('v') ? JSON.parse(Q.get('v')) : null;
+loadAny(url, (g) => {
+  const root = g.scene; scene.add(root); root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  let tris = 0, meshes = 0; root.traverse((o) => { if (o.isMesh) { meshes++; const gg = o.geometry; tris += (gg.index ? gg.index.count : gg.attributes.position.count) / 3; } });
+  document.getElementById('t').textContent = url.split('/').slice(-2, -1)[0] + '  size ' + size.toArray().map((v) => v.toFixed(2)).join(' x ') + '  meshes ' + meshes + '  tris ' + Math.round(tris) + '  anim ' + g.animations.length;
+  const R = size.length() * 0.5, views = VIEWS || [[0, 0.15, 1], [0.8, 0.45, 0.8], [0.01, 1, 0.02]];
+  views.forEach((d, i) => {
+    const cam = new THREE.PerspectiveCamera(35, (W / views.length) / H, R * 0.01, R * 20);
+    const v = new THREE.Vector3(...d).normalize(); cam.position.copy(c).addScaledVector(v, R / Math.tan(17.5 * Math.PI / 180) * 1.05); cam.lookAt(c);
+    renderer.setViewport(i * W / views.length, 0, W / views.length, H); renderer.setScissor(i * W / views.length, 0, W / views.length, H); renderer.render(scene, cam);
+  });
+  window.__done = true;
+}, (e) => { document.getElementById('t').textContent = 'ERR ' + e; window.__err = String(e); window.__done = true; });
+</script></body></html>

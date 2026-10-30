@@ -1,0 +1,7 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "'lobby'"},
+ {"js": "begin(true); edEnter(); EDUI.cat = 'upl'; edCatOpen(true); 1", "frames": 6, "shot": "a_cat"},
+ {"js": "edCatOpen(false); upShow('بيت ريفي قديم', 'تخفيف الصور ٣ من ١٢', 0.3); 1", "frames": 3, "shot": "b_progress"},
+ {"js": "upFail('النموذج مضغوط بطريقة meshopt: صدّره من جديد بلا هذا الضغط', ''); 1", "frames": 3, "shot": "c_error"},
+ {"js": "$('edUp').hidden = true; EDUI.cat = 'mine'; edCatOpen(true); 1", "frames": 6, "shot": "d_mine"}
+]

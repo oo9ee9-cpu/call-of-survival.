@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000;overflow:hidden}</style></head><body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9cc4e4); scene.fog = new THREE.FogExp2(0xb8d0e0, 0.006);
+const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 1000);
+const sun = new THREE.DirectionalLight(0xfff1dd, 3.0); sun.position.set(-30, 40, 20); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 150 }); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x5a5a40, 0.9));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x55704a, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+function b64(s, T) { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); }
+function geo(p) {
+  const g = new THREE.BufferGeometry(), n = p.n;
+  const q = b64(p.pos.data, Int16Array), pos = new Float32Array(n * 3);
+  for (let i = 0; i < n * 3; i++) { const c = i % 3; pos[i] = p.pos.min[c] + (q[i] + 32767) / 65534 * (p.pos.max[c] - p.pos.min[c]); }
+  const nn = b64(p.nrm, Int8Array), nrm = new Float32Array(n * 3); for (let i = 0; i < n * 3; i++) nrm[i] = nn[i] / 127;
+  const qu = b64(p.uv.data, Int16Array), uv = new Float32Array(n * 2);
+  for (let i = 0; i < n * 2; i++) { const c = i % 2; uv[i] = p.uv.min[c] + (qu[i] + 32767) / 65534 * (p.uv.max[c] - p.uv.min[c]); }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(new THREE.BufferAttribute(p.idx.u32 ? b64(p.idx.data, Uint32Array) : b64(p.idx.data, Uint16Array), 1));
+  return g;
+}
+function imgData(url) { return new Promise((res) => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); res({ w: im.width, h: im.height, d: g.getImageData(0, 0, im.width, im.height).data }); }; im.src = url; }); }
+function arrayTex(img, layers, srgb) {
+  const w = img.w, h = img.h / layers, t = new THREE.DataTexture2DArray(new Uint8Array(img.d.buffer), w, h, layers);
+  t.format = THREE.RGBAFormat; t.type = THREE.UnsignedByteType; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; if (srgb) t.encoding = THREE.sRGBEncoding; return t;
+}
+const LEAVES = ['oak', 'ash', 'aspen', 'pine', 'palm'], BARKS = ['oak', 'ash', 'pine', 'birch', 'cedar', 'moss', 'olive', 'dead', 'palm'];
+function barkMat(tex, ntex, layer) {
+  const m = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uBark = { value: tex }; sh.uniforms.uBarkN = { value: ntex }; sh.uniforms.uLayer = { value: layer };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vUv2;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvUv2 = uv;');
+    sh.fragmentShader = 'precision highp sampler2DArray;\n' + sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2DArray uBark, uBarkN; uniform float uLayer; varying vec2 vUv2;')
+      .replace('#include <map_fragment>', 'vec4 bk = texture(uBark, vec3(vUv2 * vec2(1.0, 0.25), uLayer)); diffuseColor.rgb *= pow(bk.rgb, vec3(2.2));');
+  };
+  return m;
+}
+function leafMat(tex, layer, tint) {
+  const m = new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0, side: THREE.DoubleSide, alphaTest: 0.5, color: tint });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uLeaf = { value: tex }; sh.uniforms.uLayer = { value: layer };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vUv2;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvUv2 = uv;');
+    sh.fragmentShader = 'precision highp sampler2DArray;\n' + sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2DArray uLeaf; uniform float uLayer; varying vec2 vUv2;')
+      .replace('#include <map_fragment>', `vec4 lf = texture(uLeaf, vec3(vUv2, uLayer));
+        float mip = max(0.0, 0.5 * log2(max(dot(dFdx(vUv2 * 512.0), dFdx(vUv2 * 512.0)), dot(dFdy(vUv2 * 512.0), dFdy(vUv2 * 512.0)))));
+        diffuseColor.rgb *= pow(lf.rgb, vec3(2.2)); diffuseColor.a = lf.a * (1.0 + mip * 0.25);`)
+      .replace('#include <alphatest_fragment>', 'if (diffuseColor.a < 0.5) discard;');
+  };
+  return m;
+}
+(async () => {
+  const [T, ba, bn, lv] = await Promise.all([fetch('../../assets/veg/trees.json').then((r) => r.json()), imgData('../../assets/veg/bark_albedo.jpg'), imgData('../../assets/veg/bark_normal.jpg'), imgData('../../assets/veg/leaves.png')]);
+  const BT = arrayTex(ba, BARKS.length), BN = arrayTex(bn, BARKS.length), LT = arrayTex(lv, LEAVES.length);
+  const show = (location.hash.slice(1) || 'oak,ash,birch,pine,spruce,cypress,willow,olive,acacia,dead,bush,bush3').split(',');
+  const lod = new URLSearchParams(location.search).get('lod') || 'lod0';
+  let x = -((show.length - 1) * 11) / 2, tris = 0;
+  for (const id of show) {
+    const s = T.species[id]; if (!s) continue; const v = s.variants[0], L = v[lod];
+    const tr = new THREE.Mesh(geo(L.trunk), barkMat(BT, BN, BARKS.indexOf(s.bark))); tr.position.set(x, 0, 0); tr.castShadow = tr.receiveShadow = true; scene.add(tr); tris += L.trunk.tris;
+    if (L.leaves) { const lf = new THREE.Mesh(geo(L.leaves), leafMat(LT, LEAVES.indexOf(s.leaf), new THREE.Color(id === 'olive' ? 0xb8c8a0 : id === 'spruce' ? 0x9fb59a : 0xffffff))); lf.position.set(x, 0, 0); lf.castShadow = lf.receiveShadow = true; scene.add(lf); tris += L.leaves.tris; }
+    x += 11;
+  }
+  const cz = parseFloat(new URLSearchParams(location.search).get('d') || '70');
+  camera.position.set(0, 10, cz); camera.lookAt(0, 8, 0);
+  renderer.render(scene, camera); window.__tris = tris; window.__done = true;
+})();
+</script></body></html>

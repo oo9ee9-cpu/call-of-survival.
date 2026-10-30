@@ -1,0 +1,11 @@
+# Android build output (the game is copied into the app's assets by the workflow)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/
+android/local.properties
+# tools
+__pycache__/
+*.pyc
+tools/lint/all.js
+node_modules/

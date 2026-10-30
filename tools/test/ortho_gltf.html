@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#202428;overflow:hidden}#t{position:fixed;left:8px;top:6px;color:#ffd060;font:14px monospace;z-index:2}</style></head><body><div id="t"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../../dl/three-r128/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+// orthographic front (looking -z) and side (looking -x) views of a model, with a metric grid, for picking landmarks
+// ?m=<model>&x0=-1&x1=1&y0=0&y1=2&z0=-1&z1=1&g=0.05[&pts=[[x,y,z],...]][&lines=[[x,y,z,x,y,z],...]]
+const Q = new URLSearchParams(location.search), url = Q.get('m');
+const num = (k, d) => (Q.get(k) !== null ? +Q.get(k) : d);
+const x0 = num('x0', -1), x1 = num('x1', 1), y0 = num('y0', 0), y1 = num('y1', 2), z0 = num('z0', -1), z1 = num('z1', 1), gs = num('g', 0.05);
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+renderer.outputEncoding = THREE.sRGBEncoding; renderer.setScissorTest(true);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x30353c);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.3));
+const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(1, 2, 3); scene.add(sun);
+function glbFrom(json, bin) {
+  const js = new TextEncoder().encode(JSON.stringify(json)), jp = (4 - js.length % 4) % 4, bp = (4 - bin.length % 4) % 4;
+  const total = 28 + js.length + jp + bin.length + bp, buf = new ArrayBuffer(total), dv = new DataView(buf), u8 = new Uint8Array(buf);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, total, true);
+  dv.setUint32(12, js.length + jp, true); dv.setUint32(16, 0x4E4F534A, true); u8.set(js, 20); u8.fill(0x20, 20 + js.length, 20 + js.length + jp);
+  const o = 20 + js.length + jp; dv.setUint32(o, bin.length + bp, true); dv.setUint32(o + 4, 0x004E4942, true); u8.set(bin, o + 8);
+  return buf;
+}
+const loadAny = (u, ok, bad) => {
+  if (!u.endsWith('.json')) return new THREE.GLTFLoader().load(u, ok, undefined, bad);
+  fetch(u).then((r) => r.json()).then((d) => { const b = atob(d.bin), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); new THREE.GLTFLoader().parse(glbFrom(d.gltf, a), u.slice(0, u.lastIndexOf('/') + 1), ok, bad); }).catch(bad);
+};
+function grid(axisA, a0, a1, axisB, b0, b1, depthAxis, depth) {
+  const pts = [], cols = [];
+  const put = (a, b, c) => { const v = [0, 0, 0]; v[axisA] = a; v[axisB] = b; v[depthAxis] = depth; pts.push(...v); cols.push(...c); };
+  for (let a = Math.ceil(a0 / gs) * gs; a <= a1 + 1e-6; a += gs) { const major = Math.abs(a / 0.5 - Math.round(a / 0.5)) < 1e-4, c = major ? [0.9, 0.75, 0.2] : [0.45, 0.5, 0.55]; put(a, b0, c); put(a, b1, c); }
+  for (let b = Math.ceil(b0 / gs) * gs; b <= b1 + 1e-6; b += gs) { const major = Math.abs(b / 0.5 - Math.round(b / 0.5)) < 1e-4, c = major ? [0.9, 0.75, 0.2] : [0.45, 0.5, 0.55]; put(a0, b, c); put(a1, b, c); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthTest: false }));
+}
+window.__done = false;
+loadAny(url, (g) => {
+  const root = g.scene; scene.add(root); root.updateMatrixWorld(true);
+  if (Q.get('wire')) root.traverse((o) => { if (o.isMesh) { o.material = new THREE.MeshBasicMaterial({ color: 0x9ab, wireframe: true }); } });
+  const pts = Q.get('pts') ? JSON.parse(Q.get('pts')) : [], lines = Q.get('lines') ? JSON.parse(Q.get('lines')) : [];
+  for (const p of pts) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff3020, depthTest: false })); m.position.set(p[0], p[1], p[2]); m.renderOrder = 9; scene.add(m); }
+  if (lines.length) { const a = []; for (const l of lines) a.push(...l); const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); const ls = new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0x30ff60, depthTest: false })); ls.renderOrder = 8; scene.add(ls); }
+  const gf = grid(0, x0, x1, 1, y0, y1, 2, z0 - 0.01), gside = grid(2, z0, z1, 1, y0, y1, 0, x0 - 0.01);
+  // front: camera at +z looking -z, x to the right; side: camera at +x looking -x, z to the left
+  const cf = new THREE.OrthographicCamera(x0, x1, y1, y0, 0.01, 100); cf.position.set(0, 0, z1 + 10); cf.lookAt(0, 0, -1e9);
+  const cs = new THREE.OrthographicCamera(-z1, -z0, y1, y0, 0.01, 100); cs.position.set(x1 + 10, 0, 0); cs.lookAt(-1e9, 0, 0);
+  // cs: from +x looking -x, screen-right is -z
+  const halfW = W / 2;
+  scene.add(gf); gside.visible = false; scene.add(gside);
+  renderer.setViewport(0, 0, halfW, H); renderer.setScissor(0, 0, halfW, H); renderer.render(scene, cf);
+  gf.visible = false; gside.visible = true;
+  renderer.setViewport(halfW, 0, halfW, H); renderer.setScissor(halfW, 0, halfW, H); renderer.render(scene, cs);
+  document.getElementById('t').textContent = `front x ${x0}..${x1}  side z ${z1}..${z0} (left→right)  y ${y0}..${y1}  grid ${gs}`;
+  window.__done = true;
+}, (e) => { document.getElementById('t').textContent = 'ERR ' + e; window.__err = String(e); window.__done = true; });
+</script></body></html>

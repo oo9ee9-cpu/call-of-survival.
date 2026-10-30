@@ -1,0 +1,12 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "localStorage.removeItem('cos-dev-' + MAP_ID); localStorage.removeItem('cos-dev-draft-' + MAP_ID); [window.__err || 'lobby', UPL.idbOK, !!UPL.assets, !!EDIO.db, EDIO.owner]"},
+ {"js": "begin(true); edEnter(); EDC.tdist = 24; EDC.tpitch = 0.5; window.__f = async (p, n) => new File([await (await fetch(p)).blob()], n); 1", "frames": 10},
+ {"js": "(async () => { upFiles([await __f('dl/three-dev/examples/models/gltf/Horse.glb', 'Horse.glb'), await __f('build/uptest/soldier_test.zip', 'soldier_test.zip')]); return 'started'; })()", "wait": 1},
+ {"until": "!UPL.busy", "timeout": 240, "js": "[Object.keys(EDK).filter((k) => k[0] === 'U').map((k) => [EDK[k].name, EDK[k].src, UPL.recs.get(EDK[k].mid).u, UPL.recs.get(EDK[k].mid).b.length]), $('edToast').textContent, $('edCat').classList.contains('gone')]", "frames": 5, "shot": "a_cat"},
+ {"js": "edCatOpen(false); const ks = Object.keys(EDK).filter((k) => k[0] === 'U'); edPlace(ks[0]); const a = ED.sel; edPlace(ks[1]); const b = ED.sel; edChange(b, (q) => { q.x = a.x + 4; }); [a.k, b.k, a.col, b.col, a.c, b.c]", "frames": 30, "shot": "b_placed"},
+ {"js": "edSave(); 1", "wait": 2},
+ {"until": "!EDIO.busy", "timeout": 30, "js": "[ED.objs.length, $('edToast').textContent]"},
+ {"reload": true, "until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "[window.__err || 'lobby', Object.keys(EDK).filter((k) => k[0] === 'U').length, ED.objs.map((o) => o.k + ':' + (o.v && o.v.root ? o.v.root.children.length : -1)), ED.src]"},
+ {"js": "begin(true); edEnter(); const o = ED.objs[0]; edLookAt(o.x, o.z, 20); 1", "frames": 30, "js_after": "[renderer.getContext().isContextLost(), camera.position.toArray().map(Math.round), camera.near, camera.far, ED.focus.toArray().map(Math.round), ED.objs.map((o) => [o.k, o.v && o.v.root ? o.v.root.children.length : -1, o.v ? o.v.cols.map((c) => c.t).join('') : '', Math.round(o.y)]), renderer.info.render.calls]", "shot": "c_reloaded"},
+ {"js": "edLeave(true); 1", "frames": 30, "js_after": "[renderer.getContext().isContextLost(), player.pos.toArray().map(Math.round), camera.position.toArray().map(Math.round), renderer.info.render.calls]", "shot": "d_test"}
+]

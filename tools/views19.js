@@ -1,0 +1,6 @@
+(() => {
+  const nearestAnimal = (kinds) => { let best = null, bd = 1e12; for (const a of ANIMALS) { if (!kinds.includes(a.kind) || !a.active || !a.root) continue; const d = (a.x - player.pos.x) ** 2 + (a.z - player.pos.z) ** 2; if (d < bd) { bd = d; best = a; } } return best; };
+  __views.push(() => { const S = WORLD.data.settlements.find((q) => q.id === 'farm'); const r = __go(S.x + 60, S.z + 40, { hour: 10, w: 'clear' }); for (let i = 0; i < 14; i++) updateAnimals(2.6, T + i); for (let i = 0; i < 10; i++) updateAnimals(0.1, T + 40 + i * 0.1); const a = nearestAnimal(['cow']); if (!a) return 'no cow'; const x = a.x + 5, z = a.z + 3; __go(x, z, { hour: 10, w: 'clear', yaw: Math.atan2(a.x - x, a.z - z), pitch: 0.02, dist: 2.5 }); return ['cow', r]; });
+  __views.push(() => { const r = __go(-700, -3150, { hour: 11, w: 'clear' }); updateVehicles(0.016, T); const v = VEHICLES.filter((q) => ['sedan', 'taxi', 'suv', 'van', 'police'].includes(q.kind)).sort((a, b) => Math.hypot(a.pos.x + 700, a.pos.z + 3150) - Math.hypot(b.pos.x + 700, b.pos.z + 3150))[0]; if (!v) return 'no car ' + VEHICLES.map((q) => q.kind).join(','); const x = v.pos.x + 5, z = v.pos.z + 4; __go(x, z, { hour: 11, w: 'clear', yaw: Math.atan2(v.pos.x - x, v.pos.z - z), pitch: 0.06, dist: 2.5 }); return ['car', v.kind, r]; });
+  return __views.length;
+})()

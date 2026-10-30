@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#202428;overflow:hidden}#t{position:fixed;left:8px;top:6px;color:#ffd060;font:14px monospace;z-index:2}</style></head><body><div id="t"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../../dl/three-r128/examples/js/loaders/GLTFLoader.js"></script>
+<script src="../../dl/three-r128/examples/js/utils/SkeletonUtils.js"></script>
+<script>
+// a rigged body driven by the soldier's clips the way the game does it (quaternion tracks, hips turned by the parents' difference)
+// ?m=<rigged model json>&src=<clip source json>&frames=[["Walk",0.1],["Walk",0.4],...]&yaw=0.6&dist=3.2
+const Q = new URLSearchParams(location.search);
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
+renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.setScissorTest(true);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x56606a);
+scene.add(new THREE.HemisphereLight(0xdfeaff, 0x40382c, 1.0));
+const sun = new THREE.DirectionalLight(0xfff1dd, 2.2); sun.position.set(-2, 4, 3); scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x6a6458, roughness: 1 })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
+function glbFrom(json, bin) {
+  const js = new TextEncoder().encode(JSON.stringify(json)), jp = (4 - js.length % 4) % 4, bp = (4 - bin.length % 4) % 4;
+  const total = 28 + js.length + jp + bin.length + bp, buf = new ArrayBuffer(total), dv = new DataView(buf), u8 = new Uint8Array(buf);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, total, true);
+  dv.setUint32(12, js.length + jp, true); dv.setUint32(16, 0x4E4F534A, true); u8.set(js, 20); u8.fill(0x20, 20 + js.length, 20 + js.length + jp);
+  const o = 20 + js.length + jp; dv.setUint32(o, bin.length + bp, true); dv.setUint32(o + 4, 0x004E4942, true); u8.set(bin, o + 8);
+  return buf;
+}
+const load = (u) => fetch(u).then((r) => r.json()).then((d) => new Promise((ok, bad) => { const b = atob(d.bin), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); new THREE.GLTFLoader().parse(glbFrom(d.gltf, a), u.slice(0, u.lastIndexOf('/') + 1), ok, bad); }));
+window.__done = false;
+Promise.all([load(Q.get('m')), load(Q.get('src'))]).then(([g, s]) => {
+  const m = g.scene, src = s.scene; m.updateMatrixWorld(true); src.updateMatrixWorld(true);
+  const hs = src.getObjectByName('mixamorigHips'), hm = m.getObjectByName('mixamorigHips');
+  const qs = new THREE.Quaternion(), qm = new THREE.Quaternion(); hs.parent.getWorldQuaternion(qs); hm.parent.getWorldQuaternion(qm);
+  const fix = qm.clone().invert().multiply(qs), tq = new THREE.Quaternion();
+  const clips = {};
+  for (const c of s.animations) clips[c.name] = new THREE.AnimationClip(c.name, c.duration, c.tracks.filter((t) => t.name.endsWith('.quaternion')).map((t) => {
+    if (t.name !== 'mixamorigHips.quaternion') return t;
+    const v = t.values.slice(); for (let i = 0; i < v.length; i += 4) { tq.set(v[i], v[i + 1], v[i + 2], v[i + 3]).premultiply(fix); v[i] = tq.x; v[i + 1] = tq.y; v[i + 2] = tq.z; v[i + 3] = tq.w; }
+    return new THREE.QuaternionKeyframeTrack(t.name, t.times, v);
+  }));
+  // which way the source rig faces: its left hand on +x means it faces +z
+  const lh = src.getObjectByName('mixamorigLeftHand'), rh = src.getObjectByName('mixamorigRightHand'), lp = new THREE.Vector3(), rp = new THREE.Vector3(); lh.getWorldPosition(lp); rh.getWorldPosition(rp);
+  const flip = lp.x - rp.x < 0 ? Math.PI : 0;
+  const frames = Q.get('frames') ? JSON.parse(Q.get('frames')) : [['bind', 0], ['Idle', 0.5], ['Walk', 0.2], ['Walk', 0.55], ['Run', 0.25]];
+  const yaw = +(Q.get('yaw') || 0.5), dist = +(Q.get('dist') || 3.4);
+  const n = frames.length, vw = W / n;
+  let tris = 0; m.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; tris += o.geometry.index.count / 3; if (Q.get('nomap')) { o.material.map = null; o.material.color.set(0xcccccc); o.material.needsUpdate = true; } } });
+  frames.forEach(([name, t], i) => {
+    const body = THREE.SkeletonUtils.clone(m); const holder = new THREE.Group(); holder.add(body); scene.add(holder);
+    body.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+    if (name !== 'bind') { const mx = new THREE.AnimationMixer(body); const a = mx.clipAction(clips[name]); a.play(); mx.update(0); a.time = t * clips[name].duration; mx.update(0); holder.rotation.y = flip; }
+    holder.updateMatrixWorld(true);
+    let helper = null; if (Q.get('skel')) { helper = new THREE.SkeletonHelper(body); helper.material.depthTest = false; helper.material.linewidth = 2; scene.add(helper); }
+    if (Q.get('dump') && i === +Q.get('dump')) { const out = {}; body.traverse((o) => { if (o.isBone && /Hips|UpLeg$|Leg$|Foot$|Arm$|ForeArm$|Hand$|Head$/.test(o.name)) { const v = new THREE.Vector3(); o.getWorldPosition(v); out[o.name] = v.toArray().map((x) => +x.toFixed(3)); } }); window.__dump = out; }
+    const cam = new THREE.PerspectiveCamera(30, vw / H, 0.05, 50); cam.position.set(Math.sin(yaw) * dist, 1.15, Math.cos(yaw) * dist); cam.lookAt(0, 0.92, 0);
+    renderer.setViewport(i * vw, 0, vw, H); renderer.setScissor(i * vw, 0, vw, H); renderer.render(scene, cam);
+    scene.remove(holder); if (helper) scene.remove(helper);
+  });
+  document.getElementById('t').textContent = 'tris ' + tris + '  frames ' + frames.map((f) => f.join('@')).join('  ') + '  flip ' + flip.toFixed(2);
+  window.__done = true;
+}).catch((e) => { document.getElementById('t').textContent = 'ERR ' + e; window.__err = String(e); window.__done = true; });
+</script></body></html>

@@ -1,0 +1,240 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>boot film</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style></head>
+<body>
+<script src="../dl/three-r128/build/three.min.js"></script>
+<script src="../dl/three-r128/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+/* the loading film of Call of Survival, rendered frame by frame (tools/render_boot.py), all of it made for the game:
+   1. a jump through a tunnel of light that ends in a white flash (the warp)
+   2. a survivor in free fall high over an invented planet at night: its cities glitter under thin clouds, the sun is rising
+      over the curve of the world. The planet's maps come from tools/planet_tex.py; the survivor is the game's soldier. */
+const Q = new URLSearchParams(location.search), W = +(Q.get('w') || 1280), H = +(Q.get('h') || 720);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H); renderer.autoClear = false;
+document.body.append(renderer.domElement);
+const R = 6371, ALT = 1500;                      // the planet in kilometres, the survivor's height above it
+const far = new THREE.Scene(), near = new THREE.Scene();
+const camFar = new THREE.PerspectiveCamera(42, W / H, 50, 120000), camNear = new THREE.PerspectiveCamera(42, W / H, 0.05, 200);
+// the sun: just over the edge of the world ahead and to the right (the horizon lies 36° under level from this height)
+const SUN = (() => { const az = 0.42, el = -0.585; return new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize(); })();
+const tl = new THREE.TextureLoader(), tex = (f) => { const t = tl.load('../build/boot/' + f); t.anisotropy = 16; t.wrapS = THREE.RepeatWrapping; return t; };
+const U = { uDay: { value: tex('day.jpg') }, uDens: { value: tex('dens.png') }, uSpec: { value: tex('spec.png') }, uClouds: { value: tex('clouds.png') },
+  uSun: { value: new THREE.Vector3() }, uRot: { value: 0 }, uCRot: { value: 0 } };
+const planetMat = new THREE.ShaderMaterial({ uniforms: U, extensions: { derivatives: true },
+  vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vPos; varying vec3 vObj;
+    void main() { vUv = uv; vObj = normalize(position); vN = normalize(normalMatrix * normal); vec4 p = modelViewMatrix * vec4(position, 1.0); vPos = p.xyz; gl_Position = projectionMatrix * p; }`,
+  fragmentShader: `uniform sampler2D uDay, uDens, uSpec, uClouds; uniform vec3 uSun; uniform float uRot, uCRot;
+    varying vec2 vUv; varying vec3 vN; varying vec3 vPos; varying vec3 vObj;
+    vec3 aces(vec3 c) { return clamp((c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0); }
+    float h13(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.x + p.y) * p.z); }
+    vec3 h33(vec3 p) { p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }
+    // value noise over the sphere (for where the cities cluster)
+    float vn(vec3 p) {
+      vec3 i = floor(p), f = p - i; f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(mix(h13(i), h13(i + vec3(1, 0, 0)), f.x), mix(h13(i + vec3(0, 1, 0)), h13(i + vec3(1, 1, 0)), f.x), f.y),
+                 mix(mix(h13(i + vec3(0, 0, 1)), h13(i + vec3(1, 0, 1)), f.x), mix(h13(i + vec3(0, 1, 1)), h13(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+    }
+    // lights in the cells of a grid laid over the sphere: a cell holds a light with a chance that follows the town density;
+    // each light is a soft point never smaller than a pixel (it widens with the cell's size on screen, so it does not flicker),
+    // and a light spread over more pixels is dimmed by as much, so a far town keeps its brightness
+    float lights(vec3 q, float K, float chance, float seed) {
+      vec3 g = q * K, c = floor(g), f = g - c;
+      if (h13(c + seed) > chance) return 0.0;
+      vec3 o = h33(c + seed * 1.7) * 0.6 + 0.2;
+      float px = length(fwidth(g)), d = length(f - o), r = max(0.07, px * 0.75);
+      return smoothstep(r, 0.0, d) * (0.45 + 0.55 * h13(c + seed * 3.1)) * clamp(0.07 / r, 0.12, 1.0);
+    }
+    void main() {
+      vec3 n = normalize(vN), V = normalize(-vPos);
+      vec2 uv = vec2(vUv.x + uRot, vUv.y), cuv = vec2(vUv.x + uCRot, vUv.y);
+      float a = uRot * 6.2831853, ca = cos(a), sa = sin(a);
+      vec3 q = vec3(vObj.x * ca + vObj.z * sa, vObj.y, vObj.z * ca - vObj.x * sa);
+      vec3 day = pow(texture2D(uDay, uv).rgb, vec3(2.2));
+      float sea = texture2D(uSpec, uv).r, cl = texture2D(uClouds, cuv).r, ndl = dot(n, uSun);
+      float lit = smoothstep(-0.06, 0.3, ndl);
+      vec3 col = day * (max(ndl, 0.0) * 1.7 + 0.0025) * (1.0 - cl * 0.4);
+      vec3 hv = normalize(uSun + V); col += vec3(1.0, 0.82, 0.6) * pow(max(dot(n, hv), 0.0), 120.0) * sea * 2.2 * lit;
+      // the night: towns and city glow from the density maps, sparkling at three scales
+      vec2 dm = texture2D(uDens, uv).rg;
+      // towns gather along the coasts and in the dense lowlands; the open interior stays dark but for a scatter of villages
+      float cluster = smoothstep(0.42, 0.78, vn(q * 70.0) * 0.65 + vn(q * 190.0) * 0.35);
+      float dt = smoothstep(0.25, 0.9, dm.r) * (0.12 + 0.88 * cluster), dv = smoothstep(0.08, 0.5, dm.r);
+      float L = lights(q, 1400.0, dt * 0.42, 1.0) + lights(q, 3600.0, dt * 0.55 + dm.g * 0.5, 7.0) * 0.55 + lights(q, 900.0, dv * 0.05, 19.0) * 0.6 + lights(q, 520.0, dm.g * 0.8, 13.0) * 1.4;
+      L += dm.g * 0.2 + dt * dt * 0.06;
+      float night = 1.0 - smoothstep(-0.18, 0.05, ndl);
+      col += vec3(1.0, 0.62, 0.28) * L * 1.35 * night * (1.0 - cl * 0.8);
+      // clouds: lit by day, faintly grey-blue by night, warm along the line of dawn
+      vec3 cloudC = vec3(1.0) * max(ndl, 0.0) * 1.45 + vec3(0.005, 0.007, 0.014);
+      col = mix(col, cloudC, cl * 0.92);
+      col += vec3(1.0, 0.36, 0.1) * 0.25 * exp(-pow((ndl - 0.02) / 0.07, 2.0)) * (0.4 + cl);
+      // the air seen edge-on near the rim
+      float rim = pow(1.0 - max(dot(n, V), 0.0), 4.0);
+      vec3 haze = mix(vec3(0.003, 0.006, 0.016), vec3(0.25, 0.5, 1.0), smoothstep(-0.25, 0.3, ndl));
+      col = mix(col, haze * (0.15 + 1.4 * max(ndl + 0.15, 0.0)), rim * 0.6);
+      gl_FragColor = vec4(pow(aces(col * 1.15), vec3(1.0 / 2.2)), 1.0);
+    }` });
+const planet = new THREE.Mesh(new THREE.SphereGeometry(R, 512, 256), planetMat);
+planet.position.set(0, -R - ALT, 0); far.add(planet);
+// the glow of the air over the curve of the world: for each ray of the sky, how close it passes over the ground decides how
+// bright the air is (a thin line over the limb fading up into black), blue, golden toward the rising sun
+const AU = { uSunW: { value: SUN }, uCam: { value: new THREE.Vector3() }, uP0: { value: new THREE.Vector3() }, uR: { value: R } };
+const atmoMat = new THREE.ShaderMaterial({ uniforms: AU, side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+  vertexShader: `varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `uniform vec3 uSunW, uCam, uP0; uniform float uR; varying vec3 vW;
+    void main() {
+      vec3 D = normalize(vW - uCam); float tc = max(dot(uP0 - uCam, D), 0.0); vec3 Qp = uCam + D * tc;
+      float h = length(Qp - uP0) - uR;
+      float g = exp(-max(h, 0.0) / 42.0) * 0.9 + exp(-max(h, 0.0) / 10.0) * 1.3;
+      vec3 up = normalize(Qp - uP0); float s = dot(up, uSunW);
+      float sunSide = smoothstep(-0.45, 0.25, s), toward = pow(max(dot(D, uSunW), 0.0), 14.0);
+      vec3 c = vec3(0.18, 0.42, 1.0) * (0.05 + 1.15 * sunSide) + vec3(1.0, 0.5, 0.16) * toward * 2.6 * g;
+      gl_FragColor = vec4(c * g, 1.0);
+    }` });
+const atmo = new THREE.Mesh(new THREE.SphereGeometry(R + 900, 256, 128), atmoMat); atmo.position.copy(planet.position); atmo.renderOrder = 2; far.add(atmo);
+// stars: a few thousand points of different brightness and tint, thicker along a band (the galaxy)
+{
+  const n = 9000, pos = new Float32Array(n * 3), col = new Float32Array(n * 3); let s = 9;
+  const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  for (let i = 0; i < n; i++) {
+    let x, y, z, l; do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd() * 2 - 1; l = x * x + y * y + z * z; } while (l > 1 || l < 0.01);
+    const band = Math.exp(-Math.pow((y * 0.75 + x * 0.66) / Math.sqrt(l) / 0.2, 2));
+    if (rnd() > 0.3 + band * 0.7) { i--; continue; }
+    const k = 100000 / Math.sqrt(l); pos.set([x * k, y * k, z * k], i * 3);
+    const b = Math.pow(rnd(), 3.4) * 1.2 + 0.05, t = rnd();
+    col.set([b * (0.85 + t * 0.3), b * (0.9 + t * 0.1), b * (1.1 - t * 0.25)], i * 3);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  far.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 1.7 * H / 720, sizeAttenuation: false, vertexColors: true, depthWrite: false })));
+}
+// the sun peeking over the edge: a hot core and a wide soft glow, as sprites far away
+const glowTex = (stops) => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), g = x.createRadialGradient(128, 128, 0, 128, 128, 128); for (const [o, s] of stops) g.addColorStop(o, s); x.fillStyle = g; x.fillRect(0, 0, 256, 256); return new THREE.CanvasTexture(c); };
+const sunCore = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex([[0, 'rgba(255,255,255,1)'], [0.1, 'rgba(255,245,225,0.95)'], [0.28, 'rgba(255,190,120,0.35)'], [1, 'rgba(255,140,60,0)']]), blending: THREE.AdditiveBlending, depthWrite: false }));
+const sunHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex([[0, 'rgba(255,200,150,0.5)'], [0.35, 'rgba(255,150,90,0.16)'], [1, 'rgba(120,150,255,0)']]), blending: THREE.AdditiveBlending, depthWrite: false }));
+far.add(sunHalo, sunCore);
+// the survivor: lit from behind by the low sun (a golden rim), a cool light from the sky above, a warm glow from the cities
+const sunL = new THREE.DirectionalLight(0xffd6a8, 3.3), earthL = new THREE.HemisphereLight(0x1d2c48, 0x5a3818, 0.9), rimL = new THREE.DirectionalLight(0x86aaff, 1.5);
+near.add(sunL, sunL.target, earthL, rimL, rimL.target);
+let body = null, bones = {};
+function b64Bytes(s) { const bin = atob(s), n = bin.length, u = new Uint8Array(n); for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i); return u; }
+function glbFrom(json, bin) {
+  const js = new TextEncoder().encode(JSON.stringify(json)), jp = (4 - js.length % 4) % 4, bp = (4 - bin.length % 4) % 4;
+  const total = 28 + js.length + jp + bin.length + bp, buf = new ArrayBuffer(total), dv = new DataView(buf), u8 = new Uint8Array(buf);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, total, true);
+  dv.setUint32(12, js.length + jp, true); dv.setUint32(16, 0x4E4F534A, true); u8.set(js, 20); u8.fill(0x20, 20 + js.length, 20 + js.length + jp);
+  const o = 20 + js.length + jp; dv.setUint32(o, bin.length + bp, true); dv.setUint32(o + 4, 0x004E4942, true); u8.set(bin, o + 8);
+  return buf;
+}
+window.READY = false;
+fetch('../assets/models/soldier.json').then((r) => r.json()).then((d) => new Promise((res, rej) => new THREE.GLTFLoader().parse(glbFrom(d.gltf, b64Bytes(d.bin)), '../assets/models/', res, rej))).then((g) => {
+  body = g.scene; near.add(body);
+  body.traverse((o) => { if (o.isBone) { bones[o.name.replace('mixamorig', '')] = o; o.userData.rest = o.quaternion.clone(); } if (o.isMesh) o.frustumCulled = false; });
+  window.READY = true;
+}).catch((e) => { window.ERR = String(e); });
+const _q = new THREE.Quaternion(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _pw = new THREE.Quaternion(), _bw = new THREE.Quaternion(), _rq = new THREE.Quaternion();
+// point a bone at its child along a direction given in the body's own frame
+function aim(name, child, dx, dy, dz) {
+  const b = bones[name], c = bones[child]; if (!b || !c) return;
+  b.updateMatrixWorld(true); c.updateMatrixWorld(true);
+  _a.setFromMatrixPosition(b.matrixWorld); _b.setFromMatrixPosition(c.matrixWorld); const cur = _b.sub(_a).normalize();
+  body.getWorldQuaternion(_rq); const want = new THREE.Vector3(dx, dy, dz).normalize().applyQuaternion(_rq);
+  _q.setFromUnitVectors(cur, want); b.getWorldQuaternion(_bw); b.parent.getWorldQuaternion(_pw);
+  b.quaternion.copy(_pw.invert().multiply(_q.multiply(_bw))); b.updateMatrixWorld(true);
+}
+// the soldier faces -z: its front is -z, its back +z, its left -x. limb(name, child, out, up, back): out is away from the body
+// on that limb's own side, up toward the head, back toward its back (a standing frame; the body is laid face down afterwards)
+function limb(name, child, out, up, back) { const side = /^Left/.test(name) ? -1 : /^Right/.test(name) ? 1 : 0; aim(name, child, side * out, up, back); }
+let LOOP = 14; window.ROT0 = +(Q.get('rot') || 0.41);
+function pose(t) {
+  const w = 2 * Math.PI / LOOP, sw = Math.sin(t * w), sw2 = Math.sin(t * w * 2 + 1.3);
+  for (const b of Object.values(bones)) b.quaternion.copy(b.userData.rest);
+  body.updateMatrixWorld(true);
+  // the arch of a skydiver: chest and head raised (toward the back when standing), hips pressed toward the planet
+  limb('Spine', 'Spine1', 0, 1, 0.1); limb('Spine1', 'Spine2', 0, 1, 0.14); limb('Spine2', 'Neck', 0, 1, 0.12);
+  limb('Neck', 'Head', 0, 1, 0.3); limb('Head', 'HeadTop_End', 0, 1, 0.45);
+  for (const S of ['Left', 'Right']) {
+    const k = S === 'Left' ? 1 : -1;
+    // the box: upper arms out to the sides, forearms bent forward toward the head, rocking a little in the wind
+    limb(S + 'Arm', S + 'ForeArm', 1, 0.28 + sw * 0.05 * k, 0.12);
+    limb(S + 'ForeArm', S + 'Hand', 0.3, 1, 0.22 + sw2 * 0.05 * k);
+    limb(S + 'Hand', S + 'HandMiddle1', 0.15, 1, 0.3);
+    // legs: thighs a little apart and back, shins bent up behind, feet pointed
+    limb(S + 'UpLeg', S + 'Leg', 0.22, -1, 0.3);
+    limb(S + 'Leg', S + 'Foot', 0.14, -0.45, 1 + sw2 * 0.06 * k);
+    limb(S + 'Foot', S + 'ToeBase', 0.05, -0.2, 1);
+  }
+}
+/* the warp: streaks of light rushing past from a point ahead, faster and faster, into a white flash */
+const warpScene = new THREE.Scene(), warpCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const WU = { uT: { value: 0 }, uRes: { value: new THREE.Vector2(W, H) } };
+warpScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ uniforms: WU, depthTest: false,
+  vertexShader: `void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `uniform float uT; uniform vec2 uRes;
+    float h1(float n) { return fract(sin(n * 127.1 + 311.7) * 43758.5453); }
+    void main() {
+      vec2 p = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+      float r = length(p), a = atan(p.y, p.x) / 6.2831853 + 0.5;
+      float t = uT, sp = 0.35 + t * t * 0.75;
+      vec3 col = vec3(0.0015, 0.002, 0.008) + vec3(0.03, 0.018, 0.08) * exp(-r * 3.0) * (0.3 + t * 0.5);
+      for (int layer = 0; layer < 4; layer++) {
+        float fl = float(layer), N = 70.0 + fl * 55.0, pa = a * N + fl * 0.37;
+        float id = floor(pa), fa = pa - id - 0.5, h = h1(id * 1.37 + fl * 11.0);
+        // the streak's depth comes toward you; its head sits at radius k / depth, its tail stretches with the speed
+        float z = fract(h * 5.0 - t * sp * (0.35 + h * 0.65)) + 0.015;
+        float head = 0.05 / z, len = head * min(0.9, 0.12 + t * 0.32);
+        float along = smoothstep(head - len, head, r) * (1.0 - smoothstep(head, head + 0.004, r));
+        float wpx = abs(fa) * 6.2831853 / N * r * uRes.y;
+        float width = 1.0 - smoothstep(0.35, 1.6 + 1.2 * (1.0 - z), wpx);
+        vec3 c = mix(vec3(0.35, 0.5, 1.0), vec3(0.8, 0.45, 1.0), h1(id + 5.0 + fl));
+        c = mix(c, vec3(1.0), h1(id * 3.0 + fl) > 0.85 ? 0.7 : 0.0);
+        col += c * along * width * (0.5 + 0.9 * h) * smoothstep(0.0, 0.25, t);
+      }
+      col += vec3(0.55, 0.65, 1.0) * exp(-r * 9.0) * (0.25 + t * 0.6);
+      float flash = smoothstep(1.85, 2.5, t);
+      col = mix(col, vec3(1.0, 0.98, 0.95), flash);
+      col = col / (1.0 + col * 0.25);
+      gl_FragColor = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
+    }` })));
+window.renderWarp = (i, fps) => {
+  WU.uT.value = i / fps; renderer.clear(); renderer.render(warpScene, warpCam);
+  return renderer.domElement.toDataURL('image/jpeg', 0.95);
+};
+/* the fall: frame i at fps; the motion repeats every `loop` seconds */
+window.renderFrame = (i, fps, loop) => {
+  LOOP = loop; const t = i / fps, w = 2 * Math.PI / LOOP;
+  // the camera above and behind, looking past the survivor down to the planet; drifting a little
+  const yaw = 0.06 + Math.sin(t * w) * 0.035, pitch = -0.77 + Math.sin(t * w + 0.8) * 0.018, roll = 0.035 + Math.sin(t * w + 2.1) * 0.02;
+  for (const c of [camFar, camNear]) { c.position.set(0, 0, 0); c.rotation.set(pitch, yaw, roll, 'YXZ'); c.updateMatrixWorld(true); }
+  U.uRot.value = window.ROT0 + t * 0.00042; U.uCRot.value = window.ROT0 + 0.13 + t * 0.0007;
+  planet.rotation.set(+(Q.get('tilt') || 1.0), 0, -0.25); planet.updateMatrixWorld(true);
+  U.uSun.value.copy(SUN).transformDirection(camFar.matrixWorldInverse);
+  AU.uCam.value.copy(camFar.position); AU.uP0.value.copy(planet.position);
+  const sp = SUN.clone().multiplyScalar(90000); sunCore.position.copy(sp); sunHalo.position.copy(sp);
+  const pul = 1 + Math.sin(t * w * 3) * 0.035; sunCore.scale.setScalar(9000 * pul); sunHalo.scale.setScalar(52000 * pul);
+  if (body) {
+    // laid face down, head toward the left and the horizon, seen from above and a little from the side
+    // placed in the camera's own frame (a little under the middle of the picture), oriented to the world
+    body.position.set(0.3 + Math.sin(t * w * 2) * 0.05, -0.5 + Math.sin(t * w + 0.4) * 0.04, -4.4).applyQuaternion(camNear.quaternion);
+    body.rotation.set(-Math.PI / 2 + 0.1 + Math.sin(t * w * 2 + 0.5) * 0.03, 1.05 + Math.sin(t * w) * 0.06, Math.sin(t * w * 2) * 0.05, 'YXZ');
+    body.updateMatrixWorld(true); pose(t);
+    sunL.position.copy(body.position).addScaledVector(SUN, 10); sunL.target.position.copy(body.position);
+    rimL.position.copy(body.position).add(new THREE.Vector3(-2.5, 5, 3.5)); rimL.target.position.copy(body.position);
+  }
+  renderer.clear(); renderer.render(far, camFar); renderer.clearDepth(); renderer.render(near, camNear);
+  return renderer.domElement.toDataURL('image/jpeg', 0.95);
+};
+/* debug: the survivor alone, from four sides, rest pose (posed=0) or the free-fall pose (posed=1) */
+window.debugBody = (posed, view) => {
+  const cam = new THREE.PerspectiveCamera(35, W / H, 0.05, 100);
+  body.position.set(0, 0, 0); body.rotation.set(0, 0, 0); body.updateMatrixWorld(true);
+  for (const b of Object.values(bones)) b.quaternion.copy(b.userData.rest);
+  body.updateMatrixWorld(true); if (posed) pose(0);
+  const box = new THREE.Box3().setFromObject(body), c = box.getCenter(new THREE.Vector3());
+  const d = 3.2, dirs = { front: [0, 0, 1], back: [0, 0, -1], side: [1, 0, 0], top: [0.001, 1, 0] }, v = dirs[view];
+  cam.position.set(c.x + v[0] * d, c.y + v[1] * d, c.z + v[2] * d); cam.lookAt(c);
+  sunL.position.set(3, 4, 5); sunL.target.position.set(0, 0, 0); rimL.position.set(-3, 2, -3); rimL.target.position.set(0, 0, 0);
+  renderer.setClearColor(0x30343a, 1); renderer.clear(); renderer.render(near, cam); renderer.setClearColor(0x000000, 1);
+  return renderer.domElement.toDataURL('image/jpeg', 0.9);
+};
+</script>
+</body></html>

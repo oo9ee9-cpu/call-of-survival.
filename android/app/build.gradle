@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+// the game's version (game/version.json → -PgameVersion) is the app's version code: a newer APK always installs over an older one
+def gameVersion = (project.findProperty('gameVersion') ?: '1').toString().toInteger()
+android {
+    namespace 'com.callofsurvival.game'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.callofsurvival.game'
+        minSdk 24
+        targetSdk 34
+        versionCode gameVersion
+        versionName '1.' + gameVersion
+        // SHELL: this app's own code; content that needs a newer one says so in version.json ("shell")
+        buildConfigField 'int', 'SHELL', '1'
+        buildConfigField 'String', 'REPO', '"oo9ee9-cpu/call-of-survival."'
+    }
+    buildFeatures { buildConfig true }
+    signingConfigs {
+        release {
+            storeFile rootProject.file('release.p12')
+            storeType 'pkcs12'
+            storePassword System.getenv('KEY_PASS') ?: 'none'
+            keyAlias 'cos'
+            keyPassword System.getenv('KEY_PASS') ?: 'none'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}

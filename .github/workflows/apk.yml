@@ -1,0 +1,78 @@
+# The Android app. A tag v<N> (tools/release.sh) builds the signed APK with the whole game inside and puts it on the
+# release v<N> as CallOfSurvival.apk (…/releases/latest/download/CallOfSurvival.apk is always the newest).
+# A change to android/ on main builds a quick test APK without the game, to check the code compiles.
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/apk.yml']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Put the game inside the app
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp -r game android/app/src/main/assets/game
+          cp -r cdn android/app/src/main/assets/cdn
+
+      - name: Build
+        env:
+          KEY_PASS: ${{ secrets.KEY_PASS }}
+        run: |
+          set -o pipefail
+          V=$(python3 -c "import json; print(json.load(open('game/version.json'))['v'])")
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then TASK=assembleRelease; else TASK=assembleDebug; fi
+          if [[ "$TASK" == assembleRelease && -z "$KEY_PASS" ]]; then
+            echo "::error::The signing password is missing: add the secret KEY_PASS (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+          cd android
+          gradle ":app:$TASK" -PgameVersion="$V" --no-daemon --stacktrace 2>&1 | tee ../build.log
+
+      - name: Report errors
+        if: failure()
+        run: |
+          [ -f build.log ] || exit 0
+          grep -E "error:|warning: \[|What went wrong|FAILURE|Could not|Execution failed|e: |\.java:[0-9]+" build.log | grep -v "^> Task" | head -10 | while IFS= read -r l; do echo "::error::${l:0:500}"; done
+          grep -A6 "What went wrong" build.log | head -14 | while IFS= read -r l; do echo "::warning::${l:0:500}"; done
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk CallOfSurvival.apk
+          ls -la CallOfSurvival.apk
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" \
+            --title "Call of Survival $GITHUB_REF_NAME" \
+            --notes "نزّل CallOfSurvival.apk وثبّته على هاتفك (اسمح بتثبيت التطبيقات من هذا المصدر). التحديثات التالية تصل من داخل اللعبة."
+          gh release upload "$GITHUB_REF_NAME" CallOfSurvival.apk --clobber
+
+      - name: Test APK
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3

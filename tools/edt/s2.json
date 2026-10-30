@@ -1,0 +1,7 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "window.__err || 'lobby'"},
+ {"js": "begin(true); edEnter(); window.__ox = EDC.x; window.__oz = EDC.z; EDC.z -= 170; edCamApply(0); edPlace('Q_lake'); const o = ED.sel; const m = o.v.meshes[0]; const a = m.geometry.attributes.aDepth.array; let nan = 0, mn = 1e9, mx = -1e9; for (const v of a) { if (!isFinite(v)) nan++; else { mn = Math.min(mn, v); mx = Math.max(mx, v); } } [o.y, nan, mn, mx, a.length, EDC.y, camera.position.toArray().map(Math.round)]", "frames": 30, "shot": "lake_a"},
+ {"js": "const o = ED.sel; o.v.meshes[0].visible = false; [camera.position.toArray().map(Math.round), EDC.y, EDC.dist]", "frames": 30, "shot": "lake_b"},
+ {"js": "const o = ED.sel; o.v.meshes[0].visible = true; EDC.tdist = 60; EDC.tpitch = 0.9; 1", "frames": 40, "shot": "lake_c"},
+ {"js": "const gl = renderer.getContext(); [gl.getError(), POST && POST.on, typeof POST.exposure]", "frames": 2}
+]

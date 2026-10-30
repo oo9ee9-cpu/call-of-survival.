@@ -1,0 +1,17 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "localStorage.removeItem('cos-dev-' + MAP_ID); localStorage.removeItem('cos-dev-draft-' + MAP_ID); window.__err || 'lobby'"},
+ {"js": "begin(true); edEnter(); window.__o = [EDC.x, EDC.z]; EDC.tdist = 26; EDC.tpitch = 0.9; [Math.round(EDC.x), Math.round(EDC.z)]", "frames": 20},
+ {"js": "edPlace('B_container'); const o = ED.sel; edSelect(null); [o.k, Math.round(o.x), Math.round(o.z)]", "frames": 10},
+ {"js": "1", "tap": [480, 300], "frames": 4, "js_after": "[ED.sel && ED.sel.k, document.querySelectorAll('#edCtx button').length]"},
+ {"js": "window.__b = [ED.sel.x, ED.sel.z]; 1", "drag": [480, 300, 600, 300], "n": 14, "frames": 6, "js_after": "[Math.round((ED.sel.x - __b[0]) * 10) / 10, Math.round((ED.sel.z - __b[1]) * 10) / 10, ED.undo.length]", "shot": "a_dragged"},
+ {"js": "edUndo(false); const o = ED.objs[0]; [Math.round((o.x - __b[0]) * 10) / 10, ED.undo.length, ED.redo.length]", "frames": 4},
+ {"js": "edUndo(true); const o = ED.objs[0]; [Math.round((o.x - __b[0]) * 10) / 10, ED.undo.length, ED.redo.length]", "frames": 4},
+ {"js": "edSelect(null); window.__c = [EDC.x, EDC.z]; 1", "drag": [300, 420, 300, 250], "n": 12, "frames": 4, "js_after": "[Math.round(EDC.x - __c[0]), Math.round(EDC.z - __c[1])]"},
+ {"js": "EDC.x = __o[0] + 60; EDC.z = __o[1]; EDC.tdist = 70; EDC.tpitch = 0.75; edCamApply(0); edTool('erase'); ED.vmode = 'tree'; ED.vsp = 'mix'; ED.br = 22; ED.bk = 0.6; edEraseStart(); for (let i = 0; i < 6; i++) edEraseAt(EDC.x - 30 + i * 12, EDC.z); edEraseEnd(); const nT = ED.objs.filter((o) => EDK[o.k].type === 'tree').length; ED.vmode = 'grass'; edEraseStart(); for (let i = 0; i < 6; i++) edEraseAt(EDC.x - 30 + i * 12, EDC.z + 30); edEraseEnd(); ED.vmode = 'flower'; edEraseStart(); for (let i = 0; i < 6; i++) edEraseAt(EDC.x - 30 + i * 12, EDC.z - 30); edEraseEnd(); [nT, ED.er.length, ED.paintN, ED.undo.length]", "frames": 50, "shot": "b_planted"},
+ {"js": "ED.vmode = 'erase'; ED.erm = 7; edEraseStart(); edEraseAt(EDC.x - 18, EDC.z); edEraseEnd(); [ED.objs.filter((o) => EDK[o.k].type === 'tree').length, ED.er.length]", "frames": 30, "shot": "c_erased"},
+ {"js": "edTool('sel'); EDC.x = __o[0]; EDC.z = __o[1] + 30; edCamApply(0); edPlace('B_colbox'); const cb = ED.sel; edChange(cb, (q) => { q.w = 8; q.d = 1; q.h = 3; q.ry = 0; }); window.__cb = [cb.x, cb.z]; edPlace('B_spawn'); edPlace('H_city'); edPlace('G_road'); edTool('ter'); ED.brush = 'lower'; ED.br = 10; const g = { x: __o[0] - 40, z: __o[1] + 40 }; edBrushStart(g); for (let i = 0; i < 30; i++) edBrushStep(0.05); edBrushEnd(); edSave().then(() => [ED.objs.length, EDT.n, ED.er.length, (localStorage.getItem('cos-dev-' + MAP_ID) || '').length])", "frames": 10},
+ {"js": "location.reload(); 1", "wait": 3},
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "[ED.loaded, ED.src, ED.objs.length, EDT.n, ED.er.length, ED.objs.map((o) => o.k).filter((k, i, a) => a.indexOf(k) === i).join(',')]"},
+ {"js": "begin(true); const cb = ED.objs.find((o) => o.k === 'B_colbox'); player.pos.set(cb.x, groundAt(cb.x, cb.z + 4) , cb.z + 4); player.yaw = Math.PI; cam.yaw = cam.tyaw = 0; [Math.round(player.pos.z * 10) / 10, cb.z]", "frames": 20},
+ {"js": "1", "key": "KeyW", "hold": 2.5, "frames": 4, "js_after": "const cb = ED.objs.find((o) => o.k === 'B_colbox'); [Math.round(player.pos.z * 100) / 100, cb.z, Math.round((player.pos.z - cb.z) * 100) / 100]", "shot": "d_wall"}
+]

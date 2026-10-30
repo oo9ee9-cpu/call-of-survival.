@@ -1,0 +1,37 @@
+[45s] step 0 -> "lobby"
+[61s] step 1 -> "ok"
+[125s] step 2 -> [true, -717, -3211, "", "hidden"]
+[177s] shot 01_enter
+[177s] step 3 -> 21
+[194s] shot 02_catalog
+[194s] step 4 -> [65, ["H_villa", -687, -3211, 9.3]]
+[244s] step 5 -> 1
+[393s] shot 03_villa
+[393s] step 6 -> [[14, ["B_fence_wood", -717, -3177, 9.8]], [9, ["T_plane", -711, -3177, 9.8]], [8, ["T_oak", -723, -3173, 13.5]], [10, ["R_boulder", -727, -3181, 13.5]], [20, ["H_farm", -747, -3201, 9.3]], [11, ["V_jeep", -729, -3205, 9.3]], [13, ["P_casual", -725, -3209, 9.3]], [12, ["P_hunter", -723, -3209, 9.3]], [6, ["A_horse", -737, -3225, 9]], [17, ["W_akm", -721, -3211, 9.2]], [11, ["D_bed", -719, -3215, 9.2]], [6, ["D_street_lamp", -715, -3213, 9.3]]]
+[449s] step 7 -> 1
+[708s] shot 04_things
+[708s] step 8 -> [14, ["S_mount", -297, -3211, 98.5]]
+[736s] step 9 -> 1
+[839s] shot 05_mount
+[839s] step 10 -> [12, ["Q_lake", -717, -3381, -9.6]]
+[850s] step 11 -> 1
+[926s] shot 06_lake
+[926s] step 12 -> [1, 16]
+[975s] step 13 -> 1
+[1084s] shot 07_brush
+[1084s] step 14 -> [12, ["L_kingshall", -917, -3211, 0]]
+[1108s] step 15 -> ["land ok", 7]
+[1122s] step 16 -> 1
+[1214s] shot 08_kingshall
+[1214s] step 17 -> ["H_villa", 17]
+[1350s] shot 09_select
+[1350s] step 18 -> [1586, true, 16]
+[1371s] step 19 -> [false, -687, -3211, ""]
+[1533s] shot 10_test
+[warning] editor: make B_fence_wood TypeError: gap is not a function
+    at http://127.0.0.1:34967/game.html:15142:16
+    at edRun (http://127.0.0.1:34967/game.html:15131:31)
+    at ED_PRE.fence_wood (http://127.0.0.1:34967/game.html:15141:3)
+    at Object.make (http://127.0.0.1:34967/game.html:15357:18)
+    
+exit 0

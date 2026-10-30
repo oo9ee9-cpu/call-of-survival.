@@ -1,0 +1,22 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "window.__err || 'lobby'"},
+ {"js": "begin(true); window.__t = (f) => { const t0 = performance.now(); const r = f(); return [Math.round(performance.now() - t0), r]; }; window.__put = (key, dx, dz, extra) => { EDC.x = window.__ox + dx; EDC.z = window.__oz + dz; edCamApply(0); return __t(() => { edPlace(key); const o = ED.sel; if (o && extra) edChange(o, (q) => Object.assign(q, extra)); return o ? [o.k, Math.round(o.x), Math.round(o.z), Math.round(o.y * 10) / 10] : null; }); }; 'ok'", "frames": 40},
+ {"js": "edEnter(); window.__ox = EDC.x; window.__oz = EDC.z; [ED.on, Math.round(EDC.x), Math.round(EDC.z), document.getElementById('ed').className, getComputedStyle(document.getElementById('hud')).visibility]", "frames": 30, "shot": "01_enter"},
+ {"js": "edTool('add'); EDUI.cat = 'mine'; edCatTabs(); edCatGrid(); document.querySelectorAll('.edcard').length", "frames": 4, "shot": "02_catalog"},
+ {"js": "edCatOpen(false); __put('H_villa', 30, 0)", "frames": 30},
+ {"js": "EDC.tdist = 70; EDC.tpitch = 0.75; 1", "frames": 50, "shot": "03_villa"},
+ {"js": "edAct('focus'); edSelect(null); [__put('B_fence_wood', 0, 30), __put('T_plane', 6, 34), __put('T_oak', -6, 34), __put('R_boulder', -10, 26), __put('H_farm', -30, 10), __put('V_jeep', -12, 6), __put('P_casual', -8, 2), __put('P_hunter', -6, 2), __put('A_horse', -20, -14), __put('W_akm', -4, 0), __put('D_bed', -2, -4), __put('D_street_lamp', 2, -2)]", "frames": 20},
+ {"js": "EDC.x = __ox - 8; EDC.z = __oz + 10; EDC.tdist = 46; EDC.tpitch = 0.55; edSelect(null); 1", "frames": 60, "shot": "04_things"},
+ {"js": "__put('S_mount', 420, 0)", "frames": 10},
+ {"js": "EDC.tdist = 700; EDC.tpitch = 0.45; 1", "frames": 80, "shot": "05_mount"},
+ {"js": "__put('Q_lake', 0, -160)", "frames": 10},
+ {"js": "EDC.tdist = 130; EDC.tpitch = 0.6; 1", "frames": 60, "shot": "06_lake"},
+ {"js": "EDC.x = __ox; EDC.z = __oz + 90; edCamApply(0); edTool('ter'); ED.brush='raise'; ED.br = 18; const g = { x: EDC.x, z: EDC.z }; edBrushStart(g); for (let i = 0; i < 40; i++) { EDB.x = g.x + i * 0.6; edBrushStep(0.05); } edBrushEnd(); [EDT.n, ED.undo.length]", "frames": 30},
+ {"js": "EDC.tdist = 80; 1", "frames": 50, "shot": "07_brush"},
+ {"js": "edTool('sel'); __put('L_kingshall', -200, 0)", "frames": 10},
+ {"js": "new Promise((r) => setTimeout(() => r(ED.sel && ED.sel.v && ED.sel.v.L ? ['land ok', Math.round(ED.sel.y)] : 'land pending'), 6000))", "frames": 10},
+ {"js": "EDC.tdist = 110; EDC.tpitch = 0.6; 1", "frames": 60, "shot": "08_kingshall"},
+ {"js": "edSelect(ED.objs.find((o) => o.k === 'H_villa')); edAct('focus'); [ED.sel && ED.sel.k, document.querySelectorAll('#edCtx button').length]", "frames": 60, "shot": "09_select"},
+ {"js": "edSave().then(() => [localStorage.getItem(ED_LS) ? localStorage.getItem(ED_LS).length : 0, ED.savedVer === ED.ver, ED.objs.length])", "frames": 10},
+ {"js": "edLeave(true); [ED.on, Math.round(player.pos.x), Math.round(player.pos.z), document.getElementById('edBack').className]", "frames": 60, "shot": "10_test"}
+]
