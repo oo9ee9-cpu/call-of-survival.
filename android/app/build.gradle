@@ -13,7 +13,7 @@ android {
         versionCode gameVersion
         versionName '1.' + gameVersion
         // SHELL: this app's own code; content that needs a newer one says so in version.json ("shell")
-        buildConfigField 'int', 'SHELL', '1'
+        buildConfigField 'int', 'SHELL', '2'
         buildConfigField 'String', 'REPO', '"oo9ee9-cpu/call-of-survival."'
     }
     buildFeatures { buildConfig true }

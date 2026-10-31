@@ -1,7 +1,7 @@
-# The Android app: the signed APK with the whole game inside, CallOfSurvival.apk on the release of the game's version
-# (…/releases/latest/download/CallOfSurvival.apk is always the newest). A tag v<N> (a release the owner creates) builds it
-# and creates the release if needed; a change to android/ on main builds it again and replaces the APK on the release
-# v<version in game/version.json> when that release exists.
+# The Android app: the signed APKs (CallOfSurvival.apk with the whole game inside, CallOfSurvival-lite.apk that downloads it
+# at the first start) on the release of the game's version (…/releases/latest/download/… is always the newest). A tag v<N>
+# (a release the owner creates) builds them and creates the release if needed; a change to android/ on main builds them
+# again and replaces the APKs on the release v<version in game/version.json>, or on the newest release when there is none.
 name: Android APK
 
 on:
@@ -87,7 +87,14 @@ jobs:
               --notes "نزّل CallOfSurvival.apk وثبّته على هاتفك (اسمح بتثبيت التطبيقات من هذا المصدر). التحديثات التالية تصل من داخل اللعبة."
             gh release upload "$TAG" CallOfSurvival.apk CallOfSurvival-lite.apk --clobber
           else
-            echo "::notice::No release $TAG yet; the APK stays a workflow artifact"
+            # no release for this version (only the owner can create one): the newest release gets the new APKs
+            LATEST=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || true)
+            if [[ -n "$LATEST" ]]; then
+              gh release upload "$LATEST" CallOfSurvival.apk CallOfSurvival-lite.apk --clobber
+              echo "::notice::No release $TAG: the APKs of $LATEST (the newest release) were replaced by version $V"
+            else
+              echo "::notice::No release yet; the APK stays a workflow artifact"
+            fi
           fi
 
       - uses: actions/upload-artifact@v4

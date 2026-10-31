@@ -99,14 +99,26 @@ function digOffset(x, z) {
   for (const c of l) { const d2 = (x - c.x) ** 2 + (z - c.z) ** 2; if (d2 < c.r * c.r) { const t = 1 - d2 / (c.r * c.r); o -= c.d * t * t; } }
   return o;
 }
-function addCrater(x, z, r, d, silent) {
-  const c = { x: +x.toFixed(2), z: +z.toFixed(2), r, d };
-  DIG.list.push(c);
-  for (let i = Math.floor((x - r) / 16); i <= Math.floor((x + r) / 16); i++) for (let j = Math.floor((z - r) / 16); j <= Math.floor((z + r) / 16); j++) {
-    const k = digKey(i, j); if (!DIG.grid.has(k)) DIG.grid.set(k, []); DIG.grid.get(k).push(c);
+function digGrid(c, add) {
+  for (let i = Math.floor((c.x - c.r) / 16); i <= Math.floor((c.x + c.r) / 16); i++) for (let j = Math.floor((c.z - c.r) / 16); j <= Math.floor((c.z + c.r) / 16); j++) {
+    const k = digKey(i, j); let a = DIG.grid.get(k);
+    if (add) { if (!a) DIG.grid.set(k, a = []); a.push(c); }
+    else if (a) { const q = a.indexOf(c); if (q >= 0) a.splice(q, 1); if (!a.length) DIG.grid.delete(k); }
   }
+}
+// a stroke where a hole already is makes it deeper (and wider as it goes down, so you can climb out): one record per hole, however deep
+function addCrater(x, z, r, d, silent) {
+  let c = null, best = 0.5;
+  const l = DIG.grid.get(digKey(Math.floor(x / 16), Math.floor(z / 16)));
+  if (l) for (const q of l) { const dd = Math.hypot(q.x - x, q.z - z); if (dd < best) { best = dd; c = q; } }
+  if (c) {
+    digGrid(c, false);
+    c.d = +(c.d + d).toFixed(3); c.r = +Math.max(c.r, r, 0.7 + c.d * 0.42).toFixed(2);
+    c.x = +(c.x + (x - c.x) * 0.25).toFixed(2); c.z = +(c.z + (z - c.z) * 0.25).toFixed(2);
+  } else { c = { x: +x.toFixed(2), z: +z.toFixed(2), r, d }; DIG.list.push(c); }
+  digGrid(c, true);
   DIG.version++;
-  if (!silent && typeof TERRAIN !== 'undefined') TERRAIN.dirtyArea(x, z, r + 2);
+  if (!silent && typeof TERRAIN !== 'undefined') TERRAIN.dirtyArea(c.x, c.z, c.r + 2);
   return c;
 }
 /* ── the world editor's changes to the land (41_editor) ──
@@ -212,6 +224,59 @@ function edsAt(x, z) {
   const a = EDS.grid.get(padKey(Math.floor(x / 64), Math.floor(z / 64))); if (!a) return 0;
   let h = 0; for (let i = 0; i < a.length; i++) h += shapeH(a[i], x, z);
   return h;
+}
+/* GP: the ground painted in the editor (45_gmat draws it). A point every 50 cm holds which of the world's eight painted
+   materials lies there (id) and how much (w, 0–255); 64 m tiles of 128 × 128 points, only where something was painted.
+   Coarser copies (2 m, 8 m, a tile's average) serve the far chunks, made when first asked for */
+const GP = { tiles: new Map(), n: 0, ver: 0 };
+const gpKey = (ti, tj) => (ti + 4096) * 8192 + (tj + 4096);
+function gpTile(ti, tj, make) {
+  const k = gpKey(ti, tj); let t = GP.tiles.get(k);
+  if (!t && make) { t = { id: new Uint8Array(16384), w: new Uint8Array(16384), l1: null, l2: null, l3: null }; GP.tiles.set(k, t); GP.n = GP.tiles.size; }
+  return t;
+}
+function gpAny(x0, z0, size) {
+  for (let i = Math.floor(x0 / 64); i <= Math.floor((x0 + size) / 64); i++) for (let j = Math.floor(z0 / 64); j <= Math.floor((z0 + size) / 64); j++) if (GP.tiles.has(gpKey(i, j))) return true;
+  return false;
+}
+function digAny(x0, z0, size) {
+  for (let i = Math.floor((x0 - 8) / 16); i <= Math.floor((x0 + size + 8) / 16); i++) for (let j = Math.floor((z0 - 8) / 16); j <= Math.floor((z0 + size + 8) / 16); j++) if (DIG.grid.has(digKey(i, j))) return true;
+  return false;
+}
+// a level of a tile: 0 the points themselves (as eight weights), 1 every 2 m, 2 every 8 m, 3 the whole tile
+function gpLevel(t, lv) {
+  const key = 'l' + lv; if (t[key]) return t[key];
+  const n = 128 >> (lv * 2), f = 128 / n, out = new Float32Array(Math.max(1, n * n) * 8);
+  if (lv === 3) { const a = gpLevel(t, 2); for (let i = 0; i < 64; i++) for (let q = 0; q < 8; q++) out[q] += a[i * 8 + q] / 64; }
+  else if (lv === 2) { const a = gpLevel(t, 1); for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) for (let b = 0; b < 4; b++) for (let c = 0; c < 4; c++) { const s = ((j * 4 + b) * 32 + i * 4 + c) * 8, o = (j * 8 + i) * 8; for (let q = 0; q < 8; q++) out[o + q] += a[s + q] / 16; } }
+  else for (let j = 0; j < 32; j++) for (let i = 0; i < 32; i++) {
+    const o = (j * 32 + i) * 8;
+    for (let b = 0; b < f; b++) for (let c = 0; c < f; c++) { const s = (j * f + b) * 128 + i * f + c, w = t.w[s]; if (w) out[o + t.id[s]] += w / (255 * f * f); }
+  }
+  return (t[key] = out);
+}
+function gpDirty(t) { t.l1 = t.l2 = t.l3 = null; }
+// the weights at a point, as a chunk with vertices st apart sees them (bilinear on the level that suits st); false when none
+function gpWeights(x, z, st, out) {
+  out.fill(0);
+  let any = false;
+  if (st <= 1) {
+    const gx = x * 2, gz = z * 2, i = Math.floor(gx), j = Math.floor(gz), u = gx - i, v = gz - j;
+    for (let c = 0; c < 4; c++) {
+      const ii = i + (c & 1), jj = j + (c >> 1), t = GP.tiles.get(gpKey(ii >> 7, jj >> 7)); if (!t) continue;
+      const s = (jj & 127) * 128 + (ii & 127), w = t.w[s]; if (!w) continue;
+      out[t.id[s]] += (w / 255) * (c & 1 ? u : 1 - u) * (c >> 1 ? v : 1 - v); any = true;
+    }
+    return any;
+  }
+  const lv = st <= 4 ? 1 : st <= 16 ? 2 : 3, cell = lv === 1 ? 2 : lv === 2 ? 8 : 64, per = 64 / cell, off = cell / 2 - 0.25;
+  const gx = (x - off) / cell, gz = (z - off) / cell, i = Math.floor(gx), j = Math.floor(gz), u = gx - i, v = gz - j;
+  for (let c = 0; c < 4; c++) {
+    const ii = i + (c & 1), jj = j + (c >> 1), ti = Math.floor(ii / per), tj = Math.floor(jj / per), t = GP.tiles.get(gpKey(ti, tj)); if (!t) continue;
+    const a = gpLevel(t, lv), o = ((jj - tj * per) * per + (ii - ti * per)) * 8, f = (c & 1 ? u : 1 - u) * (c >> 1 ? v : 1 - v);
+    for (let q = 0; q < 8; q++) if (a[o + q]) { out[q] += a[o + q] * f; any = true; }
+  }
+  return any;
 }
 // the world editor's say in what the cells grow (set in 41_editor): veg(ci, cj, trees) and rocks(ci, cj, rocks) return the lists
 const ED_HOOK = { veg: null, rocks: null, grass: null };     // grass(x, z): 8 lush grass, 16 flowers painted there

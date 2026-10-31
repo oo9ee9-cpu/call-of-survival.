@@ -9,6 +9,7 @@ ap.add_argument('page'); ap.add_argument('steps'); ap.add_argument('out')
 ap.add_argument('--w', type=int, default=960); ap.add_argument('--h', type=int, default=540)
 ap.add_argument('--mobile', action='store_true'); ap.add_argument('--state', default='')
 ap.add_argument('--cloud', action='store_true')   # a stand-in for the artifact's runtime: assets, db and user in this script
+ap.add_argument('--netmock', action='store_true')  # stand-ins for ambientCG, Poly Haven and Sketchfab (files from shots/), and for the Android app's /_app and /_net
 a = ap.parse_args()
 SP = os.path.dirname(os.path.abspath(__file__)) + '/..'
 LOCAL = {   # the CDN files the page asks for, served from cdn/ (kept by host and path, '@' as '-at-')
@@ -68,7 +69,49 @@ with sync_playwright() as p:
             return r.fulfill(body=v[0], content_type=v[1]) if v else r.fulfill(status=404, body='')
         if u.startswith('https://fonts.'): return r.fulfill(body='', content_type='text/css')
         return r.continue_()
-    pg.route('**/*', route)
+    if a.netmock:
+        import urllib.parse
+        SH = SP + '/shots/'
+        def rd(n): return open(SH + n, 'rb').read()
+        def mock(u, hdr):
+            # (status, body, type) for a site's address, or None
+            if u.startswith('https://ambientcg.com/api/v3/assets'):
+                L = [{'id': 'Ground054', 'title': 'Ground 054', 'thumbnails': {'256-PNG': 'https://acg-media.mock/Ground054_256.jpg'}, 'downloads': [{'attribute': '1K-JPG', 'url': 'https://ambientcg.com/get?file=Ground054_1K-JPG.zip'}, {'attribute': '2K-JPG', 'url': 'https://ambientcg.com/get?file=Ground054_2K-JPG.zip'}]},
+                     {'id': 'Rocks023', 'title': 'Rocks 023', 'thumbnails': {'256-PNG': 'https://acg-media.mock/Rocks023_256.jpg'}}]
+                return 200, json.dumps({'totalResults': 2, 'nextPageHttp': None, 'assets': L}).encode(), 'application/json'
+            if u.startswith('https://ambientcg.com/get?file='): return 200, rd('TestCobbles_1K-JPG.zip'), 'application/zip'
+            if u.startswith('https://acg-media.mock/') or u.startswith('https://cdn.polyhaven.mock/') or u.startswith('https://media.sketchfab.mock/'): return 200, rd('c.jpg'), 'image/jpeg'
+            if u.startswith('https://api.polyhaven.com/assets?t=textures'):
+                return 200, json.dumps({'cobble_mock': {'name': 'Cobble Mock', 'type': 1, 'tags': ['cobble', 'stone'], 'categories': ['floor'], 'thumbnail_url': 'https://cdn.polyhaven.mock/cobble.png', 'download_count': 9, 'dimensions': [3000, 3000], 'authors': {'Mock Author': 'All'}}, 'grass_mock': {'name': 'Grass Mock', 'type': 1, 'tags': ['grass'], 'thumbnail_url': 'https://cdn.polyhaven.mock/grass.png', 'download_count': 3}}).encode(), 'application/json'
+            if u.startswith('https://api.polyhaven.com/assets?t=models'):
+                return 200, json.dumps({'hut_mock': {'name': 'Hut Mock', 'type': 2, 'tags': ['hut'], 'thumbnail_url': 'https://cdn.polyhaven.mock/hut.png', 'download_count': 5}}).encode(), 'application/json'
+            if u.startswith('https://api.polyhaven.com/files/cobble_mock'):
+                f = lambda n: {'url': 'https://dl.polyhaven.mock/' + n, 'size': 200000, 'md5': 'x'}
+                return 200, json.dumps({'Diffuse': {'1k': {'jpg': f('c.jpg')}, '2k': {'jpg': f('c.jpg')}}, 'nor_gl': {'1k': {'jpg': f('n.jpg')}, '2k': {'jpg': f('n.jpg')}}, 'Rough': {'1k': {'jpg': f('r.jpg')}, '2k': {'jpg': f('r.jpg')}}}).encode(), 'application/json'
+            if u.startswith('https://dl.polyhaven.mock/'): return 200, rd(u.rsplit('/', 1)[1]), 'image/jpeg'
+            if u.startswith('https://api.sketchfab.com/v3/search'):
+                R = [{'uid': 'hut1', 'name': 'Mock Hut', 'thumbnails': {'images': [{'url': 'https://media.sketchfab.mock/hut.jpg', 'width': 360, 'height': 200}]}, 'user': {'displayName': 'Mock Maker'}, 'license': {'label': 'CC Attribution'}, 'viewerUrl': 'https://sketchfab.com/3d-models/hut1', 'faceCount': 10}]
+                return 200, json.dumps({'results': R, 'next': None}).encode(), 'application/json'
+            if u.startswith('https://api.sketchfab.com/v3/models/hut1/download'):
+                if (hdr.get('x-cos-auth') or hdr.get('authorization') or '') != 'Token secret-token': return 401, b'{"detail":"Invalid token"}', 'application/json'
+                return 200, json.dumps({'glb': {'url': 'https://sketchfab-prod-media.mock/hut1.glb', 'size': 1432, 'expires': 300}}).encode(), 'application/json'
+            if u.startswith('https://api.sketchfab.com/v3/models/hut1'): return 200, json.dumps({'uid': 'hut1', 'license': {'label': 'CC Attribution'}, 'user': {'displayName': 'Mock Maker'}}).encode(), 'application/json'
+            if u.startswith('https://sketchfab-prod-media.mock/'): return 200, rd('mockhut.glb'), 'model/gltf-binary'
+            return None
+        def net_route(r):
+            u = r.request.url
+            if '/_app/info' in u: return r.fulfill(body='{"app":1,"shell":2,"net":1,"browse":1,"v":19}', content_type='application/json')
+            if '/_lib/' in u: return r.fulfill(body=rd('mockhut.glb'), content_type='model/gltf-binary')
+            if '/_app/' in u: return r.fulfill(body='{"ok":1}', content_type='application/json')
+            if '/_net/get?' in u:
+                t = urllib.parse.parse_qs(urllib.parse.urlparse(u).query).get('u', [''])[0]
+                m = mock(t, r.request.headers)
+                return r.fulfill(status=m[0], body=m[1], content_type=m[2], headers={'X-Cos-Size': str(len(m[1]))}) if m else r.fulfill(status=502, body='no mock ' + t)
+            m = mock(u, r.request.headers)
+            if m: return r.fulfill(status=m[0], body=m[1], content_type=m[2], headers={'Access-Control-Allow-Origin': '*'})
+            return route(r)
+        pg.route('**/*', net_route)
+    else: pg.route('**/*', route)
     t0 = time.time()
     pg.goto(f'http://127.0.0.1:{port}/{a.page}', wait_until='commit', timeout=120000)
     for i, st in enumerate(steps):

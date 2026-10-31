@@ -21,15 +21,25 @@ Browser 3D survival game (three.js r128, one page) shipped two ways:
    `raw.githubusercontent.com/oo9ee9-cpu/call-of-survival./main/game/version.json` at start and download only changed files from `ref`.
    This session cannot push tags (the git proxy answers 403). A new APK (for new installs, or when the Java side changed) comes from
    a release the owner creates on GitHub: Releases → Draft a new release → new tag `v<N>` → Publish; the tag runs
-   `.github/workflows/apk.yml`, which attaches `CallOfSurvival.apk`. A push to main that changes android/ (or the workflow)
-   rebuilds it and replaces the APK on the existing release `v<version in game/version.json>`. Bump `"shell"` (manifest arg 2) and `SHELL` in
+   `.github/workflows/apk.yml`, which attaches both APKs. A push to main that changes android/ (or the workflow) rebuilds them
+   and replaces the APKs on the release `v<version in game/version.json>`, or on the newest release when that one does not
+   exist (so …/releases/latest/download/CallOfSurvival-lite.apk is always current). Bump `"shell"` (manifest arg 2) and `SHELL` in
    android/app/build.gradle only when the Java side must change for the content.
 3. Artifact: publish `game/index.html` with `files` = new/changed assets, url above, and the full capabilities:
    db rules (profiles, links, invites, worlds, clans, clanmembers: `{path:X, read:'view', write:'owner'}` + `{path:'X/{self}', write:'interact'}`;
-   devworld and devmodels: read view, write owner), `assets: {}`, `user: {}`, `room: {topics: {invite: 'interact', act: 'interact'}}`.
+   devworld, devmodels and devmats: read view, write owner), `assets: {}`, `user: {}`, `room: {topics: {invite: 'interact', act: 'interact'}}`.
    Read the artifact (any small file with `path`) before publishing to it from a new conversation.
 
+## Ground materials and the internet's libraries (v19)
+- `src/45_gmat.js` (materials, GPU arrays, the editor's «أرضية» tool), `src/46_netlib.js` (ambientCG, Poly Haven, Sketchfab,
+  free3d), paint data `GP` in 02_world, shader + vertex weights in 03_terrain. Originals are never made smaller; only what the
+  device draws is sized (setting «دقة خامات الأرض», `upFitGpu` for models). Details in NOTES.md (v19).
+- Library tests run with `--netmock` (stand-ins for the sites and for the app's `/_net`, `/_lib`; files in shots/).
+
 ## Android app (android/)
+- Shell 2 (BuildConfig.SHELL): `/_app/info`, `/_net/get?u=` (the sites' APIs and files, no CORS), `/_app/browse?u=` (Browser.java,
+  downloads → files/lib/dl → `cosAppEvent`), `/_lib/…`, `/_app/libdel`. version.json keeps "shell": 1 while the page still works
+  without them (it asks /_app/info). The updater's APK link is the lite APK.
 - MainActivity: full-screen landscape WebView on https://appassets.androidplatform.net/ (requests answered in
   shouldInterceptRequest from downloaded updates, then APK assets `game/…`; CDN hosts from assets `cdn/…`), file chooser for
   the editor's uploads, back button → editor/pause (BACK_JS), renderer crash → reload.

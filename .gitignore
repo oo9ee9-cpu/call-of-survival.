@@ -9,3 +9,5 @@ __pycache__/
 *.pyc
 tools/lint/all.js
 node_modules/
+# test screenshots
+shots/

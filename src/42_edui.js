@@ -5,6 +5,9 @@ const ED_ICON = {
   sel: '<path d="M6 3.5l12.5 7.2-5.6 1.6-2.4 5.4z" fill="currentColor" stroke="none"/><path d="M13 13.4l4.5 5.1" stroke-width="2.2"/>',
   add: '<path d="M12 5v14M5 12h14" stroke-width="2.7"/>',
   ter: '<path d="M2.5 19l6.2-10 3.6 5.6 2.3-3.4 6.9 7.8z" fill="currentColor" stroke="none"/><path d="M17 3.5v5M14.6 6l2.4-2.5L19.4 6"/>',
+  paint: '<path d="M14.5 3.5l6 6-7.6 7.6-6-6z" fill="currentColor" stroke="none"/><path d="M6.4 11.6c-2.4.4-3.4 2-3.6 4.2-.2 2-.9 3.3-1.8 4.2 3.4.4 7.4-.6 8.2-4.6"/>',
+  gmat: '<rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" fill="currentColor" stroke="none"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5" fill="currentColor" stroke="none" opacity=".55"/>',
+  web: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.6 3.6 5.6 3.6 8.5s-1 5.9-3.6 8.5c-2.6-2.6-3.6-5.6-3.6-8.5s1-5.9 3.6-8.5z"/>',
   water: '<path d="M12 3.2c3.6 4.6 6.2 7.7 6.2 10.9a6.2 6.2 0 0 1-12.4 0c0-3.2 2.6-6.3 6.2-10.9z" fill="currentColor" stroke="none"/>',
   erase: '<path d="M14.6 4.6l4.8 4.8a1.6 1.6 0 0 1 0 2.3L12 19.1H7.6L4.6 16a1.6 1.6 0 0 1 0-2.3z"/><path d="M9 9.6l5.4 5.4M12 19.1h8"/>',
   undo: '<path d="M9 14.5L4 9.5l5-5"/><path d="M4.5 9.5H14a5.5 5.5 0 0 1 0 11h-3"/>', redo: '<path d="M15 14.5l5-5-5-5"/><path d="M19.5 9.5H10a5.5 5.5 0 0 0 0 11h3"/>',
@@ -210,6 +213,7 @@ function edDoOp(op, back) {
       for (const zn of op.rem || []) { if (back) { zoneAdd(zn); ED.er.push(zn); } else { zoneDel(zn); const i = ED.er.indexOf(zn); if (i >= 0) ED.er.splice(i, 1); } edTouch(zn.x, zn.z, zn.r, false, zn.m); }
       for (const s of op.dels || []) { if (back) { const o = edAdd(edLoadRec(s)); edTag(o); } else { const o = ED.byId.get(s.id); if (o) edRemove(o); } } break;
     case 'multi': for (const q of back ? op.ops.slice().reverse() : op.ops) edDoOp(q, back); break;
+    case 'gp': case 'gb': gmDoOp(op, back); break;
   }
 }
 function edUndo(redo) {
@@ -289,9 +293,9 @@ function edBrushStart(g) {
   EDB.on = true; EDB.snap = new Map(); EDB.x = g.x; EDB.z = g.z; EDB.have = true;
   EDB.flatY = terrainBare(g.x, g.z);
 }
-function edBrushStep(dt) {
+function edBrushStep(dt, mode0) {
   if (!EDB.on || !EDB.have) return;
-  const r = ED.br, k = ED.bk, mode = ED.brush, px = EDB.x, pz = EDB.z;
+  const r = ED.br, k = ED.bk, mode = mode0 || ED.brush, px = EDB.x, pz = EDB.z;
   const i0 = Math.floor((px - r) * 0.5), i1 = Math.ceil((px + r) * 0.5), j0 = Math.floor((pz - r) * 0.5), j1 = Math.ceil((pz + r) * 0.5);
   const rate = clamp(r * 0.35, 2.5, 14);        // metres a second at full strength (bigger brushes move more earth)
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -415,6 +419,8 @@ function edCtx() {
     for (const [b, ic, lb] of [['raise', 'raise', 'رفع'], ['lower', 'lower', 'حفر'], ['flat', 'flat', 'تسوية'], ['smooth', 'smooth', 'تنعيم'], ['rough', 'rough', 'وعورة']]) h += edBtn('br:' + b, ic, lb, { on: ED.brush === b });
     h += edStep('br', 'width', 'الحجم', edAr(ED.br) + 'م') + edStep('bk', 'up', 'القوة', toAr(Math.round(ED.bk * 100)) + '٪');
     h += edBtn('shapes', 'land', 'جبال وتلال');
+  } else if (ED.tool === 'paint') {
+    h += gmCtx();
   } else if (ED.tool === 'water') {
     h += `<div class="edtip">الماء يملأ حوضه بنفسه: ضعه ثم حرّكه وكبّره، وارفع منسوبه أو اخفضه</div>`;
     h += edBtn('put:Q_lake', 'water', 'بحيرة') + edBtn('put:Q_pond', 'water', 'بركة') + edBtn('put:Q_pool', 'water', 'مسبح') + edBtn('put:S_valley', 'lower', 'وادٍ');
@@ -432,6 +438,7 @@ function edAct(act) {
   const o = ED.sel, d = o && EDK[o.k];
   const lim = (p, v) => { const L = d[p]; return clamp(Math.round(v / L[3]) * L[3], L[0], L[1]); };
   const big = (p, sgn) => edChange(o, (q) => { const L = d[p], st = L[3] * (q[p] > L[2] * 3 ? 4 : q[p] > L[2] * 1.5 ? 2 : 1); q[p] = r2(lim(p, q[p] + sgn * st)); }, true);
+  if (act.startsWith('gm:')) { gmAct(act); return; }
   switch (act) {
     case 'desel': edSelect(null); return;
     case 'add': edTool('add'); return;
@@ -489,10 +496,10 @@ function edCatOpen(on) {
   if (on) { edCatTabs(); edCatGrid(); }
 }
 function edCatTabs() {
-  $('edTabs').innerHTML = ED_CATS.map(([k, n]) => { const c = Object.values(EDK).filter((d) => d.cat === k).length; return `<button type="button" class="edtab${EDUI.cat === k && !EDUI.q ? ' on' : ''}" data-cat="${k}">${edSvg(k)}<span>${n}</span><i>${toAr(c)}</i></button>`; }).join('');
+  $('edTabs').innerHTML = ED_CATS.map(([k, n]) => { const c = k === 'gmat' ? 12 + GMAT.recs.size : Object.values(EDK).filter((d) => d.cat === k).length; return `<button type="button" class="edtab${EDUI.cat === k && !EDUI.q ? ' on' : ''}" data-cat="${k}">${edSvg(k)}<span>${n}</span><i>${toAr(c)}</i></button>`; }).join('');
 }
 function edCatGrid() {
-  const q = EDUI.q.trim(), list = Object.values(EDK).filter((d) => (q ? d.name.includes(q) : d.cat === EDUI.cat)), pre = !q && EDUI.cat === 'upl' ? upCards() : '';
+  const q = EDUI.q.trim(), list = Object.values(EDK).filter((d) => (q ? d.name.includes(q) : d.cat === EDUI.cat)), pre = !q && EDUI.cat === 'upl' ? upCards() : !q && EDUI.cat === 'gmat' ? gmCards() : '';
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   $('edGrid').innerHTML = pre + (list.length ? list.map((d) => `<button type="button" class="edcard" data-key="${d.key}">${d.thumb ? upCardImg(d) : ED_THUMBS.has(d.key) ? `<img src="assets/ui/ed/${d.key}.webp" alt="" loading="lazy" decoding="async">` : `<span class="edph">${edSvg(d.cat === 'upl' ? 'upl' : d.cat)}</span>`}<span class="ednm">${esc(d.name)}</span>${upDelBtn(d)}</button>`).join('') : pre ? '' : '<p class="edempty">لا شيء بهذا الاسم</p>');
   $('edGrid').scrollTop = 0;
@@ -515,10 +522,11 @@ canvas.addEventListener('pointerdown', (e) => {
   EP.sx = e.clientX; EP.sy = e.clientY; EP.moved = false; EP.o = null;
   if (e.pointerType === 'mouse' && e.button === 2) { EP.mode = 'orbit'; return; }
   if (e.pointerType === 'mouse' && e.button === 1) { EP.mode = 'pan'; return; }
-  if (ED.tool === 'ter' || ED.tool === 'erase') {
+  if (ED.tool === 'ter' || ED.tool === 'erase' || ED.tool === 'paint') {
     const g = edHitBare(e.clientX, e.clientY); if (!g) { EP.mode = 'pan'; return; }
+    if (ED.tool === 'paint' && !GMAT.drag) { EP.mode = 'ring'; EDB.x = g.x; EDB.z = g.z; EDB.have = true; edBrushRing(g.x, g.z); ED_LINE.brush.visible = true; return; }
     EP.mode = 'paint';
-    if (ED.tool === 'ter') edBrushStart(g); else { edEraseStart(); edEraseAt(g.x, g.z); }
+    if (ED.tool === 'ter') edBrushStart(g); else if (ED.tool === 'paint') gmBrushStart(g); else { edEraseStart(); edEraseAt(g.x, g.z); }
     edBrushRing(g.x, g.z);
     return;
   }
@@ -535,7 +543,7 @@ canvas.addEventListener('pointerdown', (e) => {
 canvas.addEventListener('pointermove', (e) => {
   if (!ED.on) return;
   const p = EP.ptrs.get(e.pointerId);
-  if (!p) { if (e.pointerType === 'mouse' && (ED.tool === 'ter' || ED.tool === 'erase')) { const g = edHitBare(e.clientX, e.clientY); if (g) edBrushRing(g.x, g.z); } return; }
+  if (!p) { if (e.pointerType === 'mouse' && (ED.tool === 'ter' || ED.tool === 'erase' || (ED.tool === 'paint' && (GMAT.drag || !EDB.have)))) { const g = edHitBare(e.clientX, e.clientY); if (g) edBrushRing(g.x, g.z); } return; }
   const px = p.x, py = p.y; p.x = e.clientX; p.y = e.clientY;
   if (Math.hypot(e.clientX - EP.sx, e.clientY - EP.sy) > 7) EP.moved = true;
   if (EP.mode === 'two' && EP.ptrs.size >= 2) { edTwo(); return; }
@@ -546,9 +554,9 @@ canvas.addEventListener('pointermove', (e) => {
     edMoveLive(EP.o, g.x + EP.ox, g.z + EP.oz);
     return;
   }
-  if (EP.mode === 'paint') {
+  if (EP.mode === 'paint' || EP.mode === 'ring') {
     const g = edHitBare(e.clientX, e.clientY); if (!g) return;
-    if (ED.tool === 'ter') { EDB.x = g.x; EDB.z = g.z; EDB.have = true; } else edEraseAt(g.x, g.z);
+    if (ED.tool === 'ter' || ED.tool === 'paint') { EDB.x = g.x; EDB.z = g.z; EDB.have = true; } else edEraseAt(g.x, g.z);
     edBrushRing(g.x, g.z);
   }
 });
@@ -570,7 +578,7 @@ function edDragEnd() {
   const b = edSnap(o); if (EP.before && (EP.before.x !== b.x || EP.before.z !== b.z)) edOp({ t: 'mod', a: EP.before, b });
   edFlush(true); edOutline(); EP.o = null;
 }
-function edPaintEnd() { if (ED.tool === 'ter') edBrushEnd(); else edEraseEnd(); }
+function edPaintEnd() { if (ED.tool === 'ter') edBrushEnd(); else if (ED.tool === 'paint') gmBrushEnd(); else edEraseEnd(); }
 // the ground under the finger stays under it
 function edPan(px, py, x, y) {
   const a = edPlaneHit(px, py, EDC.y), b = edPlaneHit(x, y, EDC.y); if (!a || !b) return;
@@ -592,7 +600,7 @@ function edTwo() {
 function edBrushRing(x, z) {
   EP.hover = [x, z];
   const r = ED.br; edLineSet(ED_LINE.brush, edRing(x, z, r, r, 0, 72, 0.5));
-  ED_LINE.brush.material.color.set(ED.tool === 'erase' ? ({ erase: 0xff8a7a, back: 0xc8c8ff, tree: 0x6ee08a, grass: 0xb8f06a, flower: 0xff9ad8 })[ED.vmode] : ED.brush === 'lower' ? 0xffb07a : 0x9be8ff);
+  ED_LINE.brush.material.color.set(ED.tool === 'erase' ? ({ erase: 0xff8a7a, back: 0xc8c8ff, tree: 0x6ee08a, grass: 0xb8f06a, flower: 0xff9ad8 })[ED.vmode] : ED.tool === 'paint' ? ({ p: 0xffe08a, d: 0xffb07a, u: 0x9be8ff, f: 0xd6f0ff, e: 0xff8a7a })[GMAT.mode] : ED.brush === 'lower' ? 0xffb07a : 0x9be8ff);
 }
 
 /* ── keys: arrows / WASD fly, Q E turn, R F tilt, + − zoom, Delete, Ctrl+Z / Ctrl+Y, Ctrl+D, Ctrl+S, Escape ── */
@@ -611,7 +619,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'BracketRight' && ED.sel) { edAct('rotR'); return; }
   if (e.code === 'PageUp' && ED.sel) { edAct('up'); return; }
   if (e.code === 'PageDown' && ED.sel) { edAct('down'); return; }
-  if (e.code === 'Digit1') edTool('sel'); if (e.code === 'Digit2') edTool('add'); if (e.code === 'Digit3') edTool('ter'); if (e.code === 'Digit4') edTool('water'); if (e.code === 'Digit5') edTool('erase');
+  if (e.code === 'Digit1') edTool('sel'); if (e.code === 'Digit2') edTool('add'); if (e.code === 'Digit3') edTool('ter'); if (e.code === 'Digit4') edTool('water'); if (e.code === 'Digit5') edTool('erase'); if (e.code === 'Digit6') edTool('paint');
   EDKEYS.add(e.code);
 });
 addEventListener('keyup', (e) => EDKEYS.delete(e.code));
@@ -644,13 +652,14 @@ function edEnter() {
   edPlayState(false);
   ED.tool = 'sel'; edTool('sel'); edSelect(null); edStatus();
   edDraftOffer();
+  if (LIB.pend.length) setTimeout(libTakeDownloads, 600);
   if (!ED.hinted) { ED.hinted = true; edToast('وضع التطوير', TOUCH ? 'اسحب لتتنقّل · إصبعان للتكبير والتدوير · ＋ لإضافة أي شيء' : 'اسحب لتتنقّل · العجلة للتكبير · الزر الأيمن للتدوير · ＋ لإضافة أي شيء'); }
 }
 // leave: «تجربة» puts you down where the camera looks; «خروج» back where you were
 function edLeave(test) {
   if (!ED.on) return;
   if (EP.mode === 'paint') edPaintEnd(); if (EP.mode === 'drag' && EP.moved) edDragEnd(); EP.mode = ''; EP.ptrs.clear();
-  ED.on = false; edSelect(null); edCatOpen(false);
+  ED.on = false; edSelect(null); edCatOpen(false); libClose();
   ED_LINE.sel.visible = ED_LINE.brush.visible = ED_LINE.arrow.visible = false;
   app.classList.remove('editing'); $('ed').classList.add('gone');
   edFlush(true); edPlayState(true);
@@ -689,11 +698,11 @@ function edDrawAnimals() {
 /* each frame while editing (from simulate, instead of the player) */
 function edFrame(dt) {
   edKeys(dt); edCamApply(dt);
-  if (EDB.on) edBrushStep(dt);
+  if (EDB.on) { if (ED.tool === 'paint') gmBrushStep(dt); else edBrushStep(dt); }
   if (ED.pend && ED.pend.sx0 < 1e9 && !EDB.on && EP.mode !== 'drag') edFlush(false);
   if (ED.animDirty) edDrawAnimals();
   if (ED.sel && EP.mode === 'drag' && EP.o === ED.sel) { /* the outline follows in edMoveLive */ }
-  if ((ED.tool === 'ter' || ED.tool === 'erase') && EP.hover && TOUCH && EP.mode !== 'paint') ED_LINE.brush.visible = true;
+  if ((ED.tool === 'ter' || ED.tool === 'erase' || ED.tool === 'paint') && EP.hover && (TOUCH || (ED.tool === 'paint' && !GMAT.drag)) && EP.mode !== 'paint') ED_LINE.brush.visible = true;
   placeSun(ED.focus.x, ED.focus.y, ED.focus.z); flash.intensity = 0; updateLightPool(dt);
 }
 
@@ -701,7 +710,7 @@ function edFrame(dt) {
 (() => {
   $('edExit').innerHTML = edSvg('exit') + '<span>خروج</span>'; $('edUndo').innerHTML = edSvg('undo'); $('edRedo').innerHTML = edSvg('redo');
   $('edSave').innerHTML = edSvg('save') + '<span>حفظ</span>'; $('edTest').innerHTML = edSvg('play') + '<span>تجربة</span>'; $('edCatX').innerHTML = edSvg('close');
-  $('edRail').innerHTML = [['sel', 'تحديد', 'sel'], ['add', 'إضافة', 'add'], ['ter', 'تضاريس', 'ter'], ['water', 'ماء', 'water'], ['erase', 'نباتات', 'veg']].map(([t, n, ic]) => `<button type="button" class="edt${t === 'add' ? ' plus' : ''}" data-tool="${t}" aria-label="${n}">${edSvg(ic)}<span>${n}</span></button>`).join('');
+  $('edRail').innerHTML = [['sel', 'تحديد', 'sel'], ['add', 'إضافة', 'add'], ['ter', 'تضاريس', 'ter'], ['paint', 'أرضية', 'paint'], ['water', 'ماء', 'water'], ['erase', 'نباتات', 'veg']].map(([t, n, ic]) => `<button type="button" class="edt${t === 'add' ? ' plus' : ''}" data-tool="${t}" aria-label="${n}">${edSvg(ic)}<span>${n}</span></button>`).join('');
   $('edCam').innerHTML = [['rotL', 'rotL', 'دوران'], ['tup', 'tup', 'إمالة'], ['rotR', 'rotR', 'دوران'], ['zin', 'zin', 'تكبير'], ['home', 'home', 'إليّ'], ['zout', 'zout', 'تصغير']].map(([a, ic, lb]) => `<button type="button" class="edk" data-cam="${a}" aria-label="${lb}">${edSvg(ic)}</button>`).join('');
   $('edBack').innerHTML = edSvg('ter') + '<span>وضع التطوير</span>';
   const tapEl = (el, fn) => el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); e.stopPropagation(); fn(e); });
@@ -717,9 +726,20 @@ function edFrame(dt) {
   $('edCam').addEventListener('pointerdown', (e) => { const b = e.target.closest('[data-cam]'); if (!b) return; e.preventDefault(); e.stopPropagation(); const a = b.dataset.cam; camAct(a); clearInterval(camHeld); if (a !== 'home' && a !== 'tup') camHeld = setInterval(() => camAct(a), 90); });
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) $('edCam').addEventListener(ev, () => clearInterval(camHeld));
   edWireButtons($('edCtx'));
+  $('edCtx').addEventListener('input', (e) => {
+    const r = e.target.closest && e.target.closest('input[data-rng]'); if (!r) return;
+    const k = r.dataset.rng, v = +r.value; if (k === 'br') ED.br = v; else if (k === 'bk') ED.bk = v;
+    const b = $('edCtx').querySelector('[data-rv="' + k + '"]'); if (b) b.textContent = k === 'br' ? edAr(v) + 'م' : toAr(Math.round(v * 100)) + '٪';
+    if (EP.hover) edBrushRing(EP.hover[0], EP.hover[1]);
+  });
   $('edTabs').addEventListener('pointerdown', (e) => { const b = e.target.closest('.edtab'); if (!b) return; e.preventDefault(); EDUI.cat = b.dataset.cat; EDUI.q = ''; $('edSearch').value = ''; edCatTabs(); edCatGrid(); });
   $('edGrid').addEventListener('click', (e) => {
     if (e.target.closest('[data-up]')) { upPick(); return; }
+    if (e.target.closest('[data-gmup]')) { gmPick(); return; }
+    const net = e.target.closest('[data-net]'); if (net) { edCatOpen(false); libOpen(net.dataset.net); return; }
+    const gd = e.target.closest('[data-gmdel]'); if (gd) { e.stopPropagation(); gmDelete(gd.dataset.gmdel); return; }
+    const gb = e.target.closest('[data-gmb]'); if (gb) { gmBaseTap(+gb.dataset.gmb); return; }
+    const gm = e.target.closest('[data-gm]'); if (gm) { gmCardTap(gm.dataset.gm); return; }
     const del = e.target.closest('[data-del]'); if (del) { e.stopPropagation(); upDelete(del.dataset.del); return; }
     const b = e.target.closest('.edcard'); if (!b || !b.dataset.key) return; edCatOpen(false); edPlace(b.dataset.key);
   });

@@ -45,6 +45,7 @@ const SET_SPEC = {
     { k: 'foliage', label: 'كثافة العشب والنبات', type: 'range', min: 0.4, max: 1.3, step: 0.05, fmt: pctF },
     { k: 'view', label: 'مدى الرؤية', type: 'range', min: 0.6, max: 1.3, step: 0.05, fmt: pctF },
     { k: 'fov', label: 'مجال الرؤية (FOV)', type: 'range', min: 50, max: 90, step: 1, fmt: (v) => toAr(v) + '°' },
+    { k: 'gmRes', label: 'دقة خامات الأرض', note: 'ملفاتك الأصلية تبقى كما هي · هذا ما يرسمه جهازك منها', type: 'seg', opts: [[0, 'تلقائي'], [1024, '1K'], [2048, '2K'], [4096, '4K']], fx: 'gmat' },
     { head: 'الإضاءة والظلال' },
     { k: 'shadows', label: 'الظلال', note: 'تعيد تحميل الصفحة', type: 'seg', opts: [['auto', 'تلقائي'], ['off', 'بدون'], ['low', 'منخفضة'], ['mid', 'متوسطة'], ['high', 'عالية']], fx: 'reload' },
     { k: 'bloom', label: 'توهّج الأضواء', type: 'seg', opts: [['auto', 'تلقائي'], ['on', 'يعمل'], ['off', 'متوقف']], fx: 'post' },
@@ -123,6 +124,7 @@ function settingFx(fx) {
   else if (fx === 'vol') AUDIO.setVolumes();
   else if (fx === 'hud') applyHudPrefs();
   else if (fx === 'cb') POST.setCB(SET.cb);
+  else if (fx === 'gmat' && typeof gmRefresh === 'function') gmRefresh(true);
 }
 function segEl(opts, cur, onPick) {
   const box = document.createElement('div'); box.className = 'seg';
@@ -182,6 +184,7 @@ function renderSettings() {
       }
       body.append(ul);
       p('تحت رخصة CC-BY 4.0 (creativecommons.org/licenses/by/4.0) ما لم يُذكر غيرها بجانب النموذج: CC-BY-NC 4.0 للاستعمال غير التجاري، أو رخصة Sketchfab القياسية. اللعبة مجانية بلا شراء بالمال الحقيقي. عُدّلت كلها للعبة: بُسّطت وأعيد ترتيب أنسجتها ولُوّنت من جديد، وأُلبست الشخصيات هيكلاً متحركاً.');
+      if (typeof libCredits === 'function') libCredits(body, p);
       const h3 = document.createElement('div'); h3.className = 'shead'; h3.textContent = 'الحساب'; body.append(h3);
       const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'ghost'; rb.textContent = 'مسح الحساب والبدء من الصفر';
       let arm = 0; rb.addEventListener('click', () => { if (performance.now() - arm > 3000) { arm = performance.now(); rb.textContent = 'اضغط مرة ثانية: يمسح المستوى والذهب والملابس'; return; } resetAccount(); });

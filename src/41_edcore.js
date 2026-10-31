@@ -15,7 +15,7 @@ const ED_MIX = new Set();          // the people standing about: their breathing
 const r2 = (v) => Math.round(v * 100) / 100;
 
 /* ── the catalogue: what each thing is (dims are [min, max, default, step]) ── */
-const ED_CATS = [['mine', 'نماذجك'], ['upl', 'من جهازك'], ['nature', 'طبيعة'], ['land', 'تضاريس وماء'], ['build', 'بناء'], ['house', 'بيوت'], ['decor', 'أثاث وديكور'], ['veh', 'مركبات'], ['life', 'ناس وحيوانات'], ['items', 'أغراض']];
+const ED_CATS = [['mine', 'نماذجك'], ['upl', 'من جهازك'], ['gmat', 'خامات الأرض'], ['nature', 'طبيعة'], ['land', 'تضاريس وماء'], ['build', 'بناء'], ['house', 'بيوت'], ['decor', 'أثاث وديكور'], ['veh', 'مركبات'], ['life', 'ناس وحيوانات'], ['items', 'أغراض']];
 const EDK = {};
 const edk = (key, def) => { EDK[key] = Object.assign({ key, s: 1, sc: [0.3, 3] }, def); };
 // the owner's models (Sketchfab, credited in the settings), the same files the game uses

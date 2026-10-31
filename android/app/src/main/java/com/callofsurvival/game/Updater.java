@@ -53,7 +53,8 @@ public class Updater {
     }
 
     static String apkUrl() {
-        return "https://github.com/" + BuildConfig.REPO + "/releases/latest/download/CallOfSurvival.apk";
+        // the small one: it installs on every phone (the game itself comes in its updates, kept as it is)
+        return "https://github.com/" + BuildConfig.REPO + "/releases/latest/download/CallOfSurvival-lite.apk";
     }
 
     /** at the start: what is inside the app, what was downloaded, and which of the two is newer */

@@ -869,6 +869,48 @@ kbd{font-family:var(--f-ui);font-size:11px;padding:1px 7px;border-radius:6px;bac
 #edUp.err .edbar{display:none;}
 #edUp.err b{color:#ffb3a3;}
 .edupc .edb{margin:14px auto 0;}
+/* the ground tool: the material in hand, sliders, the catalogue's materials */
+.edc.gmcur{flex-direction:row;gap:7px;padding:0 10px 0 6px;max-width:170px;border-color:rgba(255,215,106,.55);background:rgba(255,215,106,.1);}
+.edc.gmcur img{width:40px;height:40px;border-radius:9px;object-fit:cover;flex:none;}
+.edc.gmcur span{font-size:12px;overflow:hidden;text-overflow:ellipsis;}
+.edrng{flex:none;display:flex;flex-direction:column;justify-content:center;gap:3px;width:128px;height:52px;padding:0 9px;box-sizing:border-box;border-radius:12px;background:rgba(0,0,0,.22);font-size:10.5px;color:var(--sand);}
+.edrng span{display:flex;justify-content:space-between;}
+.edrng b{color:var(--foam);font-size:11.5px;font-variant-numeric:tabular-nums;}
+.edrng input{width:100%;margin:0;accent-color:var(--amber);height:22px;touch-action:pan-x;}
+.edsec{grid-column:1/-1;margin:8px 2px 0;font-size:12.5px;font-weight:700;color:#ffe2a8;}
+.gmcard.on{border-color:rgba(255,181,61,.85);background:rgba(255,181,61,.14);}
+.gmcard img{aspect-ratio:1;}
+/* the internet's libraries */
+#lib{position:absolute;inset:0;z-index:5;pointer-events:auto;background:rgba(4,8,12,.45);display:flex;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top,0px) + 12px) max(10px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 10px) max(10px,env(safe-area-inset-left,0px));}
+#lib.gone{display:none;}
+.libsheet{width:min(980px,100%);height:100%;display:flex;flex-direction:column;border-radius:20px;overflow:hidden;background:rgba(10,16,22,.95);border:1px solid rgba(255,255,255,.14);box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.libsheet header{display:flex;align-items:center;gap:10px;padding:10px 12px 8px;}
+.libsheet h3{margin:0;font-family:var(--f-display);font-size:22px;line-height:1;flex:none;}
+#libQ{flex:1;min-width:0;height:36px;box-sizing:border-box;border-radius:11px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:var(--foam);font:500 14px var(--f-ui);padding:0 12px;-webkit-user-select:text;user-select:text;direction:ltr;text-align:right;}
+#libQ[hidden]{display:none;}
+#libSites{display:flex;gap:6px;padding:0 10px 6px;overflow-x:auto;scrollbar-width:none;flex:none;}
+#libSites::-webkit-scrollbar{display:none;}
+#libNote{flex:none;padding:0 14px 6px;font-size:12px;color:var(--sand);line-height:1.5;}
+#libNote p{margin:2px 0;}
+.libsmall{font-size:11px;opacity:.85;}
+.libtok{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0;}
+.libtok input{flex:1;min-width:160px;height:34px;box-sizing:border-box;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:var(--foam);font:500 13px var(--f-ui);padding:0 10px;direction:ltr;-webkit-user-select:text;user-select:text;}
+#libGrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;padding:4px 10px 14px;align-content:start;overscroll-behavior:contain;}
+.libcard small{font-size:10.5px;color:var(--sand);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.libcard img{aspect-ratio:1;}
+.libmore{grid-column:1/-1;justify-self:center;margin-top:4px;}
+.libf3d{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 10px;text-align:center;color:var(--sand);font-size:13px;line-height:1.6;}
+.libf3d .edc.wide{height:48px;}
+#libItem{position:absolute;inset:0;display:grid;place-items:center;background:rgba(4,8,12,.55);z-index:1;padding:12px;box-sizing:border-box;}
+#libItem[hidden]{display:none;}
+.libic{width:min(720px,100%);max-height:100%;overflow-y:auto;box-sizing:border-box;display:flex;gap:14px;padding:14px;border-radius:18px;background:rgba(10,16,22,.97);border:1px solid rgba(255,255,255,.16);box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.libic>img{width:min(240px,36%);aspect-ratio:1;object-fit:cover;border-radius:12px;flex:none;align-self:flex-start;background:rgba(255,255,255,.05);}
+.libinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
+.libinfo b{font-size:17px;overflow-wrap:anywhere;}
+.libinfo small{font-size:12px;color:var(--sand);line-height:1.5;}
+.libres{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;}
+.librow{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;}
+@media (max-width:560px){.libic{flex-direction:column;}.libic>img{width:100%;max-height:200px;}}
 #edBack{position:absolute;top:calc(env(safe-area-inset-top,0px) + 66px);left:50%;transform:translateX(-50%);z-index:3;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,181,61,.6);background:rgba(9,15,21,.6);color:#ffe2a8;font:700 12.5px var(--f-ui);cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 #edBack svg{width:16px;height:16px;}
 #edBack.gone,#app.editing #edBack{display:none;}
@@ -1285,6 +1327,7 @@ const SET_DEFAULT = {
   vMaster: 0.9, vMusic: 0.45, vSfx: 1, vAmb: 0.8, vVoice: 1, vChat: 1, spatial: true, subs: false,
   hudMini: true, hudVitals: true, hudCompass: true, hudKills: true, hudRes: true, hudName: true, uiScale: 1, marks: true, lang: 'ar',
   cb: 'none', shake: 1, motion: false, aimAssist: false, autoLoot: true, planeDrop: true, devTeleport: true, lobbyBg: 'hall',
+  gmRes: 0, sfTok: '',
 };
 const SET = (() => {
   let o = {}; try { o = JSON.parse(localStorage.getItem(SET_KEY) || '{}') || {}; } catch (_) {}
@@ -1966,14 +2009,26 @@ function digOffset(x, z) {
   for (const c of l) { const d2 = (x - c.x) ** 2 + (z - c.z) ** 2; if (d2 < c.r * c.r) { const t = 1 - d2 / (c.r * c.r); o -= c.d * t * t; } }
   return o;
 }
-function addCrater(x, z, r, d, silent) {
-  const c = { x: +x.toFixed(2), z: +z.toFixed(2), r, d };
-  DIG.list.push(c);
-  for (let i = Math.floor((x - r) / 16); i <= Math.floor((x + r) / 16); i++) for (let j = Math.floor((z - r) / 16); j <= Math.floor((z + r) / 16); j++) {
-    const k = digKey(i, j); if (!DIG.grid.has(k)) DIG.grid.set(k, []); DIG.grid.get(k).push(c);
+function digGrid(c, add) {
+  for (let i = Math.floor((c.x - c.r) / 16); i <= Math.floor((c.x + c.r) / 16); i++) for (let j = Math.floor((c.z - c.r) / 16); j <= Math.floor((c.z + c.r) / 16); j++) {
+    const k = digKey(i, j); let a = DIG.grid.get(k);
+    if (add) { if (!a) DIG.grid.set(k, a = []); a.push(c); }
+    else if (a) { const q = a.indexOf(c); if (q >= 0) a.splice(q, 1); if (!a.length) DIG.grid.delete(k); }
   }
+}
+// a stroke where a hole already is makes it deeper (and wider as it goes down, so you can climb out): one record per hole, however deep
+function addCrater(x, z, r, d, silent) {
+  let c = null, best = 0.5;
+  const l = DIG.grid.get(digKey(Math.floor(x / 16), Math.floor(z / 16)));
+  if (l) for (const q of l) { const dd = Math.hypot(q.x - x, q.z - z); if (dd < best) { best = dd; c = q; } }
+  if (c) {
+    digGrid(c, false);
+    c.d = +(c.d + d).toFixed(3); c.r = +Math.max(c.r, r, 0.7 + c.d * 0.42).toFixed(2);
+    c.x = +(c.x + (x - c.x) * 0.25).toFixed(2); c.z = +(c.z + (z - c.z) * 0.25).toFixed(2);
+  } else { c = { x: +x.toFixed(2), z: +z.toFixed(2), r, d }; DIG.list.push(c); }
+  digGrid(c, true);
   DIG.version++;
-  if (!silent && typeof TERRAIN !== 'undefined') TERRAIN.dirtyArea(x, z, r + 2);
+  if (!silent && typeof TERRAIN !== 'undefined') TERRAIN.dirtyArea(c.x, c.z, c.r + 2);
   return c;
 }
 /* ── the world editor's changes to the land (41_editor) ──
@@ -2079,6 +2134,59 @@ function edsAt(x, z) {
   const a = EDS.grid.get(padKey(Math.floor(x / 64), Math.floor(z / 64))); if (!a) return 0;
   let h = 0; for (let i = 0; i < a.length; i++) h += shapeH(a[i], x, z);
   return h;
+}
+/* GP: the ground painted in the editor (45_gmat draws it). A point every 50 cm holds which of the world's eight painted
+   materials lies there (id) and how much (w, 0–255); 64 m tiles of 128 × 128 points, only where something was painted.
+   Coarser copies (2 m, 8 m, a tile's average) serve the far chunks, made when first asked for */
+const GP = { tiles: new Map(), n: 0, ver: 0 };
+const gpKey = (ti, tj) => (ti + 4096) * 8192 + (tj + 4096);
+function gpTile(ti, tj, make) {
+  const k = gpKey(ti, tj); let t = GP.tiles.get(k);
+  if (!t && make) { t = { id: new Uint8Array(16384), w: new Uint8Array(16384), l1: null, l2: null, l3: null }; GP.tiles.set(k, t); GP.n = GP.tiles.size; }
+  return t;
+}
+function gpAny(x0, z0, size) {
+  for (let i = Math.floor(x0 / 64); i <= Math.floor((x0 + size) / 64); i++) for (let j = Math.floor(z0 / 64); j <= Math.floor((z0 + size) / 64); j++) if (GP.tiles.has(gpKey(i, j))) return true;
+  return false;
+}
+function digAny(x0, z0, size) {
+  for (let i = Math.floor((x0 - 8) / 16); i <= Math.floor((x0 + size + 8) / 16); i++) for (let j = Math.floor((z0 - 8) / 16); j <= Math.floor((z0 + size + 8) / 16); j++) if (DIG.grid.has(digKey(i, j))) return true;
+  return false;
+}
+// a level of a tile: 0 the points themselves (as eight weights), 1 every 2 m, 2 every 8 m, 3 the whole tile
+function gpLevel(t, lv) {
+  const key = 'l' + lv; if (t[key]) return t[key];
+  const n = 128 >> (lv * 2), f = 128 / n, out = new Float32Array(Math.max(1, n * n) * 8);
+  if (lv === 3) { const a = gpLevel(t, 2); for (let i = 0; i < 64; i++) for (let q = 0; q < 8; q++) out[q] += a[i * 8 + q] / 64; }
+  else if (lv === 2) { const a = gpLevel(t, 1); for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) for (let b = 0; b < 4; b++) for (let c = 0; c < 4; c++) { const s = ((j * 4 + b) * 32 + i * 4 + c) * 8, o = (j * 8 + i) * 8; for (let q = 0; q < 8; q++) out[o + q] += a[s + q] / 16; } }
+  else for (let j = 0; j < 32; j++) for (let i = 0; i < 32; i++) {
+    const o = (j * 32 + i) * 8;
+    for (let b = 0; b < f; b++) for (let c = 0; c < f; c++) { const s = (j * f + b) * 128 + i * f + c, w = t.w[s]; if (w) out[o + t.id[s]] += w / (255 * f * f); }
+  }
+  return (t[key] = out);
+}
+function gpDirty(t) { t.l1 = t.l2 = t.l3 = null; }
+// the weights at a point, as a chunk with vertices st apart sees them (bilinear on the level that suits st); false when none
+function gpWeights(x, z, st, out) {
+  out.fill(0);
+  let any = false;
+  if (st <= 1) {
+    const gx = x * 2, gz = z * 2, i = Math.floor(gx), j = Math.floor(gz), u = gx - i, v = gz - j;
+    for (let c = 0; c < 4; c++) {
+      const ii = i + (c & 1), jj = j + (c >> 1), t = GP.tiles.get(gpKey(ii >> 7, jj >> 7)); if (!t) continue;
+      const s = (jj & 127) * 128 + (ii & 127), w = t.w[s]; if (!w) continue;
+      out[t.id[s]] += (w / 255) * (c & 1 ? u : 1 - u) * (c >> 1 ? v : 1 - v); any = true;
+    }
+    return any;
+  }
+  const lv = st <= 4 ? 1 : st <= 16 ? 2 : 3, cell = lv === 1 ? 2 : lv === 2 ? 8 : 64, per = 64 / cell, off = cell / 2 - 0.25;
+  const gx = (x - off) / cell, gz = (z - off) / cell, i = Math.floor(gx), j = Math.floor(gz), u = gx - i, v = gz - j;
+  for (let c = 0; c < 4; c++) {
+    const ii = i + (c & 1), jj = j + (c >> 1), ti = Math.floor(ii / per), tj = Math.floor(jj / per), t = GP.tiles.get(gpKey(ti, tj)); if (!t) continue;
+    const a = gpLevel(t, lv), o = ((jj - tj * per) * per + (ii - ti * per)) * 8, f = (c & 1 ? u : 1 - u) * (c >> 1 ? v : 1 - v);
+    for (let q = 0; q < 8; q++) if (a[o + q]) { out[q] += a[o + q] * f; any = true; }
+  }
+  return any;
 }
 // the world editor's say in what the cells grow (set in 41_editor): veg(ci, cj, trees) and rocks(ci, cj, rocks) return the lists
 const ED_HOOK = { veg: null, rocks: null, grass: null };     // grass(x, z): 8 lush grass, 16 flowers painted there
@@ -2240,7 +2348,11 @@ const TEXA = { alb: null, nrm: null, maps: null, ids: null, ready: false };
 const TERR_U = {
   uAlb: { value: null }, uNrm: { value: null }, uMaps: { value: null }, uIds: { value: null }, uDetail: { value: DETAIL },
   uWet: WET_U, uSnow: { value: 0 }, uTime: { value: 0 }, uRain: { value: 0 }, uTreeFar: { value: QUALITY.treeFar }, uDebug: { value: 0 }, uNight: { value: 0 },
+  // the ground's own materials (45_gmat): layers of the owner's pictures, each one's size in the world, the game's layers they
+  // replace everywhere (-1: none) and the eight painted with the editor's brush (100 + L: one of the game's own layers)
+  uUAlb: { value: null }, uUNrm: { value: null }, uUS: { value: new Float32Array(20).fill(0.5) }, uRemap: { value: new Float32Array(12).fill(-1) }, uPal: { value: new Float32Array(8).fill(-1) },
 };
+{ const e = () => { const t = new THREE.DataTexture2DArray(new Uint8Array([128, 128, 128, 230]), 1, 1, 1); t.needsUpdate = true; return t; }; TERR_U.uUAlb.value = e(); TERR_U.uUNrm.value = e(); }
 const TERRAIN_MAT = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 });
 ENV_HOOKS.push((env) => { TERR_U.uNight.value = env.night; });
 TERRAIN_MAT.customProgramCacheKey = () => 'terrain5-' + QUALITY.tier + (TERR_OPT.vk ? 'v' : '') + (TERR_OPT.far ? 'f' : '');
@@ -2253,11 +2365,13 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
   sh.vertexShader = VK + sh.vertexShader
     .replace('#include <common>', `#include <common>
       varying vec3 vW; varying vec3 vNW;
+      attribute vec4 aPw0; attribute vec4 aPw1; attribute float aDig; varying vec4 vPw0; varying vec4 vPw1; varying float vDig;
       #ifdef TERR_VK
         uniform sampler2D uMaps, uIds; varying vec3 vMp; varying vec4 vK0, vK1, vK2; varying vec2 vK3;
       #endif`)
     .replace('#include <fog_vertex>', `#include <fog_vertex>
       vW = (modelMatrix * vec4(transformed, 1.0)).xyz; vNW = normalize(mat3(modelMatrix) * objectNormal);
+      vPw0 = aPw0; vPw1 = aPw1; vDig = aDig;
       #ifdef TERR_VK
       {
         vMp = textureLod(uMaps, ${GL_MAPUV('vW.xz')}, 0.0).rgb;
@@ -2283,7 +2397,23 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
         varying vec3 vMp; varying vec4 vK0, vK1, vK2; varying vec2 vK3;
       #endif
       vec3 tNrm; float tRough; float tWetK; vec3 tGlow;
+      uniform sampler2DArray uUAlb, uUNrm; uniform float uUS[20]; uniform float uRemap[12]; uniform float uPal[8];
+      varying vec4 vPw0; varying vec4 vPw1; varying float vDig;
+      vec2 gDx, gDy;           // how the world's x and z change from one pixel to the next (set first in main)
+      const mat2 ROT = mat2(0.8, -0.6, 0.6, 0.8);
+      // one of the owner's materials: its own size in the world; far off a second, turned and larger copy hides the repeats
+      vec4 uAlbS(float s, float far){
+        float k = uUS[int(s + 0.5)];
+        vec4 a = textureGrad(uUAlb, vec3(vW.xz * k, s), gDx * k, gDy * k);
+        #ifndef TERRAIN_LQ
+        if (far > 0.02) { float k2 = k * 0.29; vec4 b = textureGrad(uUAlb, vec3(ROT * vW.xz * k2 + 0.37, s), ROT * gDx * k2, ROT * gDy * k2); a = mix(a, b, 0.5 * far); }
+        #endif
+        return a;
+      }
+      vec3 uNrmS(float s){ float k = uUS[int(s + 0.5)]; return textureGrad(uUNrm, vec3(vW.xz * k, s), gDx * k, gDy * k).xyz * 2.0 - 1.0; }
       vec4 layerA(float L, vec2 uvA, vec2 uvB, float far){
+        float rm = uRemap[int(L + 0.5)];
+        if (rm > 99.5) L = rm - 100.0; else if (rm > -0.5) return uAlbS(rm, far);    // another of the game's grounds, or one of yours
         #ifdef TERR_FAR
           if (far > 0.995) return texture(uAlb, vec3(uvB, L));
         #endif
@@ -2294,6 +2424,8 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
         return a;
       }
       vec3 layerN(float L, vec2 uvA, vec2 uvB, float far){
+        float rm = uRemap[int(L + 0.5)];
+        if (rm > 99.5) L = rm - 100.0; else if (rm > -0.5) return uNrmS(rm);
         vec3 a = texture(uNrm, vec3(uvA, L)).xyz;
         #ifdef TERRAIN_HQ
           vec3 b = texture(uNrm, vec3(uvB, L)).xyz; a = mix(a, b, 0.35 + 0.5 * far);
@@ -2305,6 +2437,10 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       float vnoiseG(vec2 p){ vec2 i = floor(p), f = p - i; vec2 u = f * f * (3.0 - 2.0 * f); ivec2 c = ivec2(i);
         float a = ihash(c), b = ihash(c + ivec2(1, 0)), cc = ihash(c + ivec2(0, 1)), d = ihash(c + ivec2(1, 1));
         return a + (b - a) * u.x + (cc - a) * u.y + (a - b - cc + d) * u.x * u.y; }
+      vec4 palA(int i, vec2 uvA, vec2 uvB, float far){ float v = uPal[i]; if (v > 99.5) return vec4(layerA(v - 100.0, uvA, uvB, far).rgb, -1.0); return uAlbS(max(v, 0.0), far); }
+      vec3 palN(int i, vec2 uvA, vec2 uvB, float far){ float v = uPal[i]; if (v > 99.5) return layerN(v - 100.0, uvA, uvB, far); return uNrmS(max(v, 0.0)); }
+      // two materials meeting: the higher (brighter) one shows first along the edge, like stones through sand
+      float hmix(float t, float l0, float l1){ return clamp((t - 0.5) * 2.6 + 0.5 + (l1 - l0) * t * (1.0 - t) * 3.2, 0.0, 1.0); }
       void top3(inout float w[12], out ivec3 id, out vec3 wt){
         id = ivec3(0); wt = vec3(0.0);
         for (int i = 0; i < 12; i++) {
@@ -2316,6 +2452,7 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       }`)
     .replace('#include <map_fragment>', `
       vec2 muv = ${GL_MAPUV('vW.xz')};
+      gDx = dFdx(vW.xz); gDy = dFdy(vW.xz);
       #ifdef TERR_VK
         vec3 mp = vMp;
       #else
@@ -2392,19 +2529,44 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       // rock gets triplanar on cliffs
       if (id.x == 8 && slope > 0.35) {
         vec3 bw = pow(abs(Ng), vec3(4.0)); bw /= bw.x + bw.y + bw.z;
-        a0 = texture(uAlb, vec3(vW.zy * 0.16, 8.0)) * bw.x + texture(uAlb, vec3(vW.xz * 0.16, 8.0)) * bw.y + texture(uAlb, vec3(vW.xy * 0.16, 8.0)) * bw.z;
+        if (uRemap[8] < -0.5 || uRemap[8] > 99.5) { float RL = uRemap[8] > 99.5 ? uRemap[8] - 100.0 : 8.0; a0 = texture(uAlb, vec3(vW.zy * 0.16, RL)) * bw.x + texture(uAlb, vec3(vW.xz * 0.16, RL)) * bw.y + texture(uAlb, vec3(vW.xy * 0.16, RL)) * bw.z; }
       }
       // height-aware blend: the brighter (higher) texel wins at the edges
       vec3 hb = wt * (vec3(dot(a0.rgb, vec3(0.33)), dot(a1.rgb, vec3(0.33)), dot(a2.rgb, vec3(0.33))) + 0.25);
       hb = pow(max(hb, vec3(0.0001)), vec3(3.0)); hb /= (hb.x + hb.y + hb.z);
       vec3 alb = a0.rgb * hb.x + a1.rgb * hb.y + a2.rgb * hb.z;
+      // painted in the editor: the two strongest of the eight weights on the vertices
+      float pw[8]; pw[0] = vPw0.x; pw[1] = vPw0.y; pw[2] = vPw0.z; pw[3] = vPw0.w; pw[4] = vPw1.x; pw[5] = vPw1.y; pw[6] = vPw1.z; pw[7] = vPw1.w;
+      int p1 = 0, p2 = 0; float q1 = 0.0, q2 = 0.0;
+      for (int i = 0; i < 8; i++) { float v = pw[i]; if (v > q1) { q2 = q1; p2 = p1; q1 = v; p1 = i; } else if (v > q2) { q2 = v; p2 = i; } }
+      float paintK = 0.0, pT = 0.0, pRough = -1.0;
+      if (q1 > 0.004) {
+        vec4 c1 = palA(p1, uvA, uvB, far), c2 = c1;
+        if (q2 > 0.004) { c2 = palA(p2, uvA, uvB, far); pT = hmix(q2 / (q1 + q2), dot(c1.rgb, vec3(0.33)), dot(c2.rgb, vec3(0.33))); }
+        vec4 pc = mix(c1, c2, pT);
+        float P = clamp(q1 + q2, 0.0, 1.0);
+        paintK = P > 0.985 ? 1.0 : hmix(P, dot(alb, vec3(0.33)), dot(pc.rgb, vec3(0.33))) * smoothstep(0.0, 0.2, P);
+        alb = mix(alb, pc.rgb, paintK);
+        pRough = (c1.a < 0.0 || c2.a < 0.0) ? -1.0 : pc.a;
+      }
+      // dug ground: fresh earth, clay where it is damp, sand in the desert; darker the deeper it goes
+      float soilK = 0.0;
+      if (vDig > 0.003) {
+        soilK = smoothstep(0.003, 0.04, vDig);
+        float clayK = clamp(smoothstep(0.42, 0.75, moist) * 0.6 + fk * 0.3 + smoothstep(0.06, 0.5, vDig) * 0.55, 0.0, 1.0) * (1.0 - desert);
+        vec3 soil = mix(layerA(5.0, uvA, uvB, far).rgb, layerA(11.0, uvA, uvB, far).rgb * vec3(1.18, 0.9, 0.72), clayK);
+        float sandK = clamp(max(desert, smoothstep(0.3, 0.7, kBeach)), 0.0, 1.0);
+        if (sandK > 0.01) soil = mix(soil, layerA(7.0, uvA, uvB, far).rgb, sandK);
+        alb = mix(alb, soil * mix(1.0, 0.68, smoothstep(0.04, 0.6, vDig)), soilK);
+      }
+      float bare = max(paintK, soilK);
       alb = pow(alb, vec3(2.2));
       // far fields read as the colour of their crop
       if (fieldK > 0.01 && crop > 0.0) {
         vec3 cc = crop == 1.0 || crop == 8.0 ? vec3(0.3, 0.2, 0.065) : crop == 12.0 ? vec3(0.32, 0.25, 0.1) : crop == 2.0 || crop == 9.0 ? vec3(0.045, 0.095, 0.02) : crop == 3.0 ? vec3(0.2, 0.17, 0.02) : crop == 4.0 ? vec3(0.17, 0.19, 0.13) : crop == 10.0 ? vec3(0.07, 0.12, 0.025) : crop == 7.0 ? vec3(0.075, 0.048, 0.03) : vec3(0.05, 0.1, 0.022);
         cc *= 0.78 + 0.44 * n1;
         float rows = 0.5 + 0.5 * sin((mod(crop, 2.0) < 0.5 ? vW.x : vW.z) * 4.2);
-        alb = mix(alb, cc * (0.8 + 0.3 * rows), (smoothstep(8.0, 70.0, dist) * 0.85 + 0.1) * fieldK * (1.0 - clamp(sk, 0.0, 1.0) * 0.93));   // under snow only faint furrows show
+        alb = mix(alb, cc * (0.8 + 0.3 * rows), (smoothstep(8.0, 70.0, dist) * 0.85 + 0.1) * fieldK * (1.0 - clamp(sk, 0.0, 1.0) * 0.93) * (1.0 - bare));   // under snow only faint furrows show
       }
       alb *= mix(0.74, 1.16, n1) * mix(0.88, 1.08, n2);
       // the volcano: dark ash on the flanks, lava in the crater and the flows (a black crust, glowing cracks, molten pools)
@@ -2429,12 +2591,12 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       // beyond the drawn road ribbons the roads stay visible as dark asphalt lines
       alb = mix(alb, vec3(0.04, 0.042, 0.046), smoothstep(${(ROAD_FAR * 0.8).toFixed(1)}, ${(ROAD_FAR * 0.95).toFixed(1)}, dist) * smoothstep(0.35, 0.75, kRoad) * 0.9);
       // meadows are never one green: yellowed and darker patches at every scale
-      alb = mix(alb, alb * vec3(1.18, 1.02, 0.66), smoothstep(0.45, 0.8, mac.g) * 0.55 * (1.0 - desert));
-      alb = mix(alb, alb * vec3(0.7, 0.8, 0.72), smoothstep(0.55, 0.85, mac2.r) * 0.5 * (1.0 - desert));
+      alb = mix(alb, alb * vec3(1.18, 1.02, 0.66), smoothstep(0.45, 0.8, mac.g) * 0.55 * (1.0 - desert) * (1.0 - bare));
+      alb = mix(alb, alb * vec3(0.7, 0.8, 0.72), smoothstep(0.55, 0.85, mac2.r) * 0.5 * (1.0 - desert) * (1.0 - bare));
       // wildflower fields: from afar their colour lies on the ground (near you the flowers themselves stand in the grass)
       if (dist > 6.0 && (biome == 11.0 || biome == 6.0 || biome == 2.0)) {
         float fpk = smoothstep(0.66, 0.78, vnoiseG(vW.xz * 0.011 + vec2(7.7, -3.1)) + (n2 - 0.5) * 0.08) * (1.0 - smoothstep(0.25, 0.4, fdens)) * smoothstep(0.25, 0.35, moist)
-          * (1.0 - townK) * (1.0 - fieldK) * (1.0 - kRoad) * (1.0 - desert) * (1.0 - winter);
+          * (1.0 - townK) * (1.0 - fieldK) * (1.0 - kRoad) * (1.0 - desert) * (1.0 - winter) * (1.0 - bare);
         if (fpk > 0.001) {
           float q = vnoiseG(vW.xz * 0.0045 + vec2(1.3, 9.1));
           vec3 fc = q < 0.25 ? vec3(0.3, 0.05, 0.03) : q < 0.45 ? vec3(0.16, 0.11, 0.24) : q < 0.65 ? vec3(0.36, 0.38, 0.3) : q < 0.82 ? vec3(0.34, 0.3, 0.05) : vec3(0.22, 0.18, 0.12);
@@ -2452,6 +2614,8 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       diffuseColor.rgb = alb;
       if (uDebug > 0.5) { int q = id.x; diffuseColor.rgb = q == 0 ? vec3(0.1, 0.5, 0.1) : q == 1 ? vec3(0.0, 0.8, 0.3) : q == 2 ? vec3(0.6, 0.6, 0.1) : q == 3 ? vec3(0.1, 0.25, 0.05) : q == 4 ? vec3(0.2, 0.1, 0.3) : q == 5 ? vec3(0.4, 0.2, 0.05) : q == 6 ? vec3(0.9, 0.4, 0.1) : q == 7 ? vec3(1.0, 0.9, 0.2) : q == 8 ? vec3(0.4, 0.4, 0.45) : q == 9 ? vec3(0.1, 0.1, 0.9) : q == 10 ? vec3(1.0, 1.0, 1.0) : vec3(0.9, 0.0, 0.9); diffuseColor.rgb = pow(diffuseColor.rgb, vec3(2.2)); }
       tRough = mix(0.97, 0.86, w[8] > 1.0 ? 1.0 : 0.0);
+      if (pRough >= 0.0) tRough = mix(tRough, clamp(pRough, 0.05, 1.0), paintK);
+      tRough = mix(tRough, 0.95, soilK);
       tRough = mix(tRough, 0.5, tWetK); tRough = mix(tRough, 0.1, clamp(puddle * 2.0, 0.0, 1.0));
       if (id.x == 10) tRough = 0.62;
       tRough = mix(tRough, 0.32, iceK * (id.x == 10 ? 0.3 : 1.0));      // frosted, not a mirror: a glassy sheet only shows the sky
@@ -2462,6 +2626,8 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       #endif
         vec3 tn = layerN(float(id.x), uvA, uvB, far) * hb.x + layerN(float(id.y), uvA, uvB, far) * hb.y;
         if (wt.z > 0.02) tn += layerN(float(id.z), uvA, uvB, far) * hb.z;
+        if (paintK > 0.0) { vec3 pn = palN(p1, uvA, uvB, far); if (pT > 0.0) pn = mix(pn, palN(p2, uvA, uvB, far), pT); tn = mix(tn, pn, paintK); }
+        if (soilK > 0.0) tn = mix(tn, layerN(5.0, uvA, uvB, far), soilK);
         tn.xy *= (1.0 - far * 0.6) * (1.0 - clamp(puddle * 2.5, 0.0, 1.0)) * (1.0 - iceK * 0.55);
         // rain rings on the puddles
         if (uRain > 0.05 && puddle > 0.05 && dist < 40.0) {
@@ -2543,6 +2709,9 @@ const TERRAIN = (() => {
       geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NV * 3), 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(NV * 3), 3));
+      geo.setAttribute('aPw0', new THREE.BufferAttribute(new Uint8Array(NV * 4), 4, true));
+      geo.setAttribute('aPw1', new THREE.BufferAttribute(new Uint8Array(NV * 4), 4, true));
+      geo.setAttribute('aDig', new THREE.BufferAttribute(new Uint8Array(NV), 1, true));
       geo.setIndex(INDEX);
     }
     const P = geo.attributes.position.array, Nn = geo.attributes.normal.array;
@@ -2561,6 +2730,7 @@ const TERRAIN = (() => {
       Nn[s * 3] = Nn[a * 3]; Nn[s * 3 + 1] = Nn[a * 3 + 1]; Nn[s * 3 + 2] = Nn[a * 3 + 2];
     }
     geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true;
+    marks(geo, x0, z0, size, st);
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(node.x, (hmin + hmax) / 2, node.z), Math.hypot(size * 0.71, (hmax - hmin) / 2 + drop));
     let mesh = node.mesh;
     // the ground is drawn after everything standing on it: wherever grass, trees, walls or people cover it, its costly pixels are skipped
@@ -2570,6 +2740,34 @@ const TERRAIN = (() => {
     node.hmin = hmin; node.hmax = hmax;
     return mesh;
   }
+  const W8 = new Float32Array(8);
+  function marks(geo, x0, z0, size, st) {
+    const hasP = GP.n > 0 && st <= 64 && gpAny(x0, z0, size), hasD = DIG.list.length > 0 && st <= 4 && digAny(x0, z0, size);
+    if (!hasP && !hasD && !geo.userData.pd) return;
+    const A0 = geo.attributes.aPw0, A1 = geo.attributes.aPw1, AD = geo.attributes.aDig, a0 = A0.array, a1 = A1.array, ad = AD.array;
+    a0.fill(0); a1.fill(0); ad.fill(0);
+    for (let j = 0; j < VN; j++) for (let i = 0; i < VN; i++) {
+      const k = j * VN + i, x = x0 + i * st, z = z0 + j * st;
+      if (hasP && gpWeights(x, z, st, W8)) for (let q = 0; q < 4; q++) { a0[k * 4 + q] = Math.min(255, W8[q] * 255 + 0.5); a1[k * 4 + q] = Math.min(255, W8[q + 4] * 255 + 0.5); }
+      if (hasD) { const d = -digOffset(x, z); if (d > 0.005) ad[k] = Math.min(255, d * 63.75 + 1); }     // 4 m and deeper: 255
+    }
+    for (let k = 0; k < ring.length; k++) {
+      const a = ring[k], sk = VN * VN + k; ad[sk] = ad[a];
+      for (let q = 0; q < 4; q++) { a0[sk * 4 + q] = a0[a * 4 + q]; a1[sk * 4 + q] = a1[a * 4 + q]; }
+    }
+    A0.needsUpdate = A1.needsUpdate = AD.needsUpdate = true;
+    geo.userData.pd = hasP || hasD;
+  }
+  // holes and painted ground get a finer mesh near you: 8 m chunks (25 cm) where something was dug, 16 m (50 cm) where painted
+  let fineVer = -1, fineDig = new Set();
+  function fineMin(x, z) {
+    if (fineVer !== DIG.version) {
+      fineVer = DIG.version; fineDig = new Set();
+      for (const c of DIG.list) for (let i = Math.floor((c.x - c.r) / 64); i <= Math.floor((c.x + c.r) / 64); i++) for (let j = Math.floor((c.z - c.r) / 64); j <= Math.floor((c.z + c.r) / 64); j++) fineDig.add(gpKey(i, j));
+    }
+    const k = gpKey(Math.floor(x / 64), Math.floor(z / 64));
+    return fineDig.has(k) ? 8 : GP.tiles.has(k) ? 16 : QUALITY.terrainMin;
+  }
   function wanted(cx, cy, cz) {
     const out = [];
     const visit = (x, z, size) => {
@@ -2577,7 +2775,7 @@ const TERRAIN = (() => {
       const dx = Math.max(0, Math.abs(cx - x) - size / 2), dz = Math.max(0, Math.abs(cz - z) - size / 2);
       const d = Math.hypot(dx, dz, Math.max(0, cy - 120) * 0.5);
       if (d > camera.far + size) return;
-      if (size > QUALITY.terrainMin && d < size * QUALITY.terrainK) { const q = size / 4; visit(x - q, z - q, size / 2); visit(x + q, z - q, size / 2); visit(x - q, z + q, size / 2); visit(x + q, z + q, size / 2); return; }
+      if (size > (size <= 64 && (DIG.list.length || GP.n) ? fineMin(x, z) : QUALITY.terrainMin) && d < size * QUALITY.terrainK) { const q = size / 4; visit(x - q, z - q, size / 2); visit(x + q, z - q, size / 2); visit(x - q, z + q, size / 2); visit(x + q, z + q, size / 2); return; }
       out.push({ key: size + ':' + x + ':' + z, x, z, size, d });
     };
     visit(0, 0, TERRAIN_ROOT);
@@ -2631,6 +2829,7 @@ const TERRAIN = (() => {
       }
     },
     busy() { return queue.length; },
+    nodes() { return [...live.values()]; },
   };
 })();
 
@@ -4427,7 +4626,7 @@ function grassTile(ti, tj) {
   const hAt = (x, z) => { const fx = (x - x0) / 2, fz = (z - z0) / 2, i = Math.min(3, fx | 0), j = Math.min(3, fz | 0), u = fx - i, v = fz - j, k = j * 5 + i; return (HG[k] * (1 - u) + HG[k + 1] * u) * (1 - v) + (HG[k + 5] * (1 - u) + HG[k + 6] * u) * v; };
   const slp = (x, z) => { const fx = (x - x0) / 2, fz = (z - z0) / 2, i = Math.min(3, fx | 0), j = Math.min(3, fz | 0), k = j * 5 + i; return Math.hypot(HG[k + 1] - HG[k], HG[k + 5] - HG[k]) / 2; };
   const out = [];
-  const crop = cropAt(x0 + 4, z0 + 4), cls = classAt(x0 + 4, z0 + 4), blocked = GBLOCK.has(ti * 100000 + tj);
+  const crop = cropAt(x0 + 4, z0 + 4), cls = classAt(x0 + 4, z0 + 4), blocked = GBLOCK.has(ti * 100000 + tj) || (GP.n > 0 && GP.tiles.has(gpKey(Math.floor(x0 / 64), Math.floor(z0 / 64))));
   const painted = ED_HOOK.grass ? ED_HOOK.grass : null;          // grass and flowers the world editor painted (they grow anywhere dry)
   if (cls === 1 && crop && !(painted && painted(x0 + 4, z0 + 4))) {
     // crops in rows, every row the same kind; the field's own rows run along x or z
@@ -7734,7 +7933,7 @@ function digWhy(x, z) {
   if (roadDist(x, z) < 1.2 || classAt(x, z) === 2) return 'الأرض هنا مرصوفة';
   if (onPlatform(x, z, player.pos.y + 0.5)) return 'لا تحفر في الأرضية';
   if (buildingAt(x, z, h + 1)) return 'لا تحفر داخل المباني';
-  if (-digOffset(x, z) > 3.0) return 'الحفرة عميقة بما يكفي';
+  if (-digOffset(x, z) > 40) return 'وصلت إلى الصخر الصلب';
   return '';
 }
 function groundWork(tool) {
@@ -7750,7 +7949,8 @@ function groundWork(tool) {
   if (player.stamina < 6) { toast('أنت متعب', 'استرح لحظة'); return; }
   const why = digWhy(x, z); if (why) { toast(why, ''); AUDIO.dry(); return; }
   const r = tool === 'shovel' ? 1.0 : tool === 'pickaxe' ? 0.8 : 0.7, d = (tool === 'shovel' ? 0.42 : tool === 'pickaxe' ? 0.36 : 0.26) * Math.min(1.4, tierMul());
-  addCrater(x, z, r, d); grassDirtyArea(x, z, r + 1.5); GBLOCK.add(Math.floor(x / 8) * 100000 + Math.floor(z / 8)); HOOK.dug(x, z, r, d);
+  const hole = addCrater(x, z, r, d); grassDirtyArea(hole.x, hole.z, hole.r + 1.5); HOOK.dug(x, z, r, d);
+  for (let i = Math.floor((hole.x - hole.r) / 8); i <= Math.floor((hole.x + hole.r) / 8); i++) for (let j = Math.floor((hole.z - hole.r) / 8); j <= Math.floor((hole.z + hole.r) / 8); j++) GBLOCK.add(i * 100000 + j);
   player.stamina = Math.max(0, player.stamina - 5); player.staminaWait = 0.8;
   const depth = -digOffset(x, z), b = biomeAt(x, z);
   spawnPuff(x, terrainAt(x, z) + 0.2, z, b === 7 || b === 1 ? 0xd8c49a : 0x6a5238, 10, 2.6, 0.07, -9, 0.8);
@@ -7790,6 +7990,7 @@ function reapField(x, z, tool) {
 /* grass and crops stay away from craters, reaped patches, plots and floors */
 function grassBlocked(x, z, crop) {
   if (DIG.list.length && digOffset(x, z) < -0.15) return true;
+  if (GP.n && gpBare(x, z)) return true;           // painted stone, sand, earth… (painted grass keeps its grass)
   if (crop) for (const c of CROPCUT) if (c.until > T_GAME && (x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) return true;
   if (typeof builtBlocksGrass === 'function' && builtBlocksGrass(x, z)) return true;
   if (typeof edBlocksGrass === 'function' && edBlocksGrass(x, z)) return true;     // floors, paving and cleared ground of the world editor
@@ -10683,7 +10884,7 @@ function applySave(core, world) {
   if (world) {
     builtUid = Math.max(builtUid, world.uid || 1);
     for (const [x, z, r, d] of world.dig || []) addCrater(x, z, r, d, true);
-    if ((world.dig || []).length) { for (const [x, z, r] of world.dig) { TERRAIN.dirtyArea(x, z, r + 2); GBLOCK.add(Math.floor(x / 8) * 100000 + Math.floor(z / 8)); } }
+    if ((world.dig || []).length) { for (const [x, z, r] of world.dig) { TERRAIN.dirtyArea(x, z, r + 2); for (let i = Math.floor((x - r) / 8); i <= Math.floor((x + r) / 8); i++) for (let j = Math.floor((z - r) / 8); j <= Math.floor((z + r) / 8); j++) GBLOCK.add(i * 100000 + j); } }
     for (const [k, u] of world.felled || []) FELLED.set(k, u);
     for (const [k, u] of world.rocks || []) RBROKEN.set(k, u);
     for (const [x, z, r, u] of world.cut || []) { CROPCUT.push({ x, z, r, until: u }); GBLOCK.add(Math.floor(x / 8) * 100000 + Math.floor(z / 8)); }
@@ -11320,6 +11521,7 @@ const SET_SPEC = {
     { k: 'foliage', label: 'كثافة العشب والنبات', type: 'range', min: 0.4, max: 1.3, step: 0.05, fmt: pctF },
     { k: 'view', label: 'مدى الرؤية', type: 'range', min: 0.6, max: 1.3, step: 0.05, fmt: pctF },
     { k: 'fov', label: 'مجال الرؤية (FOV)', type: 'range', min: 50, max: 90, step: 1, fmt: (v) => toAr(v) + '°' },
+    { k: 'gmRes', label: 'دقة خامات الأرض', note: 'ملفاتك الأصلية تبقى كما هي · هذا ما يرسمه جهازك منها', type: 'seg', opts: [[0, 'تلقائي'], [1024, '1K'], [2048, '2K'], [4096, '4K']], fx: 'gmat' },
     { head: 'الإضاءة والظلال' },
     { k: 'shadows', label: 'الظلال', note: 'تعيد تحميل الصفحة', type: 'seg', opts: [['auto', 'تلقائي'], ['off', 'بدون'], ['low', 'منخفضة'], ['mid', 'متوسطة'], ['high', 'عالية']], fx: 'reload' },
     { k: 'bloom', label: 'توهّج الأضواء', type: 'seg', opts: [['auto', 'تلقائي'], ['on', 'يعمل'], ['off', 'متوقف']], fx: 'post' },
@@ -11398,6 +11600,7 @@ function settingFx(fx) {
   else if (fx === 'vol') AUDIO.setVolumes();
   else if (fx === 'hud') applyHudPrefs();
   else if (fx === 'cb') POST.setCB(SET.cb);
+  else if (fx === 'gmat' && typeof gmRefresh === 'function') gmRefresh(true);
 }
 function segEl(opts, cur, onPick) {
   const box = document.createElement('div'); box.className = 'seg';
@@ -11457,6 +11660,7 @@ function renderSettings() {
       }
       body.append(ul);
       p('تحت رخصة CC-BY 4.0 (creativecommons.org/licenses/by/4.0) ما لم يُذكر غيرها بجانب النموذج: CC-BY-NC 4.0 للاستعمال غير التجاري، أو رخصة Sketchfab القياسية. اللعبة مجانية بلا شراء بالمال الحقيقي. عُدّلت كلها للعبة: بُسّطت وأعيد ترتيب أنسجتها ولُوّنت من جديد، وأُلبست الشخصيات هيكلاً متحركاً.');
+      if (typeof libCredits === 'function') libCredits(body, p);
       const h3 = document.createElement('div'); h3.className = 'shead'; h3.textContent = 'الحساب'; body.append(h3);
       const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'ghost'; rb.textContent = 'مسح الحساب والبدء من الصفر';
       let arm = 0; rb.addEventListener('click', () => { if (performance.now() - arm > 3000) { arm = performance.now(); rb.textContent = 'اضغط مرة ثانية: يمسح المستوى والذهب والملابس'; return; } resetAccount(); });
@@ -14899,7 +15103,7 @@ const ED_MIX = new Set();          // the people standing about: their breathing
 const r2 = (v) => Math.round(v * 100) / 100;
 
 /* ── the catalogue: what each thing is (dims are [min, max, default, step]) ── */
-const ED_CATS = [['mine', 'نماذجك'], ['upl', 'من جهازك'], ['nature', 'طبيعة'], ['land', 'تضاريس وماء'], ['build', 'بناء'], ['house', 'بيوت'], ['decor', 'أثاث وديكور'], ['veh', 'مركبات'], ['life', 'ناس وحيوانات'], ['items', 'أغراض']];
+const ED_CATS = [['mine', 'نماذجك'], ['upl', 'من جهازك'], ['gmat', 'خامات الأرض'], ['nature', 'طبيعة'], ['land', 'تضاريس وماء'], ['build', 'بناء'], ['house', 'بيوت'], ['decor', 'أثاث وديكور'], ['veh', 'مركبات'], ['life', 'ناس وحيوانات'], ['items', 'أغراض']];
 const EDK = {};
 const edk = (key, def) => { EDK[key] = Object.assign({ key, s: 1, sc: [0.3, 3] }, def); };
 // the owner's models (Sketchfab, credited in the settings), the same files the game uses
@@ -15776,6 +15980,9 @@ const ED_ICON = {
   sel: '<path d="M6 3.5l12.5 7.2-5.6 1.6-2.4 5.4z" fill="currentColor" stroke="none"/><path d="M13 13.4l4.5 5.1" stroke-width="2.2"/>',
   add: '<path d="M12 5v14M5 12h14" stroke-width="2.7"/>',
   ter: '<path d="M2.5 19l6.2-10 3.6 5.6 2.3-3.4 6.9 7.8z" fill="currentColor" stroke="none"/><path d="M17 3.5v5M14.6 6l2.4-2.5L19.4 6"/>',
+  paint: '<path d="M14.5 3.5l6 6-7.6 7.6-6-6z" fill="currentColor" stroke="none"/><path d="M6.4 11.6c-2.4.4-3.4 2-3.6 4.2-.2 2-.9 3.3-1.8 4.2 3.4.4 7.4-.6 8.2-4.6"/>',
+  gmat: '<rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" fill="currentColor" stroke="none"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5" fill="currentColor" stroke="none" opacity=".55"/>',
+  web: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.6 3.6 5.6 3.6 8.5s-1 5.9-3.6 8.5c-2.6-2.6-3.6-5.6-3.6-8.5s1-5.9 3.6-8.5z"/>',
   water: '<path d="M12 3.2c3.6 4.6 6.2 7.7 6.2 10.9a6.2 6.2 0 0 1-12.4 0c0-3.2 2.6-6.3 6.2-10.9z" fill="currentColor" stroke="none"/>',
   erase: '<path d="M14.6 4.6l4.8 4.8a1.6 1.6 0 0 1 0 2.3L12 19.1H7.6L4.6 16a1.6 1.6 0 0 1 0-2.3z"/><path d="M9 9.6l5.4 5.4M12 19.1h8"/>',
   undo: '<path d="M9 14.5L4 9.5l5-5"/><path d="M4.5 9.5H14a5.5 5.5 0 0 1 0 11h-3"/>', redo: '<path d="M15 14.5l5-5-5-5"/><path d="M19.5 9.5H10a5.5 5.5 0 0 0 0 11h3"/>',
@@ -15981,6 +16188,7 @@ function edDoOp(op, back) {
       for (const zn of op.rem || []) { if (back) { zoneAdd(zn); ED.er.push(zn); } else { zoneDel(zn); const i = ED.er.indexOf(zn); if (i >= 0) ED.er.splice(i, 1); } edTouch(zn.x, zn.z, zn.r, false, zn.m); }
       for (const s of op.dels || []) { if (back) { const o = edAdd(edLoadRec(s)); edTag(o); } else { const o = ED.byId.get(s.id); if (o) edRemove(o); } } break;
     case 'multi': for (const q of back ? op.ops.slice().reverse() : op.ops) edDoOp(q, back); break;
+    case 'gp': case 'gb': gmDoOp(op, back); break;
   }
 }
 function edUndo(redo) {
@@ -16060,9 +16268,9 @@ function edBrushStart(g) {
   EDB.on = true; EDB.snap = new Map(); EDB.x = g.x; EDB.z = g.z; EDB.have = true;
   EDB.flatY = terrainBare(g.x, g.z);
 }
-function edBrushStep(dt) {
+function edBrushStep(dt, mode0) {
   if (!EDB.on || !EDB.have) return;
-  const r = ED.br, k = ED.bk, mode = ED.brush, px = EDB.x, pz = EDB.z;
+  const r = ED.br, k = ED.bk, mode = mode0 || ED.brush, px = EDB.x, pz = EDB.z;
   const i0 = Math.floor((px - r) * 0.5), i1 = Math.ceil((px + r) * 0.5), j0 = Math.floor((pz - r) * 0.5), j1 = Math.ceil((pz + r) * 0.5);
   const rate = clamp(r * 0.35, 2.5, 14);        // metres a second at full strength (bigger brushes move more earth)
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -16186,6 +16394,8 @@ function edCtx() {
     for (const [b, ic, lb] of [['raise', 'raise', 'رفع'], ['lower', 'lower', 'حفر'], ['flat', 'flat', 'تسوية'], ['smooth', 'smooth', 'تنعيم'], ['rough', 'rough', 'وعورة']]) h += edBtn('br:' + b, ic, lb, { on: ED.brush === b });
     h += edStep('br', 'width', 'الحجم', edAr(ED.br) + 'م') + edStep('bk', 'up', 'القوة', toAr(Math.round(ED.bk * 100)) + '٪');
     h += edBtn('shapes', 'land', 'جبال وتلال');
+  } else if (ED.tool === 'paint') {
+    h += gmCtx();
   } else if (ED.tool === 'water') {
     h += `<div class="edtip">الماء يملأ حوضه بنفسه: ضعه ثم حرّكه وكبّره، وارفع منسوبه أو اخفضه</div>`;
     h += edBtn('put:Q_lake', 'water', 'بحيرة') + edBtn('put:Q_pond', 'water', 'بركة') + edBtn('put:Q_pool', 'water', 'مسبح') + edBtn('put:S_valley', 'lower', 'وادٍ');
@@ -16203,6 +16413,7 @@ function edAct(act) {
   const o = ED.sel, d = o && EDK[o.k];
   const lim = (p, v) => { const L = d[p]; return clamp(Math.round(v / L[3]) * L[3], L[0], L[1]); };
   const big = (p, sgn) => edChange(o, (q) => { const L = d[p], st = L[3] * (q[p] > L[2] * 3 ? 4 : q[p] > L[2] * 1.5 ? 2 : 1); q[p] = r2(lim(p, q[p] + sgn * st)); }, true);
+  if (act.startsWith('gm:')) { gmAct(act); return; }
   switch (act) {
     case 'desel': edSelect(null); return;
     case 'add': edTool('add'); return;
@@ -16260,10 +16471,10 @@ function edCatOpen(on) {
   if (on) { edCatTabs(); edCatGrid(); }
 }
 function edCatTabs() {
-  $('edTabs').innerHTML = ED_CATS.map(([k, n]) => { const c = Object.values(EDK).filter((d) => d.cat === k).length; return `<button type="button" class="edtab${EDUI.cat === k && !EDUI.q ? ' on' : ''}" data-cat="${k}">${edSvg(k)}<span>${n}</span><i>${toAr(c)}</i></button>`; }).join('');
+  $('edTabs').innerHTML = ED_CATS.map(([k, n]) => { const c = k === 'gmat' ? 12 + GMAT.recs.size : Object.values(EDK).filter((d) => d.cat === k).length; return `<button type="button" class="edtab${EDUI.cat === k && !EDUI.q ? ' on' : ''}" data-cat="${k}">${edSvg(k)}<span>${n}</span><i>${toAr(c)}</i></button>`; }).join('');
 }
 function edCatGrid() {
-  const q = EDUI.q.trim(), list = Object.values(EDK).filter((d) => (q ? d.name.includes(q) : d.cat === EDUI.cat)), pre = !q && EDUI.cat === 'upl' ? upCards() : '';
+  const q = EDUI.q.trim(), list = Object.values(EDK).filter((d) => (q ? d.name.includes(q) : d.cat === EDUI.cat)), pre = !q && EDUI.cat === 'upl' ? upCards() : !q && EDUI.cat === 'gmat' ? gmCards() : '';
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   $('edGrid').innerHTML = pre + (list.length ? list.map((d) => `<button type="button" class="edcard" data-key="${d.key}">${d.thumb ? upCardImg(d) : ED_THUMBS.has(d.key) ? `<img src="assets/ui/ed/${d.key}.webp" alt="" loading="lazy" decoding="async">` : `<span class="edph">${edSvg(d.cat === 'upl' ? 'upl' : d.cat)}</span>`}<span class="ednm">${esc(d.name)}</span>${upDelBtn(d)}</button>`).join('') : pre ? '' : '<p class="edempty">لا شيء بهذا الاسم</p>');
   $('edGrid').scrollTop = 0;
@@ -16286,10 +16497,11 @@ canvas.addEventListener('pointerdown', (e) => {
   EP.sx = e.clientX; EP.sy = e.clientY; EP.moved = false; EP.o = null;
   if (e.pointerType === 'mouse' && e.button === 2) { EP.mode = 'orbit'; return; }
   if (e.pointerType === 'mouse' && e.button === 1) { EP.mode = 'pan'; return; }
-  if (ED.tool === 'ter' || ED.tool === 'erase') {
+  if (ED.tool === 'ter' || ED.tool === 'erase' || ED.tool === 'paint') {
     const g = edHitBare(e.clientX, e.clientY); if (!g) { EP.mode = 'pan'; return; }
+    if (ED.tool === 'paint' && !GMAT.drag) { EP.mode = 'ring'; EDB.x = g.x; EDB.z = g.z; EDB.have = true; edBrushRing(g.x, g.z); ED_LINE.brush.visible = true; return; }
     EP.mode = 'paint';
-    if (ED.tool === 'ter') edBrushStart(g); else { edEraseStart(); edEraseAt(g.x, g.z); }
+    if (ED.tool === 'ter') edBrushStart(g); else if (ED.tool === 'paint') gmBrushStart(g); else { edEraseStart(); edEraseAt(g.x, g.z); }
     edBrushRing(g.x, g.z);
     return;
   }
@@ -16306,7 +16518,7 @@ canvas.addEventListener('pointerdown', (e) => {
 canvas.addEventListener('pointermove', (e) => {
   if (!ED.on) return;
   const p = EP.ptrs.get(e.pointerId);
-  if (!p) { if (e.pointerType === 'mouse' && (ED.tool === 'ter' || ED.tool === 'erase')) { const g = edHitBare(e.clientX, e.clientY); if (g) edBrushRing(g.x, g.z); } return; }
+  if (!p) { if (e.pointerType === 'mouse' && (ED.tool === 'ter' || ED.tool === 'erase' || (ED.tool === 'paint' && (GMAT.drag || !EDB.have)))) { const g = edHitBare(e.clientX, e.clientY); if (g) edBrushRing(g.x, g.z); } return; }
   const px = p.x, py = p.y; p.x = e.clientX; p.y = e.clientY;
   if (Math.hypot(e.clientX - EP.sx, e.clientY - EP.sy) > 7) EP.moved = true;
   if (EP.mode === 'two' && EP.ptrs.size >= 2) { edTwo(); return; }
@@ -16317,9 +16529,9 @@ canvas.addEventListener('pointermove', (e) => {
     edMoveLive(EP.o, g.x + EP.ox, g.z + EP.oz);
     return;
   }
-  if (EP.mode === 'paint') {
+  if (EP.mode === 'paint' || EP.mode === 'ring') {
     const g = edHitBare(e.clientX, e.clientY); if (!g) return;
-    if (ED.tool === 'ter') { EDB.x = g.x; EDB.z = g.z; EDB.have = true; } else edEraseAt(g.x, g.z);
+    if (ED.tool === 'ter' || ED.tool === 'paint') { EDB.x = g.x; EDB.z = g.z; EDB.have = true; } else edEraseAt(g.x, g.z);
     edBrushRing(g.x, g.z);
   }
 });
@@ -16341,7 +16553,7 @@ function edDragEnd() {
   const b = edSnap(o); if (EP.before && (EP.before.x !== b.x || EP.before.z !== b.z)) edOp({ t: 'mod', a: EP.before, b });
   edFlush(true); edOutline(); EP.o = null;
 }
-function edPaintEnd() { if (ED.tool === 'ter') edBrushEnd(); else edEraseEnd(); }
+function edPaintEnd() { if (ED.tool === 'ter') edBrushEnd(); else if (ED.tool === 'paint') gmBrushEnd(); else edEraseEnd(); }
 // the ground under the finger stays under it
 function edPan(px, py, x, y) {
   const a = edPlaneHit(px, py, EDC.y), b = edPlaneHit(x, y, EDC.y); if (!a || !b) return;
@@ -16363,7 +16575,7 @@ function edTwo() {
 function edBrushRing(x, z) {
   EP.hover = [x, z];
   const r = ED.br; edLineSet(ED_LINE.brush, edRing(x, z, r, r, 0, 72, 0.5));
-  ED_LINE.brush.material.color.set(ED.tool === 'erase' ? ({ erase: 0xff8a7a, back: 0xc8c8ff, tree: 0x6ee08a, grass: 0xb8f06a, flower: 0xff9ad8 })[ED.vmode] : ED.brush === 'lower' ? 0xffb07a : 0x9be8ff);
+  ED_LINE.brush.material.color.set(ED.tool === 'erase' ? ({ erase: 0xff8a7a, back: 0xc8c8ff, tree: 0x6ee08a, grass: 0xb8f06a, flower: 0xff9ad8 })[ED.vmode] : ED.tool === 'paint' ? ({ p: 0xffe08a, d: 0xffb07a, u: 0x9be8ff, f: 0xd6f0ff, e: 0xff8a7a })[GMAT.mode] : ED.brush === 'lower' ? 0xffb07a : 0x9be8ff);
 }
 
 /* ── keys: arrows / WASD fly, Q E turn, R F tilt, + − zoom, Delete, Ctrl+Z / Ctrl+Y, Ctrl+D, Ctrl+S, Escape ── */
@@ -16382,7 +16594,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'BracketRight' && ED.sel) { edAct('rotR'); return; }
   if (e.code === 'PageUp' && ED.sel) { edAct('up'); return; }
   if (e.code === 'PageDown' && ED.sel) { edAct('down'); return; }
-  if (e.code === 'Digit1') edTool('sel'); if (e.code === 'Digit2') edTool('add'); if (e.code === 'Digit3') edTool('ter'); if (e.code === 'Digit4') edTool('water'); if (e.code === 'Digit5') edTool('erase');
+  if (e.code === 'Digit1') edTool('sel'); if (e.code === 'Digit2') edTool('add'); if (e.code === 'Digit3') edTool('ter'); if (e.code === 'Digit4') edTool('water'); if (e.code === 'Digit5') edTool('erase'); if (e.code === 'Digit6') edTool('paint');
   EDKEYS.add(e.code);
 });
 addEventListener('keyup', (e) => EDKEYS.delete(e.code));
@@ -16415,13 +16627,14 @@ function edEnter() {
   edPlayState(false);
   ED.tool = 'sel'; edTool('sel'); edSelect(null); edStatus();
   edDraftOffer();
+  if (LIB.pend.length) setTimeout(libTakeDownloads, 600);
   if (!ED.hinted) { ED.hinted = true; edToast('وضع التطوير', TOUCH ? 'اسحب لتتنقّل · إصبعان للتكبير والتدوير · ＋ لإضافة أي شيء' : 'اسحب لتتنقّل · العجلة للتكبير · الزر الأيمن للتدوير · ＋ لإضافة أي شيء'); }
 }
 // leave: «تجربة» puts you down where the camera looks; «خروج» back where you were
 function edLeave(test) {
   if (!ED.on) return;
   if (EP.mode === 'paint') edPaintEnd(); if (EP.mode === 'drag' && EP.moved) edDragEnd(); EP.mode = ''; EP.ptrs.clear();
-  ED.on = false; edSelect(null); edCatOpen(false);
+  ED.on = false; edSelect(null); edCatOpen(false); libClose();
   ED_LINE.sel.visible = ED_LINE.brush.visible = ED_LINE.arrow.visible = false;
   app.classList.remove('editing'); $('ed').classList.add('gone');
   edFlush(true); edPlayState(true);
@@ -16460,11 +16673,11 @@ function edDrawAnimals() {
 /* each frame while editing (from simulate, instead of the player) */
 function edFrame(dt) {
   edKeys(dt); edCamApply(dt);
-  if (EDB.on) edBrushStep(dt);
+  if (EDB.on) { if (ED.tool === 'paint') gmBrushStep(dt); else edBrushStep(dt); }
   if (ED.pend && ED.pend.sx0 < 1e9 && !EDB.on && EP.mode !== 'drag') edFlush(false);
   if (ED.animDirty) edDrawAnimals();
   if (ED.sel && EP.mode === 'drag' && EP.o === ED.sel) { /* the outline follows in edMoveLive */ }
-  if ((ED.tool === 'ter' || ED.tool === 'erase') && EP.hover && TOUCH && EP.mode !== 'paint') ED_LINE.brush.visible = true;
+  if ((ED.tool === 'ter' || ED.tool === 'erase' || ED.tool === 'paint') && EP.hover && (TOUCH || (ED.tool === 'paint' && !GMAT.drag)) && EP.mode !== 'paint') ED_LINE.brush.visible = true;
   placeSun(ED.focus.x, ED.focus.y, ED.focus.z); flash.intensity = 0; updateLightPool(dt);
 }
 
@@ -16472,7 +16685,7 @@ function edFrame(dt) {
 (() => {
   $('edExit').innerHTML = edSvg('exit') + '<span>خروج</span>'; $('edUndo').innerHTML = edSvg('undo'); $('edRedo').innerHTML = edSvg('redo');
   $('edSave').innerHTML = edSvg('save') + '<span>حفظ</span>'; $('edTest').innerHTML = edSvg('play') + '<span>تجربة</span>'; $('edCatX').innerHTML = edSvg('close');
-  $('edRail').innerHTML = [['sel', 'تحديد', 'sel'], ['add', 'إضافة', 'add'], ['ter', 'تضاريس', 'ter'], ['water', 'ماء', 'water'], ['erase', 'نباتات', 'veg']].map(([t, n, ic]) => `<button type="button" class="edt${t === 'add' ? ' plus' : ''}" data-tool="${t}" aria-label="${n}">${edSvg(ic)}<span>${n}</span></button>`).join('');
+  $('edRail').innerHTML = [['sel', 'تحديد', 'sel'], ['add', 'إضافة', 'add'], ['ter', 'تضاريس', 'ter'], ['paint', 'أرضية', 'paint'], ['water', 'ماء', 'water'], ['erase', 'نباتات', 'veg']].map(([t, n, ic]) => `<button type="button" class="edt${t === 'add' ? ' plus' : ''}" data-tool="${t}" aria-label="${n}">${edSvg(ic)}<span>${n}</span></button>`).join('');
   $('edCam').innerHTML = [['rotL', 'rotL', 'دوران'], ['tup', 'tup', 'إمالة'], ['rotR', 'rotR', 'دوران'], ['zin', 'zin', 'تكبير'], ['home', 'home', 'إليّ'], ['zout', 'zout', 'تصغير']].map(([a, ic, lb]) => `<button type="button" class="edk" data-cam="${a}" aria-label="${lb}">${edSvg(ic)}</button>`).join('');
   $('edBack').innerHTML = edSvg('ter') + '<span>وضع التطوير</span>';
   const tapEl = (el, fn) => el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button !== 0) return; e.preventDefault(); e.stopPropagation(); fn(e); });
@@ -16488,9 +16701,20 @@ function edFrame(dt) {
   $('edCam').addEventListener('pointerdown', (e) => { const b = e.target.closest('[data-cam]'); if (!b) return; e.preventDefault(); e.stopPropagation(); const a = b.dataset.cam; camAct(a); clearInterval(camHeld); if (a !== 'home' && a !== 'tup') camHeld = setInterval(() => camAct(a), 90); });
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) $('edCam').addEventListener(ev, () => clearInterval(camHeld));
   edWireButtons($('edCtx'));
+  $('edCtx').addEventListener('input', (e) => {
+    const r = e.target.closest && e.target.closest('input[data-rng]'); if (!r) return;
+    const k = r.dataset.rng, v = +r.value; if (k === 'br') ED.br = v; else if (k === 'bk') ED.bk = v;
+    const b = $('edCtx').querySelector('[data-rv="' + k + '"]'); if (b) b.textContent = k === 'br' ? edAr(v) + 'م' : toAr(Math.round(v * 100)) + '٪';
+    if (EP.hover) edBrushRing(EP.hover[0], EP.hover[1]);
+  });
   $('edTabs').addEventListener('pointerdown', (e) => { const b = e.target.closest('.edtab'); if (!b) return; e.preventDefault(); EDUI.cat = b.dataset.cat; EDUI.q = ''; $('edSearch').value = ''; edCatTabs(); edCatGrid(); });
   $('edGrid').addEventListener('click', (e) => {
     if (e.target.closest('[data-up]')) { upPick(); return; }
+    if (e.target.closest('[data-gmup]')) { gmPick(); return; }
+    const net = e.target.closest('[data-net]'); if (net) { edCatOpen(false); libOpen(net.dataset.net); return; }
+    const gd = e.target.closest('[data-gmdel]'); if (gd) { e.stopPropagation(); gmDelete(gd.dataset.gmdel); return; }
+    const gb = e.target.closest('[data-gmb]'); if (gb) { gmBaseTap(+gb.dataset.gmb); return; }
+    const gm = e.target.closest('[data-gm]'); if (gm) { gmCardTap(gm.dataset.gm); return; }
     const del = e.target.closest('[data-del]'); if (del) { e.stopPropagation(); upDelete(del.dataset.del); return; }
     const b = e.target.closest('.edcard'); if (!b || !b.dataset.key) return; edCatOpen(false); edPlace(b.dataset.key);
   });
@@ -16528,7 +16752,7 @@ function edTerrUnpack(obj) {
   EDT.ver++;
 }
 function edSerialize() {
-  return { v: 1, t: Date.now(), map: MAP_ID, nid: ED.nid, objs: ED.objs.map(edSnap).concat(ED.orphans || []), er: ED.er.map((z) => [r2(z.x), r2(z.z), r2(z.r), z.m]), ter: edTerrPack() };
+  return { v: 1, t: Date.now(), map: MAP_ID, nid: ED.nid, objs: ED.objs.map(edSnap).concat(ED.orphans || []), er: ED.er.map((z) => [r2(z.x), r2(z.z), r2(z.r), z.m]), ter: edTerrPack(), gm: gpPack() };
 }
 async function edPack(D) { const json = JSON.stringify(D), z = await packStr(json); return z ? { t: D.t, z } : { t: D.t, json }; }
 async function edUnpack(body) {
@@ -16541,12 +16765,14 @@ function edClearAll() {
   ED.orphans = [];
   for (const zn of ED.er) { zoneDel(zn); edTouch(zn.x, zn.z, zn.r, false, zn.m); } ED.er.length = 0;
   for (const k of [...EDT.ch.keys()]) edTerrSet(k, null);
+  gpClear();
   ED.undo.length = 0; ED.redo.length = 0;
 }
 // a saved world put back: the land first (brush, shapes, lakes, plots and buildings), then what stands on it
 function edApplyData(D) {
   if (!D || D.v !== 1) return false;
   edTerrUnpack(D.ter);
+  try { gpUnpack(D.gm); } catch (e) { console.warn('editor: ground paint', e); }
   for (const [x, z, r, m] of D.er || []) { const zn = zoneAdd({ t: 'c', x, z, r, m }); ED.er.push(zn); edTouch(x, z, r, false, m); }
   const pri = (s) => { const d = EDK[s.k], t = d.type; return t === 'shape' ? 0 : t === 'lake' ? 1 : t === 'land' || t === 'house' || t === 'villa' || d.pre === 'plot' ? 2 : t === 'mesh' ? 3 : 4; };
   const recs = (D.objs || []).filter((s) => s && EDK[s.k]).sort((a, b) => pri(a) - pri(b));
@@ -16569,6 +16795,7 @@ async function edFetch() {
   EDIO.db = db;
   if (user) { try { EDIO.owner = !!(await withTimeout(user.isOwner(), 3000)); } catch (_) {} }
   try { await withTimeout(upInit(), 12000); } catch (e) { console.warn('models', e); }      // the uploaded models, before the world that uses them
+  try { await withTimeout(gmInit(), 8000); } catch (e) { console.warn('ground materials', e); }
   let shared = null;
   if (db) {
     try {
@@ -16640,12 +16867,13 @@ function edDraftOffer() {
 }
 
 /* ═════════ وضع التطوير (4/4): your own models, straight from the phone. A .glb, a .gltf with its files, a Sketchfab .zip, an
-   .obj (with its .mtl and pictures) or an .fbx is read here in the page: its pictures made lighter (WebP or JPEG, at most
-   2048 px, the shapes untouched), the whole packed into one glTF and kept with the game (the artifact's own storage; on this
-   device when the page runs on its own). It joins the catalogue under «من جهازك» and stands in the world like everything
+   .obj (with its .mtl and pictures) or an .fbx is read here in the page: its pictures and shapes kept exactly as they came
+   (only GIF or BMP pictures written again as PNG, every pixel kept), packed into one glTF and kept with the game (the
+   artifact's own storage; on this device when the page runs on its own). A device whose graphics cannot hold a picture that
+   big draws it at the size it can, from the whole file each time (a strong computer draws 8K). It joins the catalogue under «من جهازك» and stands in the world like everything
    else: moved, turned, sized, animated, solid as a box or exactly (walls you cannot pass, floors and stairs you walk on) ═════════ */
 const UPL = { assets: null, idbOK: false, idb: null, recs: new Map(), cache: new Map(), urls: new Map(), busy: false, input: null, usage: null };
-const UP_MAX_TEX = 2048, UP_CHUNK = 15 * 1024 * 1024, UP_CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/';
+const UP_MAX_TEX = 16384, UP_CHUNK = 15 * 1024 * 1024, UP_CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/';
 const upErr = (msg) => Object.assign(new Error(msg), { ui: msg });
 const upWait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -16673,8 +16901,8 @@ async function upDraco() {
 function upIdb() {
   if (UPL.idb) return UPL.idb;
   return (UPL.idb = new Promise((res, rej) => {
-    const r = indexedDB.open('cos-models', 1);
-    r.onupgradeneeded = () => { const d = r.result; for (const n of ['blobs', 'recs']) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n); };
+    const r = indexedDB.open('cos-models', 2);
+    r.onupgradeneeded = () => { const d = r.result; for (const n of ['blobs', 'recs', 'mats']) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   }));
 }
@@ -16908,6 +17136,16 @@ async function upDecode(blob, w, h) {
 const upToBlob = (cv, type, q) => new Promise((res) => { try { cv.toBlob((b) => res(b), type, q); } catch (_) { res(null); } });
 async function upPicture(blob) {
   const head = new Uint8Array(await blob.slice(0, 65536).arrayBuffer()), type = upSniff(head) || blob.type || '';
+  if (/^image\/(png|jpeg|webp)$/.test(type)) return { bytes: new Uint8Array(await blob.arrayBuffer()), type };     // kept exactly as it came
+  if (/^image\/(gif|bmp)$/.test(type)) {           // a format a glTF may not hold: written again as PNG, every pixel kept
+    const bmp = await upDecode(blob, 0, 0), cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+    cv.getContext('2d').drawImage(bmp, 0, 0); if (bmp.close) bmp.close();
+    const out = await upToBlob(cv, 'image/png'); cv.width = cv.height = 1; if (!out) throw new Error('picture encode');
+    return { bytes: new Uint8Array(await out.arrayBuffer()), type: 'image/png' };
+  }
+  return upPictureOld(blob, head, type);
+}
+async function upPictureOld(blob, head, type) {
   if (!/^image\/(png|jpeg|webp|gif|bmp)$/.test(type)) throw new Error('picture type ' + (type || '?'));
   const sz = upImgSize(head, type);
   let tw = 0, th = 0;
@@ -16965,6 +17203,27 @@ async function upThreeToGlb(G) {
   return glb;
 }
 
+/* ── the pictures as this device can draw them: one bigger than its graphics take is drawn smaller here, the file keeps it whole ── */
+const upGpuCap = () => Math.min(renderer.capabilities.maxTextureSize || 4096, qsel(1024, 2048, 4096, 8192));
+async function upFitGpu(u8) {
+  const buf = u8 instanceof ArrayBuffer ? u8 : u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength ? u8.buffer : u8.slice().buffer;
+  const cap = upGpuCap(), s = upGlbSplit(buf); if (!s || !s.bin || !(s.json.images || []).length) return buf;
+  const json = s.json, bin = s.bin, pics = []; let any = false;
+  for (const im of json.images) {
+    pics.push(null); if (im.bufferView === undefined) continue;
+    const bv = json.bufferViews[im.bufferView], o = bv.byteOffset || 0, bytes = bin.subarray(o, o + bv.byteLength), type = upSniff(bytes) || im.mimeType || '', sz = upImgSize(bytes, type);
+    if (!sz || Math.max(sz[0], sz[1]) <= cap) continue;
+    const k = cap / Math.max(sz[0], sz[1]), w = Math.max(1, Math.round(sz[0] * k)), h = Math.max(1, Math.round(sz[1] * k));
+    try {
+      const bmp = await upDecode(new Blob([bytes], { type }), w, h), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(bmp, 0, 0, w, h); if (bmp.close) bmp.close();
+      const out = await upToBlob(cv, type === 'image/jpeg' ? 'image/jpeg' : 'image/png', 0.95); cv.width = cv.height = 1;
+      if (out) { pics[pics.length - 1] = { bytes: new Uint8Array(await out.arrayBuffer()), type: out.type }; any = true; }
+    } catch (e) { console.warn('picture for this device', e); }
+  }
+  return any ? glbFrom(json, upAssemble(json, bin, pics)) : buf;
+}
+
 /* ── a GLB read as the game reads it, and measured ── */
 async function upParse(buf) {
   const s = upGlbSplit(buf), used = (s && s.json.extensionsUsed) || [];
@@ -17011,7 +17270,7 @@ function upModel(mid) {
     const parts = await Promise.all((R.b || []).map(upText));
     let u8 = b64Bytes(parts.join(''));
     if (R.z) u8 = await upInflate(u8);
-    return upPrep(await upParse(u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength ? u8.buffer : u8.slice().buffer), R.u);
+    return upPrep(await upParse(await upFitGpu(u8)), R.u);
   })();
   UPL.cache.set(mid, P); P.catch(() => { if (UPL.cache.get(mid) === P) UPL.cache.delete(mid); });
   return P;
@@ -17063,7 +17322,7 @@ async function upOne(G, tag) {
   // the pictures, lighter
   const imgs = json.images || [], pics = []; let missing = 0;
   for (let i = 0; i < imgs.length; i++) {
-    step('تخفيف الصور ' + toAr(i + 1) + ' من ' + toAr(imgs.length), 0.06 + 0.32 * i / Math.max(1, imgs.length));
+    step('تجهيز الصور ' + toAr(i + 1) + ' من ' + toAr(imgs.length), 0.06 + 0.32 * i / Math.max(1, imgs.length));
     const im = imgs[i]; let blob = null;
     if (im.bufferView !== undefined) { const bv = json.bufferViews[im.bufferView], o = bv.byteOffset || 0; blob = new Blob([bin.subarray(o, o + bv.byteLength)], { type: im.mimeType || '' }); }
     else if (im.uri && /^data:/i.test(im.uri)) blob = await (await fetch(im.uri)).blob();
@@ -17076,7 +17335,7 @@ async function upOne(G, tag) {
   const glb = glbFrom(json, bin);
   // read back exactly as the game will, measured and pictured
   step('قراءة النموذج', 0.4);
-  const raw = upPrep(await upParse(glb.slice(0)), 1), b = raw.box, sz = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z].map((v) => Math.round(v * 1000) / 1000), maxD = Math.max(...sz);
+  const raw = upPrep(await upParse(await upFitGpu(glb.slice(0))), 1), b = raw.box, sz = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z].map((v) => Math.round(v * 1000) / 1000), maxD = Math.max(...sz);
   // its units: glTF means metres, but a model far bigger than any building was made in centimetres (FBX and OBJ often are)
   let u = 1;
   if (((G.ext === 'fbx' || G.ext === 'obj') && maxD > 30) || maxD > 250) u = 0.01;
@@ -17091,6 +17350,7 @@ async function upOne(G, tag) {
   if (typeof CompressionStream !== 'undefined') { try { const d = await upDeflate(data); if (d.length < data.length) { data = d; z = 1; } } catch (_) {} }
   const b64 = edB64(data), refs = [], mid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const R = { mid, n: G.name, b: [], z, th: null, by: glb.byteLength, tr: raw.tris, sz, u, an: raw.anims.map((a) => a.name || ''), ext: G.ext, t: Date.now(), v: 1, src: UPL.assets && EDIO.db ? 'cloud' : 'local' };
+  if (G.cr) R.cr = G.cr;            // where it came from, by whom, under which licence (shown in the settings)
   if (R.src === 'local' && !UPL.idbOK) throw upErr('لا مكان لحفظ النماذج على هذا الجهاز');
   if (R.src === 'local') UPL.assets = null;
   try {
@@ -17117,7 +17377,16 @@ async function upFiles(files) {
   try {
     if (!THREE.GLTFLoader) throw upErr('قارئ النماذج لم يُحمَّل، أعد فتح اللعبة');
     const groups = await upGroups(files);
-    if (!groups.length) throw upErr('لم أجد نموذجاً ثلاثي الأبعاد (glb أو gltf أو obj أو fbx، أو zip فيه أحدها)');
+    if (!groups.length) {
+      // no model: ground pictures (a material's colour, normal, roughness…) become a ground material
+      const mats = await gmFiles(files, true);
+      if (mats && mats.length) { gmAfterImport(mats); return; }
+      const ex = files.map((f) => UP_EXT(f.name));
+      if (ex.some((e) => e === 'rar' || e === '7z')) throw upErr('ملفات RAR و 7z لا تُفتح هنا بعد: استخرجها في تطبيق الملفات ثم ارفع ما بداخلها (obj أو fbx أو glb أو zip)');
+      if (ex.some((e) => e === 'blend' || e === 'max' || e === 'c4d' || e === 'ma' || e === 'mb' || e === 'skp')) throw upErr('هذه صيغة برنامج تصميم (blend أو max…): اختر من الموقع نسخة obj أو fbx أو glb');
+      if (ex.some((e) => /^(mp3|wav|ogg|m4a|aac|flac)$/.test(e))) throw upErr('هذه ملفات صوت: الأصوات تُضاف للعبة مع تحديثاتها (ارفعها في مجلد uploads على GitHub)');
+      throw upErr('لم أجد نموذجاً ثلاثي الأبعاد ولا صور خامة أرض (glb أو gltf أو obj أو fbx، أو zip فيه أحدها، أو صور Color و Normal و Roughness)');
+    }
     const done = []; let fail = null;
     for (let i = 0; i < groups.length; i++) {
       try { done.push(await upOne(groups[i], groups.length > 1 ? ' (' + toAr(i + 1) + ' من ' + toAr(groups.length) + ')' : '')); }
@@ -17152,7 +17421,8 @@ function upCards() {
   const can = upCanUp(), where = UPL.assets ? 'تُحفظ مع لعبتك ويراها كل من يفتحها' : 'تُحفظ على هذا الجهاز فقط';
   const use = UPL.usage && UPL.usage.maxBytes ? ' · المساحة ' + upMB(UPL.usage.bytes) + ' من ' + upMB(UPL.usage.maxBytes) : '';
   return `<button type="button" class="edcard edup${can ? '' : ' off'}" data-up="1"${can ? '' : ' disabled'}><span class="edph">${edSvg('upl')}</span><span class="ednm">${can ? 'ارفع نموذجاً من جهازك' : 'الرفع غير متاح هنا'}</span></button>` +
-    `<p class="edupinfo">glb · gltf · zip من Sketchfab · obj · fbx — بلا حدّ لعدد الملفات · الصور تُخفَّف إلى ٢٠٤٨ بكسل · ${where}${use}</p>`;
+    `<button type="button" class="edcard edup" data-net="model"><span class="edph">${edSvg('web')}</span><span class="ednm">مكتبات الإنترنت: Sketchfab · Poly Haven · free3d</span></button>` +
+    `<p class="edupinfo">glb · gltf · zip من Sketchfab · obj · fbx · وخامات الأرض (zip أو صور) — بلا حدّ لعدد الملفات · كل شيء يُحفظ بدقته الأصلية · ${where}${use}</p>`;
 }
 function upCardImg(d) { return d.thumb ? `<img src="${d.thumb}" alt="" loading="lazy" decoding="async">` : ''; }
 function upDelBtn(d) { return d.type === 'umodel' && upCanDel(d) ? `<span class="eddel" data-del="${d.key}" role="button" aria-label="حذف النموذج">${edSvg('del')}</span>` : ''; }
@@ -17369,5 +17639,809 @@ function edGridPush(c, p, R) {
   addEventListener('dragover', (e) => { if (ED.on) e.preventDefault(); });
   addEventListener('drop', (e) => { if (!ED.on) return; e.preventDefault(); const fs = e.dataTransfer && e.dataTransfer.files ? [...e.dataTransfer.files] : []; if (fs.length) upFiles(fs); });
 })();
+
+/* ═════════ the ground's materials (45). Ground pictures (colour, normal, roughness, ambient occlusion, height), from a zip of
+   ambientCG or Poly Haven or picked one by one, kept exactly as they came. The device draws them at the size it can hold
+   (1K on a phone, 2K, 4K on a strong computer, «دقة خامات الأرض» in the settings): the originals stay untouched. In the
+   editor they are painted on the ground with a brush that can also dig or raise the land under them, or put in place of one
+   of the game's own grounds over the whole map. Layers on the GPU are filled one by one, copied when the array grows ═════════ */
+const GM_LAYERS_AR = ['عشب', 'عشب كثيف', 'عشب يابس', 'أرض الغابة', 'إبر الصنوبر', 'تراب', 'أرض متشقّقة', 'رمل', 'صخر', 'حصى', 'ثلج', 'طين'];
+const GMAT = {
+  recs: new Map(),                 // id → { id, n, a, nm, r, ao, h, arm, dx, gloss, th, px, m, cr, t, src }
+  pal: [null, null, null, null, null, null, null, null],   // the world's eight painted materials: 'b:L' (the game's layer L) or 'm:id'
+  base: {},                        // the game's layers replaced everywhere: L → 'm:id'
+  arr: null,                       // on the GPU: { a, n (arrays), S, cap, ids }
+  busy: false, again: false, cur: 'b:7', mode: 'p', drag: true, pickL: -1, input: null, thumbs: new Map(), urls: new Map(),
+};
+const GM_BIG = 19.5 * 1048576;
+
+/* ── the records: with the game (devmats) or on this device (IndexedDB «mats»), like the models ── */
+async function gmInit() {
+  const list = [];
+  if (EDIO.db) {
+    try { const q = await withTimeout(EDIO.db.collection('devmats').get(), 7000); if (q) for (const s of q.docs) if (s.exists) list.push(Object.assign({}, s.data(), { id: s.id, src: 'cloud' })); }
+    catch (e) { console.warn('materials list', e); }
+  }
+  if (UPL.idbOK) {
+    try {
+      const d = await upIdb();
+      if (d.objectStoreNames.contains('mats')) await new Promise((res) => {
+        const t = d.transaction('mats', 'readonly'), c = t.objectStore('mats').openCursor();
+        c.onsuccess = () => { const k = c.result; if (k) { list.push(Object.assign({}, k.value, { id: String(k.key), src: 'local' })); k.continue(); } };
+        t.oncomplete = res; t.onerror = res;
+      });
+    } catch (e) { console.warn('local materials', e); }
+  }
+  list.sort((a, b) => (a.t || 0) - (b.t || 0));
+  for (const R of list) GMAT.recs.set(R.id, R);
+  if (list.length) console.log('ground materials', list.length);
+}
+async function gmSaveRec(R) {
+  const body = {}; for (const k of Object.keys(R)) if (k !== 'id' && k !== 'src') body[k] = R[k];
+  if (R.src === 'cloud') await EDIO.db.doc('devmats/' + R.id).set(body);
+  else await upTx('mats', 'readwrite', (s) => s.put(body, R.id));
+}
+async function gmDelRec(R) { if (R.src === 'cloud') await EDIO.db.doc('devmats/' + R.id).delete(); else await upTx('mats', 'readwrite', (s) => s.delete(R.id)); }
+// a file kept whole: a picture with the game's assets (or as text parts when it is bigger than they take), or on this device
+async function gmPut(blob) {
+  if (UPL.assets && blob.size > GM_BIG) {
+    const b64 = edB64(new Uint8Array(await blob.arrayBuffer())), ids = [];
+    try { for (let i = 0; i < b64.length; i += UP_CHUNK) ids.push(await upPut(new Blob([b64.slice(i, i + UP_CHUNK)], { type: 'text/plain' }), 'text/plain')); }
+    catch (e) { for (const id of ids) upDrop(id); throw e; }
+    return 'T:' + ids.join(',');
+  }
+  return upPut(blob, blob.type || 'image/jpeg');
+}
+async function gmBlob(ref) {
+  if (ref.startsWith('T:')) { const parts = await Promise.all(ref.slice(2).split(',').map(upText)); return new Blob([b64Bytes(parts.join(''))]); }
+  return upBlob(ref);
+}
+function gmDrop(ref) { if (!ref) return; if (ref.startsWith('T:')) for (const id of ref.slice(2).split(',')) upDrop(id); else upDrop(ref); }
+const gmRefs = (R) => [R.a, R.nm, R.r, R.ao, R.h, R.arm, R.th].filter(Boolean);
+
+/* ── on the GPU: two arrays of layers (colour + roughness; normal + height), filled and copied with WebGL itself ── */
+function gmSize() {
+  const gl = renderer.getContext(), max = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
+  let S = SET.gmRes || qsel(512, 1024, 2048, max >= 16384 ? 4096 : 2048);
+  return Math.max(256, Math.min(S, max, 4096));
+}
+function gmNewArr(S, cap) {
+  const gl = renderer.getContext(), lv = Math.floor(Math.log2(S)) + 1;
+  const mk = () => {
+    const t = gl.createTexture(); renderer.state.bindTexture(gl.TEXTURE_2D_ARRAY, t);
+    gl.texStorage3D(gl.TEXTURE_2D_ARRAY, lv, gl.RGBA8, S, S, cap);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    const ex = gl.getExtension('EXT_texture_filter_anisotropic'); if (ex) gl.texParameterf(gl.TEXTURE_2D_ARRAY, ex.TEXTURE_MAX_ANISOTROPY_EXT, MAX_ANISO);
+    // three.js draws it as one of its own (version 0: it never uploads anything into it)
+    // (its version and init marks match: three only binds it, never makes or fills one of its own in its place)
+    const tx = new THREE.DataTexture2DArray(null, S, S, cap), pr = renderer.properties.get(tx);
+    pr.__webglTexture = t; pr.__webglInit = true; pr.__version = tx.version;
+    return { t, tx };
+  };
+  return { a: mk(), n: mk(), S, cap, ids: new Array(cap).fill(null) };
+}
+function gmFree(A) { const gl = renderer.getContext(); gl.deleteTexture(A.a.t); gl.deleteTexture(A.n.t); renderer.properties.remove(A.a.tx); renderer.properties.remove(A.n.tx); }
+function gmLayer(T, i, S, data) {
+  const gl = renderer.getContext(); renderer.state.bindTexture(gl.TEXTURE_2D_ARRAY, T.t);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, S, S, 1, gl.RGBA, gl.UNSIGNED_BYTE, data);
+}
+function gmMips(A) { const gl = renderer.getContext(); for (const T of [A.a, A.n]) { renderer.state.bindTexture(gl.TEXTURE_2D_ARRAY, T.t); gl.generateMipmap(gl.TEXTURE_2D_ARRAY); } }
+// a bigger array: the layers already there copied across on the GPU (nothing read again)
+function gmCopy(A, B) {
+  const gl = renderer.getContext(), fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fb);
+  for (const k of ['a', 'n']) {
+    renderer.state.bindTexture(gl.TEXTURE_2D_ARRAY, B[k].t);
+    for (let i = 0; i < A.cap; i++) if (A.ids[i]) { gl.framebufferTextureLayer(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, A[k].t, 0, i); gl.copyTexSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, 0, 0, A.S, A.S); }
+  }
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null); gl.deleteFramebuffer(fb);
+  for (let i = 0; i < A.cap; i++) B.ids[i] = A.ids[i];
+  gmMips(B); renderer.resetState();
+}
+// a picture at the layer's size (the browser's own careful scaling), its pixels as they are in the file
+async function gmPixels(ref, S, data) {
+  const blob = await gmBlob(ref);
+  let bmp = null;
+  const o = { resizeWidth: S, resizeHeight: S, resizeQuality: 'high', premultiplyAlpha: 'none', colorSpaceConversion: data ? 'none' : 'default' };
+  try { bmp = await createImageBitmap(blob, o); } catch (_) { bmp = await upDecode(blob, S, S); }
+  const cv = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(S, S) : Object.assign(document.createElement('canvas'), { width: S, height: S });
+  const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0, S, S); if (bmp.close) bmp.close();
+  return g.getImageData(0, 0, S, S).data;
+}
+// one material as two layers: colour (with its ambient occlusion) + roughness; normal (OpenGL way up) + height
+async function gmPack(R, S) {
+  const n = S * S, A = new Uint8Array(n * 4), N = new Uint8Array(n * 4);
+  const col = await gmPixels(R.a, S, false);
+  const ao = R.ao ? await gmPixels(R.ao, S, true).catch(() => null) : null;
+  const ro = R.r ? await gmPixels(R.r, S, true).catch(() => null) : null;
+  const arm = !ro && R.arm ? await gmPixels(R.arm, S, true).catch(() => null) : null;
+  for (let i = 0; i < n; i++) {
+    const o = i * 4, k = ao ? 0.45 + 0.55 * ao[o] / 255 : arm ? 0.45 + 0.55 * arm[o] / 255 : 1;
+    A[o] = col[o] * k; A[o + 1] = col[o + 1] * k; A[o + 2] = col[o + 2] * k;
+    A[o + 3] = ro ? (R.gloss ? 255 - ro[o] : ro[o]) : arm ? arm[o + 1] : 215;
+  }
+  const nm = R.nm ? await gmPixels(R.nm, S, true).catch(() => null) : null;
+  const hh = R.h ? await gmPixels(R.h, S, true).catch(() => null) : null;
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    if (nm) { N[o] = nm[o]; N[o + 1] = R.dx ? 255 - nm[o + 1] : nm[o + 1]; N[o + 2] = nm[o + 2]; } else { N[o] = 128; N[o + 1] = 128; N[o + 2] = 255; }
+    N[o + 3] = hh ? hh[o] : (col[o] + col[o + 1] + col[o + 2]) / 3;
+  }
+  return { A, N };
+}
+// which of the owner's materials the world draws now
+function gmWanted() {
+  const out = [];
+  const add = (k) => { if (k && k[0] === 'm') { const id = k.slice(2); if (GMAT.recs.has(id) && !out.includes(id)) out.push(id); } };
+  GMAT.pal.forEach(add); for (const L of Object.keys(GMAT.base)) add(GMAT.base[L]);
+  return out;
+}
+function gmUniforms() {
+  const A = GMAT.arr, slot = (id) => (A ? A.ids.indexOf(id) : -1);
+  const pal = TERR_U.uPal.value, rm = TERR_U.uRemap.value, us = TERR_U.uUS.value;
+  for (let i = 0; i < 8; i++) {
+    const k = GMAT.pal[i];
+    pal[i] = !k ? -1 : k[0] === 'b' ? 100 + +k.slice(2) : slot(k.slice(2)) >= 0 ? slot(k.slice(2)) : 105;   // (until its pictures are in: earth)
+  }
+  for (let L = 0; L < 12; L++) { const k = GMAT.base[L]; rm[L] = !k ? -1 : k[0] === 'b' ? (+k.slice(2) === L ? -1 : 100 + +k.slice(2)) : slot(k.slice(2)); }
+  if (A) for (let i = 0; i < A.cap && i < 20; i++) { const R = A.ids[i] && GMAT.recs.get(A.ids[i]); us[i] = 1 / clamp((R && R.m) || 2, 0.2, 40); }
+}
+async function gmRefresh(again) {
+  if (GMAT.busy) { GMAT.again = true; return; }
+  if (again && GMAT.arr) { gmFree(GMAT.arr); GMAT.arr = null; TERR_U.uUAlb.value = TERR_U.uUNrm.value = null; gmEmpty(); }
+  const want = gmWanted(), S = gmSize();
+  let A = GMAT.arr;
+  if (!want.length && !A) { gmUniforms(); return; }
+  if (A && want.every((id) => A.ids.includes(id))) { gmUniforms(); return; }
+  GMAT.busy = true;
+  try {
+    const missing = want.filter((id) => !A || !A.ids.includes(id));
+    const free = A ? A.ids.filter((id) => !id || !want.includes(id)).length : 0;
+    if (!A || missing.length > free) {
+      const keep = A ? A.ids.filter((id) => id && want.includes(id)).length : 0;
+      const cap = Math.min(20, Math.max(4, Math.ceil((keep + missing.length) / 4) * 4));
+      const B = gmNewArr(S, cap);
+      if (A) { if (A.S === S && A.cap <= cap) gmCopy(A, B); gmFree(A); }
+      GMAT.arr = A = B; TERR_U.uUAlb.value = A.a.tx; TERR_U.uUNrm.value = A.n.tx;
+    }
+    for (const id of missing) {
+      const R = GMAT.recs.get(id); if (!R) continue;
+      let i = A.ids.indexOf(null); if (i < 0) i = A.ids.findIndex((q) => !want.includes(q)); if (i < 0) break;
+      try {
+        const P = await gmPack(R, A.S);
+        if (GMAT.arr !== A) break;
+        gmLayer(A.a, i, A.S, P.A); gmLayer(A.n, i, A.S, P.N); A.ids[i] = id; gmMips(A);
+      } catch (e) { console.warn('ground material', R.n, e); }
+      gmUniforms();
+    }
+    gmUniforms();
+  } catch (e) { console.warn('ground materials', e); }
+  finally { GMAT.busy = false; if (GMAT.again) { GMAT.again = false; gmRefresh(); } }
+}
+function gmEmpty() { const e = () => { const t = new THREE.DataTexture2DArray(new Uint8Array([128, 128, 128, 230]), 1, 1, 1); t.needsUpdate = true; return t; }; TERR_U.uUAlb.value = e(); TERR_U.uUNrm.value = e(); }
+
+/* ── pictures for the cards: the game's grounds from its own strip, the owner's from their thumbnails ── */
+function gmBaseThumb(L) {
+  const key = 'b:' + L; let u = GMAT.thumbs.get(key); if (u) return u;
+  const T = TEXA.alb; if (!T || !T.image || !T.image.data) return '';
+  const w = T.image.width, h = T.image.height, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'), img = g.createImageData(w, h); img.data.set(T.image.data.subarray(L * w * h * 4, (L + 1) * w * h * 4)); g.putImageData(img, 0, 0);
+  const sm = document.createElement('canvas'); sm.width = sm.height = 112; const g2 = sm.getContext('2d'); g2.imageSmoothingQuality = 'high'; g2.drawImage(cv, 0, 0, 112, 112);
+  u = sm.toDataURL('image/jpeg', 0.85); GMAT.thumbs.set(key, u); return u;
+}
+function gmThumb(k) {
+  if (!k) return '';
+  if (k[0] === 'b') return gmBaseThumb(+k.slice(2));
+  const R = GMAT.recs.get(k.slice(2)); if (!R || !R.th) return '';
+  if (R.th.startsWith('T:')) return '';
+  if (R.th[0] !== 'L') return '/_blob/' + R.th;
+  const u = GMAT.urls.get(R.th); if (u) return u;
+  upURL(R.th).then((x) => { GMAT.urls.set(R.th, x); if (ED.on && !$('edCat').classList.contains('gone') && EDUI.cat === 'gmat') edCatGrid(); if (ED.on && ED.tool === 'paint') edCtx(); }).catch(() => {});
+  return '';
+}
+const gmName = (k) => (!k ? '' : k[0] === 'b' ? GM_LAYERS_AR[+k.slice(2)] : (GMAT.recs.get(k.slice(2)) || { n: 'خامة' }).n);
+
+/* ── the paint: a slot of the world's eight for a material; the brush; undo; kept with the world ── */
+function gmSlot(k) {
+  let i = GMAT.pal.indexOf(k); if (i >= 0) return i;
+  i = GMAT.pal.indexOf(null);
+  if (i < 0) {         // all eight taken: one that lies nowhere any more is free again
+    const used = new Set(); for (const t of GP.tiles.values()) for (let s = 0; s < 16384; s++) if (t.w[s]) used.add(t.id[s]);
+    i = GMAT.pal.findIndex((_, q) => !used.has(q));
+  }
+  if (i < 0) { edToast('ثماني خامات في العالم الواحد', 'امسح إحداها من الأرض أولاً لتحلّ محلها'); return -1; }
+  GMAT.pal[i] = k; gmRefresh(); gmUniforms();
+  return i;
+}
+const GPB = { snap: null, last: 0, x0: 1e9, z0: 1e9, x1: -1e9, z1: -1e9 };
+function gpTake(key) { if (GPB.snap && !GPB.snap.has(key)) { const t = GP.tiles.get(key); GPB.snap.set(key, t ? { id: t.id.slice(), w: t.w.slice() } : null); } }
+function gpPaint(px, pz, r, amt, slot) {
+  const erase = slot < 0, i0 = Math.floor((px - r) * 2), i1 = Math.ceil((px + r) * 2), j0 = Math.floor((pz - r) * 2), j1 = Math.ceil((pz + r) * 2), seen = new Set();
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const dd = Math.hypot(i * 0.5 - px, j * 0.5 - pz); if (dd >= r) continue;
+    const key = gpKey(i >> 7, j >> 7); gpTake(key);
+    let t = GP.tiles.get(key); if (!t) { if (erase) continue; t = gpTile(i >> 7, j >> 7, true); }
+    const s = (j & 127) * 128 + (i & 127), f = (1 - (dd / r) ** 2) ** 1.5, add = Math.floor(amt * f * 255 + Math.random());
+    if (!add) continue;
+    let w = t.w[s], id = t.id[s];
+    if (erase) w = Math.max(0, w - add);
+    else if (id === slot || !w) { id = slot; w = Math.min(255, w + add); }
+    else { w -= add * 2; if (w < 0) { id = slot; w = Math.min(255, -w); } }
+    t.w[s] = w; t.id[s] = w ? id : 0;
+    if (!seen.has(key)) { seen.add(key); gpDirty(t); }
+  }
+  GP.ver++;
+  GPB.x0 = Math.min(GPB.x0, px - r); GPB.z0 = Math.min(GPB.z0, pz - r); GPB.x1 = Math.max(GPB.x1, px + r); GPB.z1 = Math.max(GPB.z1, pz + r);
+}
+// painted with something other than grass: no grass grows there
+const GP_W = new Float32Array(8);
+function gpBare(x, z) {
+  if (!gpWeights(x, z, 0.5, GP_W)) return false;
+  let w = 0; for (let i = 0; i < 8; i++) { const k = GMAT.pal[i]; if (GP_W[i] && !(k === 'b:0' || k === 'b:1' || k === 'b:2')) w += GP_W[i]; }
+  return w > 0.45;
+}
+function gpFlush() {
+  if (GPB.x0 > GPB.x1) return;
+  TERRAIN.dirtyArea((GPB.x0 + GPB.x1) / 2, (GPB.z0 + GPB.z1) / 2, Math.max(GPB.x1 - GPB.x0, GPB.z1 - GPB.z0) / 2 + 1);
+  grassDirtyArea((GPB.x0 + GPB.x1) / 2, (GPB.z0 + GPB.z1) / 2, Math.max(GPB.x1 - GPB.x0, GPB.z1 - GPB.z0) / 2 + 1);
+  GPB.x0 = GPB.z0 = 1e9; GPB.x1 = GPB.z1 = -1e9;
+}
+function gpSetTile(key, v) {
+  if (v) { const ti = Math.floor(key / 8192) - 4096, tj = (key % 8192) - 4096, t = gpTile(ti, tj, true); t.id.set(v.id); t.w.set(v.w); gpDirty(t); }
+  else { GP.tiles.delete(key); GP.n = GP.tiles.size; }
+  GP.ver++;
+  const ti = Math.floor(key / 8192) - 4096, tj = (key % 8192) - 4096;
+  TERRAIN.dirtyArea(ti * 64 + 32, tj * 64 + 32, 46); grassDirtyArea(ti * 64 + 32, tj * 64 + 32, 46);
+}
+// undo steps of the ground tool (from edDoOp): paint tiles back or forward; a game ground put back
+function gmDoOp(op, back) {
+  if (op.t === 'gp') for (const [k, a, b] of op.ch) gpSetTile(k, back ? a : b);
+  else if (op.t === 'gb') { const v = back ? op.a : op.b; if (v) GMAT.base[op.L] = v; else delete GMAT.base[op.L]; gmRefresh(); gmUniforms(); }
+}
+function gmBrushStart(g) {
+  edBrushStart(g); GPB.snap = new Map(); GPB.last = 0;
+  if (GMAT.mode !== 'e' && gmSlot(GMAT.cur) < 0) { EDB.on = false; GPB.snap = null; }
+}
+function gmBrushStep(dt) {
+  if (!EDB.on || !EDB.have || !GPB.snap) return;
+  const m = GMAT.mode, r = ED.br, k = ED.bk;
+  if (m === 'd' || m === 'u' || m === 'f') edBrushStep(dt, m === 'd' ? 'lower' : m === 'u' ? 'raise' : 'flat');
+  const slot = m === 'e' ? -1 : GMAT.pal.indexOf(GMAT.cur);
+  if (m === 'e' || slot >= 0) gpPaint(EDB.x, EDB.z, r, Math.min(1, k * (m === 'p' || m === 'e' ? 3.2 : 5) * dt), slot);
+  const now = performance.now(); if (now - GPB.last > 110) { GPB.last = now; gpFlush(); }
+}
+function gmBrushEnd() {
+  if (!EDB.on) { GPB.snap = null; return; }
+  EDB.on = false;
+  const ops = [], ch = [];
+  if (EDB.snap) { for (const [key, before] of EDB.snap) { const a = EDT.ch.get(key); ch.push([key, before, a ? a.slice() : null]); } EDB.snap = null; }
+  if (ch.length) ops.push({ t: 'ter', ch });
+  const gch = [];
+  if (GPB.snap) for (const [key, before] of GPB.snap) { const t = GP.tiles.get(key); gch.push([key, before, t ? { id: t.id.slice(), w: t.w.slice() } : null]); }
+  GPB.snap = null;
+  if (gch.length) ops.push({ t: 'gp', ch: gch });
+  if (ops.length) edOp(ops.length === 1 ? ops[0] : { t: 'multi', ops });
+  gpFlush(); edFlush(true);
+}
+// kept with the world: the eight, the replaced grounds, and the painted tiles (runs of equal points)
+function gpPack() {
+  const p = {};
+  for (const [key, t] of GP.tiles) {
+    const out = []; let any = false;
+    for (let i = 0; i < 16384;) { const w = t.w[i], id = w ? t.id[i] : 0; let n = 1; while (i + n < 16384 && n < 255 && t.w[i + n] === w && (w ? t.id[i + n] : 0) === id) n++; out.push(n, id, w); if (w) any = true; i += n; }
+    if (any) p[key] = edB64(Uint8Array.from(out));
+  }
+  return { pal: GMAT.pal.slice(), base: Object.assign({}, GMAT.base), p };
+}
+function gpUnpack(G) {
+  GP.tiles.clear(); GP.n = 0;
+  GMAT.pal = [null, null, null, null, null, null, null, null]; GMAT.base = {};
+  if (G) {
+    (G.pal || []).slice(0, 8).forEach((k, i) => { GMAT.pal[i] = typeof k === 'string' ? k : null; });
+    for (const [L, k] of Object.entries(G.base || {})) if (typeof k === 'string' && +L >= 0 && +L < 12) GMAT.base[+L] = k;
+    for (const [ks, b] of Object.entries(G.p || {})) {
+      const key = +ks, ti = Math.floor(key / 8192) - 4096, tj = (key % 8192) - 4096, u = b64Bytes(b), t = gpTile(ti, tj, true);
+      for (let q = 0, i = 0; q + 2 < u.length && i < 16384; q += 3) { const n = u[q]; t.id.fill(u[q + 1] & 7, i, Math.min(16384, i + n)); t.w.fill(u[q + 2], i, Math.min(16384, i + n)); i += n; }
+    }
+  }
+  GP.ver++;
+  for (const key of GP.tiles.keys()) { const ti = Math.floor(key / 8192) - 4096, tj = (key % 8192) - 4096; TERRAIN.dirtyArea(ti * 64 + 32, tj * 64 + 32, 46); grassDirtyArea(ti * 64 + 32, tj * 64 + 32, 46); }
+  gmRefresh(); gmUniforms();
+}
+function gpClear() { const had = [...GP.tiles.keys()]; GP.tiles.clear(); GP.n = 0; GP.ver++; for (const key of had) gpSetTile(key, null); GMAT.pal.fill(null); GMAT.base = {}; gmUniforms(); }
+
+/* ── a material from files: a zip (ambientCG, Poly Haven, anywhere) or pictures picked together; its maps by their names ── */
+const GM_MAPS = [
+  ['skip', /(preview|sphere|thumb|_cube|swatch|render)/],
+  ['nm', /(normal[ _-]?gl|nor[ _-]?gl|normal[ _-]?dx|nor[ _-]?dx|normal|nrm|_nor(?![a-z]))/],
+  ['r', /(roughness|rough|_rgh)/], ['gloss', /(glossiness|gloss)/],
+  ['ao', /(ambient[ _-]?occlusion|occlusion|[_ -]ao(?![a-z]))/], ['arm', /([_ -](arm|orm)(?![a-z]))/],
+  ['h', /(displacement|_disp(?![a-z])|height|bump)/],
+  ['metal', /(metalness|metallic|_metal)/], ['op', /(opacity|alpha|mask)/],
+  ['a', /(albedo|base[ _-]?colou?r|diffuse|_diff(?![a-z])|_colou?r|_col(?![a-z])|_basecolor|_alb(?![a-z]))/],
+];
+const GM_IMG = new Set(['jpg', 'jpeg', 'png', 'webp', 'tif', 'tiff', 'bmp']);
+function gmKind(name) {
+  const n = name.toLowerCase().replace(/\.[a-z0-9]+$/, '');
+  for (const [k, re] of GM_MAPS) { const m = n.match(re); if (m) return { k, base: (n.slice(0, m.index) + n.slice(m.index + m[0].length)).replace(/[_ -]?\d+k(?:[_ -](jpg|png|exr))?/g, '').replace(/[_ .-]+$/, '').replace(/^.*\//, '') }; }
+  return { k: 'a?', base: n.replace(/^.*\//, '') };
+}
+// the picked files as materials: { name, maps: { a, nm, r, … } }
+async function gmGroups(files) {
+  const all = [];
+  for (const f of files) {
+    const ext = UP_EXT(f.name);
+    if (ext === 'zip') { for (const en of await upUnzip(f)) { if (!GM_IMG.has(UP_EXT(en.name))) continue; all.push({ name: en.name, blob: new Blob([await upZipData(en)], { type: UP_EXT(en.name) === 'png' ? 'image/png' : 'image/jpeg' }), zip: f.name }); } }
+    else if (GM_IMG.has(ext)) all.push({ name: f.name, blob: f, zip: '' });
+  }
+  const by = new Map();
+  for (const it of all) {
+    const q = gmKind(it.name); if (q.k === 'skip' || q.k === 'metal' || q.k === 'op') continue;
+    const key = (it.zip ? it.zip.toLowerCase() + '|' : '') + q.base;
+    let g = by.get(key); if (!g) by.set(key, g = { name: upClean(q.base || it.zip), maps: {}, size: {} });
+    const k = q.k === 'a?' ? 'a' : q.k;
+    if (k === 'nm' && /dx/.test(it.name.toLowerCase()) && g.maps.nm && !g.dx) continue;      // the OpenGL normal when both came
+    if (k === 'nm') g.dx = /dx/.test(it.name.toLowerCase());
+    if (!g.maps[k] || (k === 'a' && q.k === 'a' && g.loose)) { g.maps[k] = it.blob; if (q.k === 'a?') g.loose = true; else if (k === 'a') g.loose = false; }
+  }
+  // a zip whose names say nothing: one picture is its colour
+  return [...by.values()].filter((g) => g.maps.a);
+}
+async function gmImport(G, tag, cr) {
+  const step = (m, p) => upShow(G.name + tag, m, p);
+  const R = { id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), n: G.name.slice(0, 40), m: G.m || 2, cr: cr || null, t: Date.now(), v: 1, src: UPL.assets && EDIO.db ? 'cloud' : 'local', dx: G.dx ? 1 : 0 };
+  if (R.src === 'local' && !UPL.idbOK) throw upErr('لا مكان لحفظ الخامات على هذا الجهاز');
+  const head = new Uint8Array(await G.maps.a.slice(0, 65536).arrayBuffer()), sz = upImgSize(head, upSniff(head)); R.px = sz ? Math.max(sz[0], sz[1]) : 0;
+  const refs = [];
+  try {
+    const keys = ['a', 'nm', 'r', 'gloss', 'ao', 'arm', 'h'].filter((k) => G.maps[k]);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i]; step((R.src === 'cloud' ? 'رفع ' : 'حفظ ') + ({ a: 'اللون', nm: 'التضاريس الدقيقة', r: 'الخشونة', gloss: 'اللمعان', ao: 'الظلال', arm: 'الخشونة', h: 'الارتفاع' })[k], 0.05 + 0.8 * i / keys.length);
+      const ref = await gmPut(G.maps[k]); refs.push(ref);
+      if (k === 'gloss') { R.r = ref; R.gloss = 1; } else R[k] = ref;
+    }
+    step('صورة المعاينة', 0.88);
+    try {
+      const bmp = await createImageBitmap(G.maps.a, { resizeWidth: 160, resizeHeight: 160, resizeQuality: 'high' }), cv = document.createElement('canvas'); cv.width = cv.height = 160;
+      cv.getContext('2d').drawImage(bmp, 0, 0); if (bmp.close) bmp.close();
+      let b = await upToBlob(cv, 'image/webp', 0.82); if (!b || b.type !== 'image/webp') b = await upToBlob(cv, 'image/jpeg', 0.85);
+      R.th = await upPut(b, b.type); refs.push(R.th);
+    } catch (e) { console.warn('material thumb', e); }
+    step('تسجيل الخامة', 0.96);
+    await gmSaveRec(R);
+  } catch (e) { for (const r of refs) gmDrop(r); throw e; }
+  GMAT.recs.set(R.id, R);
+  return R;
+}
+async function gmFiles(files, quiet) {
+  const groups = await gmGroups(files);
+  if (!groups.length) return null;
+  const done = [];
+  for (let i = 0; i < groups.length; i++) {
+    try { done.push(await gmImport(groups[i], groups.length > 1 ? ' (' + toAr(i + 1) + ' من ' + toAr(groups.length) + ')' : '')); }
+    catch (e) { console.warn('material', groups[i].name, e); if (groups.length === 1) throw e; }
+  }
+  if (!quiet && done.length) gmAfterImport(done);
+  return done;
+}
+function gmAfterImport(done) {
+  upHide();
+  const R = done[done.length - 1];
+  GMAT.cur = 'm:' + R.id;
+  if (ED.on) { EDUI.cat = 'gmat'; EDUI.q = ''; $('edSearch').value = ''; edCatOpen(true); }
+  edToast(done.length === 1 ? 'أُضيفت خامة «' + R.n + '»' : 'أُضيفت ' + toAr(done.length) + ' خامات', 'اخترها وارسم بها على الأرض · ' + (R.src === 'cloud' ? 'محفوظة مع لعبتك' : 'محفوظة على هذا الجهاز'));
+}
+function gmPick() {
+  if (UPL.busy) { edToast('جارٍ رفع ملف', 'انتظر حتى ينتهي'); return; }
+  if (!upCanUp()) { edToast('الرفع غير متاح هنا', ''); return; }
+  let inp = GMAT.input;
+  if (!inp) {
+    inp = GMAT.input = document.createElement('input'); inp.type = 'file'; inp.multiple = true; inp.accept = '.zip,image/*'; inp.style.display = 'none'; document.body.appendChild(inp);
+    inp.addEventListener('change', async () => {
+      const fs = [...inp.files]; inp.value = ''; if (!fs.length) return;
+      UPL.busy = true; upShow('خامة أرض', 'قراءة الملفات', 0.02);
+      try { const d = await gmFiles(fs); if (!d) throw upErr('لم أجد صورة لون في الملفات (Color أو Albedo أو Diffuse)'); }
+      catch (e) { console.warn('material upload', e); upFail(e && e.ui ? e.ui : 'تعذّر حفظ الخامة', e && e.ui ? '' : String((e && e.message) || e).slice(0, 90)); }
+      finally { UPL.busy = false; }
+    });
+  }
+  inp.click();
+}
+function gmDelete(id) {
+  const R = GMAT.recs.get(id); if (!R) return;
+  const k = 'm:' + id, inUse = GMAT.pal.includes(k) || Object.values(GMAT.base).includes(k);
+  edCatOpen(false);
+  upAsk('حذف خامة «' + R.n + '»' + (inUse ? ' (مرسومة في العالم: تعود الأرض كما كانت)' : '') + '؟', 'احذف', async () => {
+    try { await gmDelRec(R); } catch (e) { console.warn('material delete', e); edToast('تعذّر الحذف', ''); return; }
+    for (const ref of gmRefs(R)) gmDrop(ref);
+    GMAT.recs.delete(id);
+    const i = GMAT.pal.indexOf(k); if (i >= 0) { for (const t of GP.tiles.values()) for (let s = 0; s < 16384; s++) if (t.w[s] && t.id[s] === i) t.w[s] = 0; GMAT.pal[i] = null; for (const key of [...GP.tiles.keys()]) gpSetTile(key, GP.tiles.get(key)); }
+    for (const L of Object.keys(GMAT.base)) if (GMAT.base[L] === k) delete GMAT.base[L];
+    if (GMAT.cur === k) GMAT.cur = 'b:7';
+    if (inUse) { ED.ver++; edStatus(); }
+    gmRefresh(); gmUniforms(); edToast('حُذفت الخامة', inUse ? 'احفظ ليبقى العالم بدونها' : '');
+  });
+}
+
+/* ── the editor: the ground tool's panel, the materials in the catalogue, the whole map's grounds ── */
+function gmCtx() {
+  const k = GMAT.cur, th = gmThumb(k), esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  let h = `<button type="button" class="edc gmcur" data-act="gm:pick" aria-label="اختر الخامة">${th ? `<img src="${th}" alt="">` : edSvg('gmat')}<span>${esc(gmName(k))}</span></button>`;
+  for (const [m, ic, lb] of [['p', 'paint', 'ارسم'], ['d', 'lower', 'احفر'], ['u', 'raise', 'ارفع'], ['f', 'flat', 'سوِّ'], ['e', 'erase', 'امسح الرسم']]) h += edBtn('gm:m:' + m, ic, lb, { on: GMAT.mode === m });
+  const R = k[0] === 'm' && GMAT.recs.get(k.slice(2));
+  if (R && upCanDel({ src: R.src })) h += edStep('gm:t', 'width', 'حجم الصورة على الأرض', edAr(R.m || 2) + 'م');
+  h += `<label class="edrng"><span>الحجم <b data-rv="br">${edAr(ED.br)}م</b></span><input type="range" data-rng="br" min="1" max="80" step="0.5" value="${ED.br}"></label>`;
+  h += `<label class="edrng"><span>القوة <b data-rv="bk">${toAr(Math.round(ED.bk * 100))}٪</b></span><input type="range" data-rng="bk" min="0.1" max="1" step="0.05" value="${ED.bk}"></label>`;
+  h += edBtn('gm:drag', GMAT.drag ? 'paint' : 'sel', GMAT.drag ? 'السحب يرسم' : 'السحب يحرّك الدائرة', { on: !GMAT.drag });
+  if (!GMAT.drag) h += edBtn('gm:go', 'play', 'طبّق هنا', { hold: true });
+  h += edBtn('gm:base', 'land', 'أرضية الخريطة');
+  return h;
+}
+function gmAct(act) {
+  if (act === 'gm:t+' || act === 'gm:t-') {
+    const R = GMAT.cur[0] === 'm' && GMAT.recs.get(GMAT.cur.slice(2)); if (!R) return;
+    R.m = +clamp((R.m || 2) * (act === 'gm:t+' ? 1.12 : 1 / 1.12), 0.25, 40).toPrecision(3); gmUniforms(); edCtx();
+    clearTimeout(GMAT.saveT); GMAT.saveT = setTimeout(() => gmSaveRec(R).catch((e) => console.warn('material size', e)), 900);
+    return;
+  }
+  if (act === 'gm:pick') { EDUI.cat = 'gmat'; EDUI.q = ''; $('edSearch').value = ''; edCatOpen(true); return; }
+  if (act.startsWith('gm:m:')) { GMAT.mode = act.slice(5); edCtx(); return; }
+  if (act === 'gm:drag') { GMAT.drag = !GMAT.drag; edCtx(); edToast(GMAT.drag ? 'اسحب على الأرض لترسم' : 'اسحب لتحريك الدائرة', GMAT.drag ? '' : 'ثم اضغط «طبّق هنا» مطوّلاً'); return; }
+  if (act === 'gm:go') {
+    if (EDB.on) return;
+    const x = EP.hover ? EP.hover[0] : EDC.x, z = EP.hover ? EP.hover[1] : EDC.z;
+    gmBrushStart({ x, z }); edBrushRing(x, z); ED_LINE.brush.visible = true;
+    const end = () => { removeEventListener('pointerup', end, true); removeEventListener('pointercancel', end, true); gmBrushEnd(); };
+    addEventListener('pointerup', end, true); addEventListener('pointercancel', end, true);
+    return;
+  }
+  if (act === 'gm:base') { GMAT.pickL = -1; EDUI.cat = 'gmat'; EDUI.q = ''; $('edSearch').value = ''; edCatOpen(true); setTimeout(() => { const el = document.querySelector('#edGrid .edsec[data-sec="base"]'); if (el) el.scrollIntoView({ block: 'start' }); }, 30); return; }
+}
+// the catalogue's «خامات الأرض»: upload, the internet's libraries, the owner's materials, the game's grounds, the whole map's grounds
+function gmCards() {
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const card = (k, extra = '') => { const th = gmThumb(k), on = GMAT.cur === k; return `<button type="button" class="edcard gmcard${on ? ' on' : ''}" data-gm="${k}">${th ? `<img src="${th}" alt="" loading="lazy" decoding="async">` : `<span class="edph">${edSvg('gmat')}</span>`}<span class="ednm">${esc(gmName(k))}</span>${extra}</button>`; };
+  const can = upCanUp();
+  let h = `<p class="edupinfo">${GMAT.pickL >= 0 ? 'اختر خامة تحلّ محلّ «' + GM_LAYERS_AR[GMAT.pickL] + '» في كل الخريطة، أو الخامة نفسها لإرجاعها' : 'اختر خامة ثم ارسم بها على الأرض، احفر أو ارفع بها · الملفات الأصلية تُحفظ كما هي بدقتها الكاملة'}</p>`;
+  h += `<button type="button" class="edcard edup${can ? '' : ' off'}" data-gmup="1"${can ? '' : ' disabled'}><span class="edph">${edSvg('upl')}</span><span class="ednm">ارفع خامة من جهازك (zip أو صور)</span></button>`;
+  h += `<button type="button" class="edcard edup" data-net="mat"><span class="edph">${edSvg('web')}</span><span class="ednm">مكتبات الإنترنت: ambientCG · Poly Haven</span></button>`;
+  const mine = [...GMAT.recs.values()];
+  if (mine.length) { h += '<p class="edsec">خاماتك</p>'; for (const R of mine) h += card('m:' + R.id, upCanDel({ src: R.src }) ? `<span class="eddel" data-gmdel="${R.id}" role="button" aria-label="حذف الخامة">${edSvg('del')}</span>` : ''); }
+  h += '<p class="edsec">أرضيات اللعبة</p>';
+  for (let L = 0; L < 12; L++) h += card('b:' + L);
+  h += '<p class="edsec" data-sec="base">أرضية الخريطة كلها: المس أرضاً ثم اختر خامتها</p>';
+  for (let L = 0; L < 12; L++) {
+    const k = GMAT.base[L] || 'b:' + L, th = gmThumb(k);
+    h += `<button type="button" class="edcard gmcard gmbase${GMAT.pickL === L ? ' on' : ''}" data-gmb="${L}">${th ? `<img src="${th}" alt="" loading="lazy">` : `<span class="edph">${edSvg('gmat')}</span>`}<span class="ednm">${GM_LAYERS_AR[L]}${GMAT.base[L] ? ' ← ' + esc(gmName(k)) : ''}</span></button>`;
+  }
+  return h;
+}
+function gmCardTap(k) {
+  if (GMAT.pickL >= 0) {
+    const L = GMAT.pickL, a = GMAT.base[L] || null, b = k === 'b:' + L ? null : k;
+    GMAT.pickL = -1;
+    if (a !== b) { if (b) GMAT.base[L] = b; else delete GMAT.base[L]; edOp({ t: 'gb', L, a, b }); gmRefresh(); gmUniforms(); }
+    edCatGrid(); edToast(b ? '«' + GM_LAYERS_AR[L] + '» صار «' + gmName(b) + '» في كل الخريطة' : 'عاد «' + GM_LAYERS_AR[L] + '» كما كان', 'احفظ ليراه الجميع');
+    return;
+  }
+  GMAT.cur = k; edCatOpen(false); edTool('paint');
+  edToast('«' + gmName(k) + '»', GMAT.mode === 'p' ? 'اسحب على الأرض لترسم بها' : GMAT.mode === 'd' ? 'اسحب لتحفر بها' : 'اسحب على الأرض');
+}
+function gmBaseTap(L) { GMAT.pickL = GMAT.pickL === L ? -1 : L; edCatGrid(); if (GMAT.pickL >= 0) { const el = document.querySelector('#edGrid .edsec'); if (el) el.scrollIntoView({ block: 'start' }); } }
+
+/* ═════════ مكتبات الإنترنت (46): free models and ground materials from ambientCG, Poly Haven and Sketchfab, browsed inside
+   the editor (their own APIs: search, pictures, the files at the size you choose, nothing made smaller), downloaded once and
+   kept with the game or on this device like your own uploads, so they work offline. free3d (and any other site) opens in
+   the app's own browser: what you download there arrives in the editor. In the Android app the requests go through the
+   app (no site can refuse a page that is not its own); in a browser tab only sites that allow it answer ═════════ */
+const LIB_SITES = [
+  ['acg', 'ambientCG', 'mat', 'خامات أرض وجدران · CC0 مجانية لأي استعمال'],
+  ['phm', 'Poly Haven', 'mat', 'خامات بدقة حتى 8K · CC0 · Powered by Poly Haven'],
+  ['phmod', 'Poly Haven', 'model', 'نماذج مجانية CC0 · Powered by Poly Haven'],
+  ['sf', 'Sketchfab', 'model', 'نماذج قابلة للتنزيل · تحتاج رمز حسابك (API token) · لكل نموذج رخصته'],
+  ['f3d', 'free3d', 'model', 'لا واجهة برمجية: يُفتح الموقع في متصفح اللعبة، وما تنزّله منه يُضاف هنا'],
+];
+const LIB = { on: false, site: 'acg', q: '', items: [], next: null, busy: false, app: null, ph: {}, gen: 0, sel: null, pend: [] };
+const LIB_UA_NOTE = 'Powered by Poly Haven';
+
+/* ── the network: the app's own pass-through when there is one, the page's fetch otherwise ── */
+async function libApp() {
+  if (LIB.app !== null) return LIB.app;
+  try { const r = await withTimeout(fetch('/_app/info', { cache: 'no-store' }), 2500); const j = r && r.ok && /json/.test(r.headers.get('content-type') || '') ? await r.json() : null; LIB.app = j && j.app ? j : false; }
+  catch (_) { LIB.app = false; }
+  return LIB.app;
+}
+async function libFetch(url, opt) {
+  opt = opt || {};
+  const app = await libApp(), h = {};
+  if (opt.auth) h[app && app.net ? 'X-Cos-Auth' : 'Authorization'] = opt.auth;
+  let r;
+  try { r = await fetch(app && app.net ? '/_net/get?u=' + encodeURIComponent(url) : url, { headers: h, cache: 'no-store' }); }
+  catch (_) { throw upErr(app && app.net ? 'لا اتصال بالإنترنت' : 'الموقع لا يسمح بالتحميل من صفحة اللعبة هنا · يعمل في تطبيق أندرويد (النسخة الجديدة)'); }
+  if (!r.ok) throw Object.assign(upErr(r.status === 401 ? 'الرمز غير صحيح أو انتهى' : r.status === 403 ? 'رفض الموقع الطلب (' + r.status + ')' : r.status === 404 ? 'غير موجود (404)' : 'خطأ من الموقع (' + r.status + ')'), { status: r.status });
+  return r;
+}
+const libJSON = async (url, opt) => (await libFetch(url, opt)).json();
+async function libBlob(url, opt, onp, size) {
+  const r = await libFetch(url, opt), total = +r.headers.get('x-cos-size') || +r.headers.get('content-length') || size || 0;
+  if (!r.body || !r.body.getReader) return r.blob();
+  const rd = r.body.getReader(), parts = []; let got = 0, t = 0;
+  for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; const now = performance.now(); if (onp && now - t > 150) { t = now; onp(got, total); } }
+  return new Blob(parts, { type: r.headers.get('content-type') || '' });
+}
+// every web address inside a piece of JSON (for answers whose shape a site may change)
+function libUrls(v, out = []) {
+  if (typeof v === 'string') { if (/^https?:\/\//.test(v)) out.push(v); }
+  else if (Array.isArray(v)) for (const x of v) libUrls(x, out);
+  else if (v && typeof v === 'object') for (const k of Object.keys(v)) libUrls(v[k], out);
+  return out;
+}
+function libImg(v, want) {
+  const L = libUrls(v).filter((u) => /\.(png|jpe?g|webp)(\?|$)/i.test(u) || /thumb|preview|image/i.test(u));
+  if (!L.length) return '';
+  const size = (u) => { const m = u.match(/(\d{2,4})(?:[-_x]|\.)/); return m ? +m[1] : 512; };
+  L.sort((a, b) => Math.abs(size(a) - want) - Math.abs(size(b) - want));
+  return L[0];
+}
+const libMB = (n) => (n ? (n >= 1e9 ? toAr((n / 1e9).toFixed(1)) + ' غ.ب' : toAr(Math.max(0.1, n / 1e6).toFixed(n < 1e7 ? 1 : 0)) + ' م.ب') : '');
+
+/* ── the sites ── */
+const LIB_SRC = {
+  // ambientCG (API v3): the list with pictures; the files are zips by size and format, ID_2K-JPG.zip
+  acg: {
+    async list(q, page) {
+      const off = page * 30;
+      const js = await libJSON('https://ambientcg.com/api/v3/assets?type=material&sort=popular&limit=30&offset=' + off + '&include=title,thumbnails,previews,downloads,dimensions' + (q ? '&q=' + encodeURIComponent(q) : ''));
+      const arr = js.assets || js.foundAssets || [];
+      const items = arr.map((a) => {
+        const id = a.id || a.assetId; if (!id) return null;
+        const dl = libUrls(a.downloads || a.downloadFolders || {}).filter((u) => /\.zip|get\?file=/i.test(u));
+        const res = [...new Set(dl.map((u) => (u.match(/_(\d+)K-(JPG|PNG)/i) || [])[1]).filter(Boolean).map(Number))].sort((x, y) => x - y);
+        return { id, name: a.title || a.displayName || id, th: libImg(a.thumbnails || a.previews || a.previewImage || a, 256), res: res.length ? res : [1, 2, 4, 8], dl, by: 'ambientCG', lic: 'CC0', page: 'https://ambientcg.com/view?id=' + encodeURIComponent(id), dim: a.dimensions };
+      }).filter(Boolean);
+      // pictures missing from the new API's answer: the older one gives them by id
+      if (items.length && !items.some((it) => it.th)) {
+        try {
+          const v2 = await libJSON('https://ambientcg.com/api/v2/full_json?type=Material&include=previewData&id=' + items.map((it) => encodeURIComponent(it.id)).join(','));
+          const by = new Map((v2.foundAssets || []).map((a) => [a.assetId, libImg(a.previewImage || a, 256)]));
+          for (const it of items) it.th = by.get(it.id) || '';
+        } catch (e) { console.warn('ambientCG pictures', e); }
+      }
+      return { items, more: !!js.nextPageHttp || arr.length === 30 };
+    },
+    async get(it, res, onp) {
+      const url = it.dl.find((u) => new RegExp('_' + res + 'K-JPG', 'i').test(u)) || it.dl.find((u) => new RegExp('_' + res + 'K-PNG', 'i').test(u)) || 'https://ambientcg.com/get?file=' + encodeURIComponent(it.id) + '_' + res + 'K-JPG.zip';
+      const blob = await libBlob(url, null, onp);
+      const f = new File([blob], it.id + '_' + res + 'K.zip');
+      const G = (await gmGroups([f]))[0]; if (!G) throw upErr('لم أجد صور الخامة داخل الملف');
+      G.name = it.name; const d = it.dim, m = d && (d.x || d.width || (Array.isArray(d) && d[0])); if (m) G.m = m > 20 ? m / 100 : m;
+      return { mat: G };
+    },
+  },
+  // Poly Haven: every texture (or model) in one answer, searched here; the files by map and size
+  phm: { type: 'textures' }, phmod: { type: 'models' },
+  // Sketchfab: downloadable models; the download needs the owner's API token
+  sf: {
+    async list(q, page, cur) {
+      const url = cur || 'https://api.sketchfab.com/v3/search?type=models&downloadable=true&count=24&sort_by=-likeCount' + (q ? '&q=' + encodeURIComponent(q) : '');
+      const js = await libJSON(url);
+      const items = (js.results || []).filter((m) => m && m.uid && !m.isAgeRestricted).map((m) => ({
+        id: m.uid, name: m.name || m.uid, th: m.thumbnails && m.thumbnails.images ? (m.thumbnails.images.slice().sort((a, b) => Math.abs(a.width - 360) - Math.abs(b.width - 360))[0] || {}).url : '',
+        by: (m.user && (m.user.displayName || m.user.username)) || '', lic: (m.license && (m.license.label || m.license.slug)) || '', page: m.viewerUrl || 'https://sketchfab.com/3d-models/' + m.uid,
+        faces: m.faceCount || 0, size: m.archives && m.archives.glb ? m.archives.glb.size : m.archives && m.archives.gltf ? m.archives.gltf.size : 0,
+      }));
+      return { items, more: !!js.next, cur: js.next || null };
+    },
+    async info(it) {
+      try { const m = await libJSON('https://api.sketchfab.com/v3/models/' + it.id); if (m.license) it.lic = m.license.label || it.lic; if (m.user) it.by = m.user.displayName || m.user.username || it.by; if (m.archives) it.size = (m.archives.glb || m.archives.gltf || {}).size || it.size; } catch (_) {}
+    },
+    async get(it, res, onp) {
+      const tok = (SET.sfTok || '').trim(); if (!tok) throw upErr('أدخل رمز حسابك في Sketchfab أولاً (API token)');
+      const d = await libJSON('https://api.sketchfab.com/v3/models/' + it.id + '/download', { auth: 'Token ' + tok });
+      const a = d.glb || d.gltf; if (!a || !a.url) throw upErr('هذا النموذج لا يُنزَّل بصيغة glTF');
+      const blob = await libBlob(a.url, null, onp, a.size);
+      return { files: [new File([blob], it.id + (d.glb ? '.glb' : '.zip'))] };
+    },
+  },
+};
+for (const k of ['phm', 'phmod']) Object.assign(LIB_SRC[k], {
+  async all() {
+    const t = this.type; if (LIB.ph[t]) return LIB.ph[t];
+    const js = await libJSON('https://api.polyhaven.com/assets?t=' + t);
+    const list = Object.entries(js).map(([id, a]) => ({ id, name: a.name || id, th: a.thumbnail_url || 'https://cdn.polyhaven.com/asset_img/thumbs/' + id + '.png?width=256&height=256', tags: [].concat(a.tags || [], a.categories || []).join(' ').toLowerCase(), n: a.download_count || 0, dim: a.dimensions, max: a.max_resolution, by: Object.keys(a.authors || {}).join('، '), lic: 'CC0', page: 'https://polyhaven.com/a/' + id }));
+    list.sort((a, b) => b.n - a.n);
+    return (LIB.ph[t] = list);
+  },
+  async list(q, page) {
+    const all = await this.all(), w = q.trim().toLowerCase(), L = w ? all.filter((it) => it.name.toLowerCase().includes(w) || it.tags.includes(w) || it.id.includes(w)) : all;
+    return { items: L.slice(page * 30, page * 30 + 30), more: L.length > page * 30 + 30 };
+  },
+  async info(it) {
+    const js = await libJSON('https://api.polyhaven.com/files/' + it.id); it.files = js;
+    const src = this.type === 'models' ? js.gltf : js.Diffuse || js.diffuse || js.Color;
+    it.res = src ? Object.keys(src).map((r) => parseInt(r, 10)).filter((n) => n > 0).sort((a, b) => a - b) : [1, 2, 4];
+  },
+  async get(it, res, onp) {
+    const js = it.files || (await libJSON('https://api.polyhaven.com/files/' + it.id)), rk = res + 'k';
+    if (this.type === 'models') {
+      const g = js.gltf && (js.gltf[rk] || js.gltf[Object.keys(js.gltf)[0]]), f = g && g.gltf; if (!f || !f.url) throw upErr('لا ملف glTF لهذا النموذج');
+      const inc = Object.entries(f.include || {}), total = (f.size || 0) + inc.reduce((a, [, v]) => a + (v.size || 0), 0); let base = 0;
+      const files = new Map(), step = (n) => (got) => onp && onp(base + got, total || n);
+      const main = await libBlob(f.url, null, step(f.size)); base += main.size;
+      for (const [p, v] of inc) { const b = await libBlob(v.url, null, step(v.size)); base += b.size; b.path = p; files.set(p.toLowerCase(), b); }
+      return { group: { name: upClean(it.name), main, ext: 'gltf', base: '', files } };
+    }
+    const pick = (keys) => { for (const k of keys) { const m = js[k], q = m && (m[rk] || null); const f = q && (q.jpg || q.png); if (f && f.url) return f; } return null; };
+    const want = { a: pick(['Diffuse', 'diffuse', 'Color']), nm: pick(['nor_gl', 'Normal', 'normal']), r: pick(['Rough', 'rough', 'Roughness']), ao: pick(['AO', 'ao']), h: pick(['Displacement', 'Disp', 'disp']) };
+    if (!want.a) throw upErr('لا صورة لون بهذه الدقة');
+    const keys = Object.keys(want).filter((k) => want[k]), total = keys.reduce((a, k) => a + (want[k].size || 0), 0); let base = 0;
+    const maps = {};
+    for (const k of keys) { const b = await libBlob(want[k].url, null, (got) => onp && onp(base + got, total)); base += b.size; maps[k] = b; }
+    const d = it.dim; return { mat: { name: it.name, maps, m: Array.isArray(d) && d[0] ? clamp(d[0] / 1000, 0.3, 30) : 2 } };
+  },
+});
+
+/* ── the screen ── */
+function libEl() {
+  let el = $('lib'); if (el) return el;
+  el = document.createElement('div'); el.id = 'lib'; el.className = 'gone';
+  el.innerHTML = `<div class="libsheet" role="dialog" aria-label="مكتبات الإنترنت">
+    <header><h3>مكتبات الإنترنت</h3><input id="libQ" type="search" placeholder="ابحث بالإنجليزية: rock, grass, car…" autocomplete="off"><button id="libX" class="edb ic" type="button" aria-label="إغلاق">${edSvg('close')}</button></header>
+    <nav id="libSites"></nav><div id="libNote"></div><div id="libGrid"></div></div>
+    <div id="libItem" hidden></div>`;
+  $('ed').appendChild(el);
+  const tap = (sel, fn) => el.addEventListener('click', (e) => { const b = e.target.closest(sel); if (b && el.contains(b)) fn(b, e); });
+  $('libX').addEventListener('click', () => libClose());
+  tap('[data-site]', (b) => libSite(b.dataset.site));
+  tap('[data-it]', (b) => libItem(+b.dataset.it));
+  tap('[data-more]', () => libLoad(true));
+  tap('[data-open]', (b) => libBrowse(b.dataset.open));
+  tap('[data-tok]', () => { const i = $('libTok'); if (!i) return; SET.sfTok = i.value.trim(); saveSettings(); edToast(SET.sfTok ? 'حُفظ الرمز على هذا الجهاز' : 'مُسح الرمز', ''); libNote(); });
+  tap('[data-res]', (b) => { if (LIB.sel) { LIB.sel.pick = +b.dataset.res; libItemDraw(); } });
+  tap('[data-get]', () => libGet());
+  tap('[data-iback]', () => { $('libItem').hidden = true; LIB.sel = null; });
+  let qt = 0; $('libQ').addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { LIB.q = $('libQ').value; libLoad(false); }, 450); });
+  el.addEventListener('pointerdown', (e) => { if (e.target === el) libClose(); });
+  for (const ev of ['wheel', 'touchmove']) el.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
+  return el;
+}
+function libOpen(kind) {
+  const el = libEl(); el.classList.remove('gone'); LIB.on = true;
+  const first = LIB_SITES.find((s) => s[2] === kind) || LIB_SITES[0];
+  if (!LIB_SITES.find((s) => s[0] === LIB.site && s[2] === kind)) LIB.site = first[0];
+  libSite(LIB.site);
+}
+function libClose() { const el = $('lib'); if (el) el.classList.add('gone'); LIB.on = false; LIB.sel = null; if ($('libItem')) $('libItem').hidden = true; }
+function libSite(k) {
+  LIB.site = k; LIB.q = ''; $('libQ').value = '';
+  $('libSites').innerHTML = LIB_SITES.map(([id, n, kind]) => `<button type="button" class="edtab${id === k ? ' on' : ''}" data-site="${id}">${edSvg(kind === 'mat' ? 'gmat' : 'upl')}<span>${n}</span><i>${kind === 'mat' ? 'خامات' : 'نماذج'}</i></button>`).join('');
+  $('libQ').hidden = k === 'f3d';
+  libNote(); libLoad(false);
+}
+function libNote() {
+  const s = LIB_SITES.find((q) => q[0] === LIB.site), esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  let h = `<p>${esc(s[3])}</p>`;
+  if (LIB.site === 'sf') h += `<div class="libtok"><input id="libTok" type="password" placeholder="رمز Sketchfab (API token)" value="${esc(SET.sfTok || '')}" autocomplete="off"><button type="button" class="edupb" data-tok="1">حفظ</button><button type="button" class="edupb" data-open="https://sketchfab.com/settings/password">أين رمزي؟</button></div><p class="libsmall">الرمز يُحفظ على هذا الجهاز فقط ولا يُرسل إلا إلى Sketchfab. التنزيل مجاني للنماذج المسموح تنزيلها، ويُذكر صاحب كل نموذج ورخصته في الإعدادات.</p>`;
+  $('libNote').innerHTML = h;
+}
+async function libLoad(more) {
+  const g = ++LIB.gen, grid = $('libGrid'), site = LIB.site, src = LIB_SRC[site];
+  if (!more) { LIB.items = []; LIB.page = 0; LIB.cur = null; grid.innerHTML = '<p class="edempty">…</p>'; grid.scrollTop = 0; }
+  if (site === 'f3d') {
+    grid.innerHTML = `<div class="libf3d"><p>اختر نموذجاً مجانياً من free3d واضغط «Download» هناك: يصل الملف إلى «من جهازك» ويُضاف إلى العالم.</p>
+      <button type="button" class="edc wide" data-open="https://free3d.com/3d-models/free">${edSvg('web')}<span>افتح free3d</span></button>
+      <button type="button" class="edupb" data-open="https://sketchfab.com/search?features=downloadable&type=models">موقع Sketchfab</button>
+      <button type="button" class="edupb" data-open="https://ambientcg.com/list?type=material">موقع ambientCG</button>
+      <button type="button" class="edupb" data-open="https://polyhaven.com/textures">موقع Poly Haven</button></div>`;
+    return;
+  }
+  if (LIB.busy && !more) LIB.busy = false;
+  if (LIB.busy) return; LIB.busy = true;
+  try {
+    const r = await src.list(LIB.q, LIB.page || 0, LIB.cur);
+    if (g !== LIB.gen) return;
+    LIB.items = LIB.items.concat(r.items); LIB.page = (LIB.page || 0) + 1; LIB.cur = r.cur || null; LIB.more = r.more;
+    libGridDraw();
+  } catch (e) {
+    if (g !== LIB.gen) return;
+    console.warn('library', site, e);
+    grid.innerHTML = `<p class="edempty">${(e && e.ui) || 'تعذّر الوصول إلى الموقع'}</p>`;
+  } finally { if (g === LIB.gen) LIB.busy = false; }
+}
+function libGridDraw() {
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const mat = LIB_SITES.find((s) => s[0] === LIB.site)[2] === 'mat';
+  $('libGrid').innerHTML = (LIB.items.length ? LIB.items.map((it, i) => `<button type="button" class="edcard libcard" data-it="${i}">${it.th ? `<img src="${esc(it.th)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : `<span class="edph">${edSvg(mat ? 'gmat' : 'upl')}</span>`}<span class="ednm">${esc(it.name)}</span><small>${esc([it.lic, it.by].filter(Boolean).join(' · '))}</small></button>`).join('') : '<p class="edempty">لا نتائج</p>')
+    + (LIB.more ? '<button type="button" class="edupb libmore" data-more="1">المزيد</button>' : '');
+  // a picture that does not come: the card keeps its drawn placeholder
+  for (const im of $('libGrid').querySelectorAll('img')) im.addEventListener('error', () => { const ph = document.createElement('span'); ph.className = 'edph'; ph.innerHTML = edSvg(mat ? 'gmat' : 'upl'); im.replaceWith(ph); }, { once: true });
+}
+async function libItem(i) {
+  const it = LIB.items[i]; if (!it) return;
+  LIB.sel = it; it.pick = it.pick || (LIB.site === 'sf' ? 0 : Math.min(qsel(1, 2, 4, 4), Math.max(...(it.res || [2]))));
+  libItemDraw();
+  const src = LIB_SRC[LIB.site];
+  if (src.info && !it.infoDone) {
+    try { await src.info(it); it.infoDone = true; if (it.res && !it.res.includes(it.pick)) it.pick = it.res.includes(2) ? 2 : it.res[0]; } catch (e) { console.warn('library item', e); }
+    if (LIB.sel === it) libItemDraw();
+  }
+}
+function libItemDraw() {
+  const it = LIB.sel, el = $('libItem'); if (!it) { el.hidden = true; return; }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const sf = LIB.site === 'sf', mat = LIB_SITES.find((s) => s[0] === LIB.site)[2] === 'mat';
+  let h = `<div class="libic">${it.th ? `<img src="${esc(it.th)}" alt="" referrerpolicy="no-referrer">` : ''}<div class="libinfo"><b>${esc(it.name)}</b><small>${esc([it.by && 'من ' + it.by, it.lic && 'الرخصة: ' + it.lic, it.size && 'الحجم ' + libMB(it.size), it.faces && toAr(it.faces) + ' مضلّع'].filter(Boolean).join(' · '))}</small>`;
+  if (!sf && it.res && it.res.length) h += `<div class="libres"><span>${mat ? 'الدقة' : 'دقة الصور'}</span>${it.res.map((r) => `<button type="button" class="edtab${r === it.pick ? ' on' : ''}" data-res="${r}">${r}K</button>`).join('')}</div><small>كل الدقات تُحفظ كما هي بلا تخفيض · 4K و8K ملفات كبيرة</small>`;
+  if (sf) h += `<small>${SET.sfTok ? 'يُنزَّل بصيغة glTF الأصلية بكل صوره' : 'أدخل رمز Sketchfab أعلاه ليُنزَّل'}</small>`;
+  h += `<div class="librow"><button type="button" class="edb save dirty" data-get="1">${edSvg('add')}<span>${mat ? 'نزّلها وأضفها لخاماتك' : 'نزّله وأضفه إلى العالم'}</span></button><button type="button" class="edb" data-open="${esc(it.page)}">في الموقع</button><button type="button" class="edb" data-iback="1">رجوع</button></div></div></div>`;
+  el.innerHTML = h; el.hidden = false;
+}
+async function libGet() {
+  const it = LIB.sel; if (!it) return;
+  if (UPL.busy) { edToast('جارٍ تنزيل شيء آخر', 'انتظر حتى ينتهي'); return; }
+  if (!upCanUp()) { edToast('الحفظ غير متاح هنا', ''); return; }
+  const src = LIB_SRC[LIB.site], site = LIB_SITES.find((s) => s[0] === LIB.site), cr = { by: it.by || site[1], lic: it.lic || '', url: it.page, site: site[1] };
+  UPL.busy = true; upShow(it.name, 'تنزيل من ' + site[1], 0.01);
+  try {
+    const got = await src.get(it, it.pick, (n, total) => upShow(it.name, 'تنزيل ' + (total ? toAr(Math.round(n / total * 100)) + '٪ من ' + libMB(total) : libMB(n)), total ? 0.02 + 0.6 * n / total : 0.3));
+    if (got.mat) { got.mat.name = upClean(got.mat.name || it.name); const R = await gmImport(got.mat, '', cr); libClose(); gmAfterImport([R]); }
+    else {
+      const groups = got.group ? [got.group] : await upGroups(got.files);
+      if (!groups.length) throw upErr('لم أجد نموذجاً داخل الملف');
+      groups[0].name = upClean(it.name); groups[0].cr = cr;
+      const R = await upOne(groups[0], '');
+      upHide(); libClose(); edCatOpen(false); edPlace('U_' + R.mid);
+      edToast('أُضيف «' + R.n + '»', (R.src === 'cloud' ? 'محفوظ مع لعبتك' : 'محفوظ على هذا الجهاز') + (cr.lic ? ' · ' + cr.lic : ''));
+      upUsage();
+    }
+  } catch (e) {
+    console.warn('library download', e);
+    upFail(e && e.ui ? e.ui : 'تعذّر التنزيل', e && e.ui ? '' : String((e && e.message) || e).slice(0, 90));
+  } finally { UPL.busy = false; }
+}
+// a site in the app's own browser (its downloads come back here), or a new tab where there is no app
+async function libBrowse(url) {
+  const app = await libApp();
+  if (app && app.browse) { try { await fetch('/_app/browse?u=' + encodeURIComponent(url), { cache: 'no-store' }); return; } catch (_) {} }
+  try { window.open(url, '_blank', 'noopener'); } catch (_) {}
+  if (!app) edToast('يُفتح الموقع في نافذة جديدة', 'نزّل الملف ثم ارفعه من «من جهازك»');
+  else edToast('حدّث التطبيق ليُفتح الموقع داخل اللعبة', 'نزّل النسخة الجديدة من صفحة الإصدارات');
+}
+// a file downloaded in the app's browser (the app calls this): added like an upload, once the editor is open
+window.cosAppEvent = (ev) => {
+  if (!ev || ev.t !== 'dl' || typeof ev.path !== 'string') return;
+  LIB.pend.push(ev);
+  if (ED.on) libTakeDownloads();
+  else toast('وصل ملف من المتصفح', 'افتح وضع التطوير ليُضاف');
+};
+async function libTakeDownloads() {
+  if (!LIB.pend.length || UPL.busy) return;
+  const ev = LIB.pend.shift();
+  try {
+    const r = await fetch('/_lib/' + ev.path.split('/').map(encodeURIComponent).join('/'), { cache: 'no-store' });
+    if (!r.ok) throw new Error('file ' + r.status);
+    const f = new File([await r.blob()], ev.name || ev.path.split('/').pop());
+    libClose(); await upFiles([f]);
+    fetch('/_app/libdel?p=' + encodeURIComponent(ev.path)).catch(() => {});
+  } catch (e) { console.warn('browser download', e); edToast('تعذّر فتح الملف المنزّل', String(ev.name || '')); }
+  if (LIB.pend.length) setTimeout(libTakeDownloads, 400);
+}
+// the settings' «حول»: everything taken from these libraries, by whom, under which licence
+function libCredits(body, p) {
+  const rows = [];
+  for (const R of UPL.recs.values()) if (R.cr) rows.push(['نموذج', R.n, R.cr]);
+  for (const R of GMAT.recs.values()) if (R.cr) rows.push(['خامة', R.n, R.cr]);
+  if (!rows.length) return;
+  const h = document.createElement('div'); h.className = 'shead'; h.textContent = 'من مكتبات الإنترنت'; body.append(h);
+  const ul = document.createElement('ul'); ul.className = 'lb-note credits-sf';
+  for (const [what, n, cr] of rows) {
+    const li = document.createElement('li'), a = document.createElement('a'); a.href = cr.url || '#'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '«' + n + '»';
+    li.append(what + ': ', a, ' — ' + [cr.by, cr.site, cr.lic].filter(Boolean).join(' · ')); ul.append(li);
+  }
+  body.append(ul);
+  if (rows.some((r) => r[2].site === 'Poly Haven')) p(LIB_UA_NOTE + ' — polyhaven.com (CC0)');
+}
 
 </script>

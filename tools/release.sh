@@ -10,7 +10,8 @@ N=$1; MSG=${2:-"Version $1"}
 [ -n "$N" ] || { echo "usage: tools/release.sh <version> [message]"; exit 1; }
 M=$(ls src | grep -E '^[0-9]{2}_' | grep -v '^00_\|^99_' | sed 's/_.*//' | tr '\n' ' ')
 OUT=game/index.html python3 tools/build.py $M
-TRAIL="Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+TRAIL="Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01KgmatSJjc1iS132JSdsig3"
 git add -A
 git commit -m "$MSG
 

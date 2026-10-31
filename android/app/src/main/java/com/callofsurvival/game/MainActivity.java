@@ -24,8 +24,13 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -35,14 +40,18 @@ import java.util.Map;
  * (or from a downloaded update, see Updater) on the address https://appassets.androidplatform.net/, so the game keeps
  * its saves there (localStorage, IndexedDB) from one version to the next. three.js and its readers, which the page asks
  * the CDNs for, are kept in the app too, so the game also starts with no connection.
+ * For the editor's libraries the app also answers: /_app/info (what this app can do), /_net/get?u= (a site's API or file,
+ * fetched by the app: no site refuses it as a page from elsewhere), /_app/browse?u= (the app's own browser over the game),
+ * /_lib/… (what was downloaded in it) and /_app/libdel?p= (taken into the game, so deleted).
  */
 public class MainActivity extends Activity {
     static final String HOST = "appassets.androidplatform.net";
     static final String START = "https://" + HOST + "/index.html";
     static final int REQ_FILES = 41;
 
-    // the back button: the editor's catalogue closes, the editor is left, the pause menu opens and closes; at the menus the app steps aside
+    // the back button: the libraries and the editor's catalogue close, the editor is left, the pause menu opens and closes; at the menus the app steps aside
     static final String BACK_JS = "(function(){try{"
+            + "if(typeof LIB!=='undefined'&&LIB.on){libClose();return 'k';}"
             + "if(typeof ED!=='undefined'&&ED.on){var c=document.getElementById('edCat');if(c&&!c.classList.contains('gone')){edCatOpen(false);return 'k';}edLeave(false);return 'k';}"
             + "if(typeof started!=='undefined'&&started){window.dispatchEvent(new KeyboardEvent('keydown',{code:'Escape',key:'Escape',bubbles:true}));return 'k';}"
             + "}catch(e){}return 'x';})()";
@@ -51,6 +60,8 @@ public class MainActivity extends Activity {
     private WebView web;
     private ValueCallback<Uri[]> fileCb;
     Updater updater;
+    Browser browser;
+    static String UA = "CallOfSurvival/" + BuildConfig.VERSION_CODE;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -70,6 +81,7 @@ public class MainActivity extends Activity {
         updater.prepare();
         web = makeWebView();
         frame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        browser = new Browser(this, frame);
         if (updater.current() > 0) {
             web.loadUrl(START);
             updater.check();
@@ -98,13 +110,16 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // the sites' APIs ask every program to name itself (Poly Haven needs it)
+        UA = s.getUserAgentString() + " CallOfSurvival/" + BuildConfig.VERSION_CODE;
+        s.setUserAgentString(UA);
         v.setOverScrollMode(View.OVER_SCROLL_NEVER);
         v.setVerticalScrollBarEnabled(false);
         v.setHorizontalScrollBarEnabled(false);
         v.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
-                return serve(req.getUrl());
+                return serve(req.getUrl(), req.getRequestHeaders());
             }
 
             @Override
@@ -146,7 +161,7 @@ public class MainActivity extends Activity {
     }
 
     // ── what the page asks for ──
-    WebResourceResponse serve(Uri u) {
+    WebResourceResponse serve(Uri u, Map<String, String> headers) {
         String host = u.getHost();
         if (host == null) return null;
         String path = u.getPath();
@@ -154,6 +169,23 @@ public class MainActivity extends Activity {
         if (HOST.equals(host)) {
             String p = path.substring(1);
             if (p.contains("..")) return missing();
+            if (p.equals("_app/info")) return json("{\"app\":1,\"shell\":" + BuildConfig.SHELL + ",\"net\":1,\"browse\":1,\"v\":" + BuildConfig.VERSION_CODE + "}");
+            if (p.equals("_net/get")) return net(u.getQueryParameter("u"), headers);
+            if (p.equals("_app/browse")) {
+                final String to = u.getQueryParameter("u");
+                if (to == null || !(to.startsWith("https://") || to.startsWith("http://"))) return json("{\"ok\":0}");
+                runOnUiThread(() -> browser.show(to));
+                return json("{\"ok\":1}");
+            }
+            if (p.startsWith("_lib/")) {
+                File f = new File(new File(getFilesDir(), "lib"), p.substring(5));
+                try { return f.isFile() ? response(f.getName(), new FileInputStream(f)) : missing(); } catch (IOException e) { return missing(); }
+            }
+            if (p.equals("_app/libdel")) {
+                String q = u.getQueryParameter("p");
+                if (q != null && !q.contains("..")) new File(new File(getFilesDir(), "lib"), q).delete();
+                return json("{\"ok\":1}");
+            }
             InputStream in = updater.open(p);
             return in == null ? missing() : response(p, in);
         }
@@ -177,6 +209,73 @@ public class MainActivity extends Activity {
         h.put("Cache-Control", "no-cache");
         r.setResponseHeaders(h);
         return r;
+    }
+
+    static WebResourceResponse json(String body) {
+        Map<String, String> h = new HashMap<>();
+        h.put("Access-Control-Allow-Origin", "*");
+        h.put("Cache-Control", "no-store");
+        return new WebResourceResponse("application/json", "utf-8", 200, "OK", h, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /** a connection to a site, its redirects followed by hand (a sign-in token is only sent to the first site) */
+    static HttpURLConnection open(String url, String ua, String cookie, String referer, String auth) throws IOException {
+        URL at = new URL(url);
+        String host0 = at.getHost();
+        for (int hop = 0; ; hop++) {
+            HttpURLConnection c = (HttpURLConnection) at.openConnection();
+            c.setInstanceFollowRedirects(false);
+            c.setConnectTimeout(20000);
+            c.setReadTimeout(90000);
+            c.setRequestProperty("User-Agent", ua != null ? ua : UA);
+            if (cookie != null && !cookie.isEmpty() && at.getHost().equals(new URL(url).getHost())) c.setRequestProperty("Cookie", cookie);
+            if (referer != null) c.setRequestProperty("Referer", referer);
+            if (auth != null && at.getHost().equals(host0)) c.setRequestProperty("Authorization", auth);
+            int code = c.getResponseCode();
+            if (code >= 300 && code < 400 && hop < 8) {
+                String loc = c.getHeaderField("Location");
+                if (loc == null) return c;
+                c.disconnect();
+                at = new URL(at, loc);
+                if (!"https".equals(at.getProtocol()) && !"http".equals(at.getProtocol())) throw new IOException("redirect");
+                continue;
+            }
+            return c;
+        }
+    }
+
+    /** a site's API or file for the page (GET only, https only) */
+    WebResourceResponse net(String url, Map<String, String> headers) {
+        Map<String, String> h = new HashMap<>();
+        h.put("Access-Control-Allow-Origin", "*");
+        h.put("Cache-Control", "no-store");
+        if (url == null || !url.startsWith("https://")) return new WebResourceResponse("text/plain", "utf-8", 400, "Bad Request", h, new ByteArrayInputStream(new byte[0]));
+        String auth = null;
+        if (headers != null) for (Map.Entry<String, String> e : headers.entrySet()) if ("x-cos-auth".equalsIgnoreCase(e.getKey())) auth = e.getValue();
+        try {
+            HttpURLConnection c = open(url, UA, null, null, auth);
+            int code = c.getResponseCode();
+            InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
+            if (in == null) in = new ByteArrayInputStream(new byte[0]);
+            String ct = c.getContentType(), mime = "application/octet-stream", cs = null;
+            if (ct != null) {
+                String[] parts = ct.split(";");
+                mime = parts[0].trim();
+                for (String q : parts) if (q.trim().toLowerCase(Locale.ROOT).startsWith("charset=")) cs = q.trim().substring(8);
+            }
+            long len = c.getContentLengthLong();
+            if (len >= 0) h.put("X-Cos-Size", String.valueOf(len));
+            if (code < 200 || (code >= 300 && code < 400) || code > 599) code = 502;
+            String why = c.getResponseMessage();
+            return new WebResourceResponse(mime, cs, code, why == null || why.isEmpty() ? (code < 300 ? "OK" : "Error") : why, h, in);
+        } catch (Exception e) {
+            return new WebResourceResponse("text/plain", "utf-8", 502, "Bad Gateway", h, new ByteArrayInputStream(String.valueOf(e.getMessage()).getBytes(StandardCharsets.UTF_8)));
+        }
+    }
+
+    /** news for the game page (a download finished) */
+    void gameEvent(String json) {
+        if (web != null) web.evaluateJavascript("window.cosAppEvent&&window.cosAppEvent(" + json + ")", null);
     }
 
     static WebResourceResponse missing() {
@@ -283,6 +382,7 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (browser != null && browser.back()) return;
         if (web == null) {
             super.onBackPressed();
             return;

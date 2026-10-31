@@ -130,6 +130,7 @@ const SET_DEFAULT = {
   vMaster: 0.9, vMusic: 0.45, vSfx: 1, vAmb: 0.8, vVoice: 1, vChat: 1, spatial: true, subs: false,
   hudMini: true, hudVitals: true, hudCompass: true, hudKills: true, hudRes: true, hudName: true, uiScale: 1, marks: true, lang: 'ar',
   cb: 'none', shake: 1, motion: false, aimAssist: false, autoLoot: true, planeDrop: true, devTeleport: true, lobbyBg: 'hall',
+  gmRes: 0, sfTok: '',
 };
 const SET = (() => {
   let o = {}; try { o = JSON.parse(localStorage.getItem(SET_KEY) || '{}') || {}; } catch (_) {}

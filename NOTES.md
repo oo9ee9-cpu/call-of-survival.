@@ -230,3 +230,42 @@ Publish target: update artifact https://claude.ai/artifact/6gq2bVqVUv19bWBas36eY
   CallOfSurvival.apk (110 MB, signed with android/release.p12, password in the repository variable KEY_PASS). Later versions
   reach installed apps over the air: tools/release.sh <N> (files committed, version.json → that commit, pushed to main).
   See CLAUDE.md.
+
+## v19: ground materials, painting, digging, the internet's libraries (2026-10-31)
+- 45_gmat: ground materials. Records GMAT.recs {id, n, a/nm/r/ao/h/arm (file refs), gloss, dx, th, px, m (metres one picture
+  covers), cr (credit), t}: db devmats/<id> (owner) or IndexedDB 'cos-models' store 'mats' (version 2). Files are kept as they
+  came: images ≤ 19.5 MiB as image assets, bigger ones as base64 text parts ('T:' + ids), local 'L…' blobs. On the GPU: two
+  TEXTURE_2D_ARRAYs made with raw WebGL2 (texStorage3D, texSubImage3D per layer, generateMipmap) and handed to three as
+  DataTexture2DArray(version 0) via renderer.properties.get(tx).__webglTexture; colour (×AO) + roughness in A, normal (GL,
+  DX flipped) + height in A; layer size gmSize() = SET.gmRes or qsel(512, 1024, 2048, 2048/4096); arrays grow by 4 layers,
+  old layers copied on the GPU (copyTexSubImage3D from a READ framebuffer, then renderer.resetState()).
+- GP (02_world): painted ground, 0.5 m points in 64 m tiles {id (0–7 palette slot), w (0–255)}; levels l1 (2 m), l2 (8 m),
+  l3 (tile) for far chunks; gpWeights(x, z, st) bilinear. GMAT.pal: the world's 8 materials ('b:L' the game's layer L, or
+  'm:id'); GMAT.base: the game's 12 layers replaced over the whole map. Saved in the dev world as D.gm {pal, base, p: tile key
+  → base64 runs (n, id, w)}. Undo ops 'gp' (tile snapshots) and 'gb' (a base layer).
+- 03_terrain: chunk geometries carry aPw0/aPw1 (8 painted weights, Uint8 normalized) and aDig (dug depth /4 m); marks() fills
+  them only where paint or holes are (st ≤ 64 / ≤ 4). Shader: uUAlb/uUNrm, uUS (1/m per layer), uRemap[12] (the game's
+  layer → user layer), uPal[8] (100 + L for the game's layers); textureGrad with gDx/gDy (dFdx of world xz) for user layers;
+  the two strongest painted weights blended with hmix (height-led edges); dug ground shows soil (layer 5), clay (11, tinted)
+  where damp/deep, sand (7) in deserts and beaches, darker with depth. Finer chunks near holes (8 m = 25 cm) and paint (16 m).
+- Digging (02 addCrater): a stroke within 0.5 m of a hole deepens it (r = max(r, 0.7 + 0.42·d), the middle drifts 25 % to the
+  stroke): one record per hole; digWhy stops at 40 m. 
+- Editor «أرضية» tool (paint): material chip → catalogue tab «خامات الأرض» (gmCards: upload, internet, your materials, the
+  game's 12, «أرضية الخريطة كلها» = tap a layer then a material); modes ارسم/احفر/ارفع/سوِّ/امسح الرسم (edBrushStep with a
+  mode for the land), sliders for size/strength, «حجم الصورة على الأرض» (R.m) for your materials, «السحب يحرّك الدائرة» +
+  hold «طبّق هنا». The uploader sends files without a model to gmFiles (maps found by name: Color/Albedo/Diffuse,
+  NormalGL/DX, Roughness/Gloss, AO, ARM, Displacement; previews skipped).
+- 44_edup now keeps every picture as it came (GIF/BMP → PNG); upFitGpu() scales only the copy drawn on this device (cap
+  qsel(1024, 2048, 4096, 8192) ≤ MAX_TEXTURE_SIZE). Models keep R.cr (site, author, licence).
+- 46_netlib «مكتبات الإنترنت» (libOpen('mat'|'model')): ambientCG (API v3 assets + include, files ambientcg.com/get?file=
+  ID_<n>K-JPG.zip), Poly Haven (api.polyhaven.com/assets?t=textures|models, /files/<id>: Diffuse/nor_gl/Rough/AO/
+  Displacement by 1k–8k; gltf + include), Sketchfab (api.sketchfab.com/v3/search?type=models&downloadable=true, /v3/models/
+  <uid>/download with «Authorization: Token» — SET.sfTok on the device only; glb preferred, else the gltf zip), free3d (site
+  in the app's browser). libFetch goes through /_net/get?u= when /_app/info says the app can (Android shell 2), else plain
+  fetch (sites without CORS refuse). Credits of everything imported: settings → حول (libCredits).
+- Android shell 2: /_app/info, /_net/get (GET https, X-Cos-Auth → Authorization on the first host only, redirects followed by
+  hand, X-Cos-Size), /_app/browse (Browser.java: a WebView over the game; downloads → files/lib/dl → cosAppEvent({t:'dl'})
+  → the editor imports /_lib/dl/<name>, then /_app/libdel), UA + " CallOfSurvival/<v>", back button closes the library and
+  steps back in the browser. Updater offers CallOfSurvival-lite.apk. version.json stays "shell": 1 (the page feature-detects).
+- Tests: tools/edt/g1.json (paint, dig/raise with material, undo, catalogue), g2.json (shovel hole, material zip, paint with
+  it, map-wide layer, save/reload), g3.json with --netmock (stand-ins for the three sites and the app's /_net, /_lib).

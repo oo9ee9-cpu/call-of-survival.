@@ -130,7 +130,7 @@ function applySave(core, world) {
   if (world) {
     builtUid = Math.max(builtUid, world.uid || 1);
     for (const [x, z, r, d] of world.dig || []) addCrater(x, z, r, d, true);
-    if ((world.dig || []).length) { for (const [x, z, r] of world.dig) { TERRAIN.dirtyArea(x, z, r + 2); GBLOCK.add(Math.floor(x / 8) * 100000 + Math.floor(z / 8)); } }
+    if ((world.dig || []).length) { for (const [x, z, r] of world.dig) { TERRAIN.dirtyArea(x, z, r + 2); for (let i = Math.floor((x - r) / 8); i <= Math.floor((x + r) / 8); i++) for (let j = Math.floor((z - r) / 8); j <= Math.floor((z + r) / 8); j++) GBLOCK.add(i * 100000 + j); } }
     for (const [k, u] of world.felled || []) FELLED.set(k, u);
     for (const [k, u] of world.rocks || []) RBROKEN.set(k, u);
     for (const [x, z, r, u] of world.cut || []) { CROPCUT.push({ x, z, r, until: u }); GBLOCK.add(Math.floor(x / 8) * 100000 + Math.floor(z / 8)); }

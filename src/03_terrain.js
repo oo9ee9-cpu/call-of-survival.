@@ -4,7 +4,11 @@ const TEXA = { alb: null, nrm: null, maps: null, ids: null, ready: false };
 const TERR_U = {
   uAlb: { value: null }, uNrm: { value: null }, uMaps: { value: null }, uIds: { value: null }, uDetail: { value: DETAIL },
   uWet: WET_U, uSnow: { value: 0 }, uTime: { value: 0 }, uRain: { value: 0 }, uTreeFar: { value: QUALITY.treeFar }, uDebug: { value: 0 }, uNight: { value: 0 },
+  // the ground's own materials (45_gmat): layers of the owner's pictures, each one's size in the world, the game's layers they
+  // replace everywhere (-1: none) and the eight painted with the editor's brush (100 + L: one of the game's own layers)
+  uUAlb: { value: null }, uUNrm: { value: null }, uUS: { value: new Float32Array(20).fill(0.5) }, uRemap: { value: new Float32Array(12).fill(-1) }, uPal: { value: new Float32Array(8).fill(-1) },
 };
+{ const e = () => { const t = new THREE.DataTexture2DArray(new Uint8Array([128, 128, 128, 230]), 1, 1, 1); t.needsUpdate = true; return t; }; TERR_U.uUAlb.value = e(); TERR_U.uUNrm.value = e(); }
 const TERRAIN_MAT = new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 });
 ENV_HOOKS.push((env) => { TERR_U.uNight.value = env.night; });
 TERRAIN_MAT.customProgramCacheKey = () => 'terrain5-' + QUALITY.tier + (TERR_OPT.vk ? 'v' : '') + (TERR_OPT.far ? 'f' : '');
@@ -17,11 +21,13 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
   sh.vertexShader = VK + sh.vertexShader
     .replace('#include <common>', `#include <common>
       varying vec3 vW; varying vec3 vNW;
+      attribute vec4 aPw0; attribute vec4 aPw1; attribute float aDig; varying vec4 vPw0; varying vec4 vPw1; varying float vDig;
       #ifdef TERR_VK
         uniform sampler2D uMaps, uIds; varying vec3 vMp; varying vec4 vK0, vK1, vK2; varying vec2 vK3;
       #endif`)
     .replace('#include <fog_vertex>', `#include <fog_vertex>
       vW = (modelMatrix * vec4(transformed, 1.0)).xyz; vNW = normalize(mat3(modelMatrix) * objectNormal);
+      vPw0 = aPw0; vPw1 = aPw1; vDig = aDig;
       #ifdef TERR_VK
       {
         vMp = textureLod(uMaps, ${GL_MAPUV('vW.xz')}, 0.0).rgb;
@@ -47,7 +53,23 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
         varying vec3 vMp; varying vec4 vK0, vK1, vK2; varying vec2 vK3;
       #endif
       vec3 tNrm; float tRough; float tWetK; vec3 tGlow;
+      uniform sampler2DArray uUAlb, uUNrm; uniform float uUS[20]; uniform float uRemap[12]; uniform float uPal[8];
+      varying vec4 vPw0; varying vec4 vPw1; varying float vDig;
+      vec2 gDx, gDy;           // how the world's x and z change from one pixel to the next (set first in main)
+      const mat2 ROT = mat2(0.8, -0.6, 0.6, 0.8);
+      // one of the owner's materials: its own size in the world; far off a second, turned and larger copy hides the repeats
+      vec4 uAlbS(float s, float far){
+        float k = uUS[int(s + 0.5)];
+        vec4 a = textureGrad(uUAlb, vec3(vW.xz * k, s), gDx * k, gDy * k);
+        #ifndef TERRAIN_LQ
+        if (far > 0.02) { float k2 = k * 0.29; vec4 b = textureGrad(uUAlb, vec3(ROT * vW.xz * k2 + 0.37, s), ROT * gDx * k2, ROT * gDy * k2); a = mix(a, b, 0.5 * far); }
+        #endif
+        return a;
+      }
+      vec3 uNrmS(float s){ float k = uUS[int(s + 0.5)]; return textureGrad(uUNrm, vec3(vW.xz * k, s), gDx * k, gDy * k).xyz * 2.0 - 1.0; }
       vec4 layerA(float L, vec2 uvA, vec2 uvB, float far){
+        float rm = uRemap[int(L + 0.5)];
+        if (rm > 99.5) L = rm - 100.0; else if (rm > -0.5) return uAlbS(rm, far);    // another of the game's grounds, or one of yours
         #ifdef TERR_FAR
           if (far > 0.995) return texture(uAlb, vec3(uvB, L));
         #endif
@@ -58,6 +80,8 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
         return a;
       }
       vec3 layerN(float L, vec2 uvA, vec2 uvB, float far){
+        float rm = uRemap[int(L + 0.5)];
+        if (rm > 99.5) L = rm - 100.0; else if (rm > -0.5) return uNrmS(rm);
         vec3 a = texture(uNrm, vec3(uvA, L)).xyz;
         #ifdef TERRAIN_HQ
           vec3 b = texture(uNrm, vec3(uvB, L)).xyz; a = mix(a, b, 0.35 + 0.5 * far);
@@ -69,6 +93,10 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       float vnoiseG(vec2 p){ vec2 i = floor(p), f = p - i; vec2 u = f * f * (3.0 - 2.0 * f); ivec2 c = ivec2(i);
         float a = ihash(c), b = ihash(c + ivec2(1, 0)), cc = ihash(c + ivec2(0, 1)), d = ihash(c + ivec2(1, 1));
         return a + (b - a) * u.x + (cc - a) * u.y + (a - b - cc + d) * u.x * u.y; }
+      vec4 palA(int i, vec2 uvA, vec2 uvB, float far){ float v = uPal[i]; if (v > 99.5) return vec4(layerA(v - 100.0, uvA, uvB, far).rgb, -1.0); return uAlbS(max(v, 0.0), far); }
+      vec3 palN(int i, vec2 uvA, vec2 uvB, float far){ float v = uPal[i]; if (v > 99.5) return layerN(v - 100.0, uvA, uvB, far); return uNrmS(max(v, 0.0)); }
+      // two materials meeting: the higher (brighter) one shows first along the edge, like stones through sand
+      float hmix(float t, float l0, float l1){ return clamp((t - 0.5) * 2.6 + 0.5 + (l1 - l0) * t * (1.0 - t) * 3.2, 0.0, 1.0); }
       void top3(inout float w[12], out ivec3 id, out vec3 wt){
         id = ivec3(0); wt = vec3(0.0);
         for (int i = 0; i < 12; i++) {
@@ -80,6 +108,7 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       }`)
     .replace('#include <map_fragment>', `
       vec2 muv = ${GL_MAPUV('vW.xz')};
+      gDx = dFdx(vW.xz); gDy = dFdy(vW.xz);
       #ifdef TERR_VK
         vec3 mp = vMp;
       #else
@@ -156,19 +185,44 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       // rock gets triplanar on cliffs
       if (id.x == 8 && slope > 0.35) {
         vec3 bw = pow(abs(Ng), vec3(4.0)); bw /= bw.x + bw.y + bw.z;
-        a0 = texture(uAlb, vec3(vW.zy * 0.16, 8.0)) * bw.x + texture(uAlb, vec3(vW.xz * 0.16, 8.0)) * bw.y + texture(uAlb, vec3(vW.xy * 0.16, 8.0)) * bw.z;
+        if (uRemap[8] < -0.5 || uRemap[8] > 99.5) { float RL = uRemap[8] > 99.5 ? uRemap[8] - 100.0 : 8.0; a0 = texture(uAlb, vec3(vW.zy * 0.16, RL)) * bw.x + texture(uAlb, vec3(vW.xz * 0.16, RL)) * bw.y + texture(uAlb, vec3(vW.xy * 0.16, RL)) * bw.z; }
       }
       // height-aware blend: the brighter (higher) texel wins at the edges
       vec3 hb = wt * (vec3(dot(a0.rgb, vec3(0.33)), dot(a1.rgb, vec3(0.33)), dot(a2.rgb, vec3(0.33))) + 0.25);
       hb = pow(max(hb, vec3(0.0001)), vec3(3.0)); hb /= (hb.x + hb.y + hb.z);
       vec3 alb = a0.rgb * hb.x + a1.rgb * hb.y + a2.rgb * hb.z;
+      // painted in the editor: the two strongest of the eight weights on the vertices
+      float pw[8]; pw[0] = vPw0.x; pw[1] = vPw0.y; pw[2] = vPw0.z; pw[3] = vPw0.w; pw[4] = vPw1.x; pw[5] = vPw1.y; pw[6] = vPw1.z; pw[7] = vPw1.w;
+      int p1 = 0, p2 = 0; float q1 = 0.0, q2 = 0.0;
+      for (int i = 0; i < 8; i++) { float v = pw[i]; if (v > q1) { q2 = q1; p2 = p1; q1 = v; p1 = i; } else if (v > q2) { q2 = v; p2 = i; } }
+      float paintK = 0.0, pT = 0.0, pRough = -1.0;
+      if (q1 > 0.004) {
+        vec4 c1 = palA(p1, uvA, uvB, far), c2 = c1;
+        if (q2 > 0.004) { c2 = palA(p2, uvA, uvB, far); pT = hmix(q2 / (q1 + q2), dot(c1.rgb, vec3(0.33)), dot(c2.rgb, vec3(0.33))); }
+        vec4 pc = mix(c1, c2, pT);
+        float P = clamp(q1 + q2, 0.0, 1.0);
+        paintK = P > 0.985 ? 1.0 : hmix(P, dot(alb, vec3(0.33)), dot(pc.rgb, vec3(0.33))) * smoothstep(0.0, 0.2, P);
+        alb = mix(alb, pc.rgb, paintK);
+        pRough = (c1.a < 0.0 || c2.a < 0.0) ? -1.0 : pc.a;
+      }
+      // dug ground: fresh earth, clay where it is damp, sand in the desert; darker the deeper it goes
+      float soilK = 0.0;
+      if (vDig > 0.003) {
+        soilK = smoothstep(0.003, 0.04, vDig);
+        float clayK = clamp(smoothstep(0.42, 0.75, moist) * 0.6 + fk * 0.3 + smoothstep(0.06, 0.5, vDig) * 0.55, 0.0, 1.0) * (1.0 - desert);
+        vec3 soil = mix(layerA(5.0, uvA, uvB, far).rgb, layerA(11.0, uvA, uvB, far).rgb * vec3(1.18, 0.9, 0.72), clayK);
+        float sandK = clamp(max(desert, smoothstep(0.3, 0.7, kBeach)), 0.0, 1.0);
+        if (sandK > 0.01) soil = mix(soil, layerA(7.0, uvA, uvB, far).rgb, sandK);
+        alb = mix(alb, soil * mix(1.0, 0.68, smoothstep(0.04, 0.6, vDig)), soilK);
+      }
+      float bare = max(paintK, soilK);
       alb = pow(alb, vec3(2.2));
       // far fields read as the colour of their crop
       if (fieldK > 0.01 && crop > 0.0) {
         vec3 cc = crop == 1.0 || crop == 8.0 ? vec3(0.3, 0.2, 0.065) : crop == 12.0 ? vec3(0.32, 0.25, 0.1) : crop == 2.0 || crop == 9.0 ? vec3(0.045, 0.095, 0.02) : crop == 3.0 ? vec3(0.2, 0.17, 0.02) : crop == 4.0 ? vec3(0.17, 0.19, 0.13) : crop == 10.0 ? vec3(0.07, 0.12, 0.025) : crop == 7.0 ? vec3(0.075, 0.048, 0.03) : vec3(0.05, 0.1, 0.022);
         cc *= 0.78 + 0.44 * n1;
         float rows = 0.5 + 0.5 * sin((mod(crop, 2.0) < 0.5 ? vW.x : vW.z) * 4.2);
-        alb = mix(alb, cc * (0.8 + 0.3 * rows), (smoothstep(8.0, 70.0, dist) * 0.85 + 0.1) * fieldK * (1.0 - clamp(sk, 0.0, 1.0) * 0.93));   // under snow only faint furrows show
+        alb = mix(alb, cc * (0.8 + 0.3 * rows), (smoothstep(8.0, 70.0, dist) * 0.85 + 0.1) * fieldK * (1.0 - clamp(sk, 0.0, 1.0) * 0.93) * (1.0 - bare));   // under snow only faint furrows show
       }
       alb *= mix(0.74, 1.16, n1) * mix(0.88, 1.08, n2);
       // the volcano: dark ash on the flanks, lava in the crater and the flows (a black crust, glowing cracks, molten pools)
@@ -193,12 +247,12 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       // beyond the drawn road ribbons the roads stay visible as dark asphalt lines
       alb = mix(alb, vec3(0.04, 0.042, 0.046), smoothstep(${(ROAD_FAR * 0.8).toFixed(1)}, ${(ROAD_FAR * 0.95).toFixed(1)}, dist) * smoothstep(0.35, 0.75, kRoad) * 0.9);
       // meadows are never one green: yellowed and darker patches at every scale
-      alb = mix(alb, alb * vec3(1.18, 1.02, 0.66), smoothstep(0.45, 0.8, mac.g) * 0.55 * (1.0 - desert));
-      alb = mix(alb, alb * vec3(0.7, 0.8, 0.72), smoothstep(0.55, 0.85, mac2.r) * 0.5 * (1.0 - desert));
+      alb = mix(alb, alb * vec3(1.18, 1.02, 0.66), smoothstep(0.45, 0.8, mac.g) * 0.55 * (1.0 - desert) * (1.0 - bare));
+      alb = mix(alb, alb * vec3(0.7, 0.8, 0.72), smoothstep(0.55, 0.85, mac2.r) * 0.5 * (1.0 - desert) * (1.0 - bare));
       // wildflower fields: from afar their colour lies on the ground (near you the flowers themselves stand in the grass)
       if (dist > 6.0 && (biome == 11.0 || biome == 6.0 || biome == 2.0)) {
         float fpk = smoothstep(0.66, 0.78, vnoiseG(vW.xz * 0.011 + vec2(7.7, -3.1)) + (n2 - 0.5) * 0.08) * (1.0 - smoothstep(0.25, 0.4, fdens)) * smoothstep(0.25, 0.35, moist)
-          * (1.0 - townK) * (1.0 - fieldK) * (1.0 - kRoad) * (1.0 - desert) * (1.0 - winter);
+          * (1.0 - townK) * (1.0 - fieldK) * (1.0 - kRoad) * (1.0 - desert) * (1.0 - winter) * (1.0 - bare);
         if (fpk > 0.001) {
           float q = vnoiseG(vW.xz * 0.0045 + vec2(1.3, 9.1));
           vec3 fc = q < 0.25 ? vec3(0.3, 0.05, 0.03) : q < 0.45 ? vec3(0.16, 0.11, 0.24) : q < 0.65 ? vec3(0.36, 0.38, 0.3) : q < 0.82 ? vec3(0.34, 0.3, 0.05) : vec3(0.22, 0.18, 0.12);
@@ -216,6 +270,8 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       diffuseColor.rgb = alb;
       if (uDebug > 0.5) { int q = id.x; diffuseColor.rgb = q == 0 ? vec3(0.1, 0.5, 0.1) : q == 1 ? vec3(0.0, 0.8, 0.3) : q == 2 ? vec3(0.6, 0.6, 0.1) : q == 3 ? vec3(0.1, 0.25, 0.05) : q == 4 ? vec3(0.2, 0.1, 0.3) : q == 5 ? vec3(0.4, 0.2, 0.05) : q == 6 ? vec3(0.9, 0.4, 0.1) : q == 7 ? vec3(1.0, 0.9, 0.2) : q == 8 ? vec3(0.4, 0.4, 0.45) : q == 9 ? vec3(0.1, 0.1, 0.9) : q == 10 ? vec3(1.0, 1.0, 1.0) : vec3(0.9, 0.0, 0.9); diffuseColor.rgb = pow(diffuseColor.rgb, vec3(2.2)); }
       tRough = mix(0.97, 0.86, w[8] > 1.0 ? 1.0 : 0.0);
+      if (pRough >= 0.0) tRough = mix(tRough, clamp(pRough, 0.05, 1.0), paintK);
+      tRough = mix(tRough, 0.95, soilK);
       tRough = mix(tRough, 0.5, tWetK); tRough = mix(tRough, 0.1, clamp(puddle * 2.0, 0.0, 1.0));
       if (id.x == 10) tRough = 0.62;
       tRough = mix(tRough, 0.32, iceK * (id.x == 10 ? 0.3 : 1.0));      // frosted, not a mirror: a glassy sheet only shows the sky
@@ -226,6 +282,8 @@ TERRAIN_MAT.onBeforeCompile = (sh) => {
       #endif
         vec3 tn = layerN(float(id.x), uvA, uvB, far) * hb.x + layerN(float(id.y), uvA, uvB, far) * hb.y;
         if (wt.z > 0.02) tn += layerN(float(id.z), uvA, uvB, far) * hb.z;
+        if (paintK > 0.0) { vec3 pn = palN(p1, uvA, uvB, far); if (pT > 0.0) pn = mix(pn, palN(p2, uvA, uvB, far), pT); tn = mix(tn, pn, paintK); }
+        if (soilK > 0.0) tn = mix(tn, layerN(5.0, uvA, uvB, far), soilK);
         tn.xy *= (1.0 - far * 0.6) * (1.0 - clamp(puddle * 2.5, 0.0, 1.0)) * (1.0 - iceK * 0.55);
         // rain rings on the puddles
         if (uRain > 0.05 && puddle > 0.05 && dist < 40.0) {
@@ -307,6 +365,9 @@ const TERRAIN = (() => {
       geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NV * 3), 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(NV * 3), 3));
+      geo.setAttribute('aPw0', new THREE.BufferAttribute(new Uint8Array(NV * 4), 4, true));
+      geo.setAttribute('aPw1', new THREE.BufferAttribute(new Uint8Array(NV * 4), 4, true));
+      geo.setAttribute('aDig', new THREE.BufferAttribute(new Uint8Array(NV), 1, true));
       geo.setIndex(INDEX);
     }
     const P = geo.attributes.position.array, Nn = geo.attributes.normal.array;
@@ -325,6 +386,7 @@ const TERRAIN = (() => {
       Nn[s * 3] = Nn[a * 3]; Nn[s * 3 + 1] = Nn[a * 3 + 1]; Nn[s * 3 + 2] = Nn[a * 3 + 2];
     }
     geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true;
+    marks(geo, x0, z0, size, st);
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(node.x, (hmin + hmax) / 2, node.z), Math.hypot(size * 0.71, (hmax - hmin) / 2 + drop));
     let mesh = node.mesh;
     // the ground is drawn after everything standing on it: wherever grass, trees, walls or people cover it, its costly pixels are skipped
@@ -334,6 +396,34 @@ const TERRAIN = (() => {
     node.hmin = hmin; node.hmax = hmax;
     return mesh;
   }
+  const W8 = new Float32Array(8);
+  function marks(geo, x0, z0, size, st) {
+    const hasP = GP.n > 0 && st <= 64 && gpAny(x0, z0, size), hasD = DIG.list.length > 0 && st <= 4 && digAny(x0, z0, size);
+    if (!hasP && !hasD && !geo.userData.pd) return;
+    const A0 = geo.attributes.aPw0, A1 = geo.attributes.aPw1, AD = geo.attributes.aDig, a0 = A0.array, a1 = A1.array, ad = AD.array;
+    a0.fill(0); a1.fill(0); ad.fill(0);
+    for (let j = 0; j < VN; j++) for (let i = 0; i < VN; i++) {
+      const k = j * VN + i, x = x0 + i * st, z = z0 + j * st;
+      if (hasP && gpWeights(x, z, st, W8)) for (let q = 0; q < 4; q++) { a0[k * 4 + q] = Math.min(255, W8[q] * 255 + 0.5); a1[k * 4 + q] = Math.min(255, W8[q + 4] * 255 + 0.5); }
+      if (hasD) { const d = -digOffset(x, z); if (d > 0.005) ad[k] = Math.min(255, d * 63.75 + 1); }     // 4 m and deeper: 255
+    }
+    for (let k = 0; k < ring.length; k++) {
+      const a = ring[k], sk = VN * VN + k; ad[sk] = ad[a];
+      for (let q = 0; q < 4; q++) { a0[sk * 4 + q] = a0[a * 4 + q]; a1[sk * 4 + q] = a1[a * 4 + q]; }
+    }
+    A0.needsUpdate = A1.needsUpdate = AD.needsUpdate = true;
+    geo.userData.pd = hasP || hasD;
+  }
+  // holes and painted ground get a finer mesh near you: 8 m chunks (25 cm) where something was dug, 16 m (50 cm) where painted
+  let fineVer = -1, fineDig = new Set();
+  function fineMin(x, z) {
+    if (fineVer !== DIG.version) {
+      fineVer = DIG.version; fineDig = new Set();
+      for (const c of DIG.list) for (let i = Math.floor((c.x - c.r) / 64); i <= Math.floor((c.x + c.r) / 64); i++) for (let j = Math.floor((c.z - c.r) / 64); j <= Math.floor((c.z + c.r) / 64); j++) fineDig.add(gpKey(i, j));
+    }
+    const k = gpKey(Math.floor(x / 64), Math.floor(z / 64));
+    return fineDig.has(k) ? 8 : GP.tiles.has(k) ? 16 : QUALITY.terrainMin;
+  }
   function wanted(cx, cy, cz) {
     const out = [];
     const visit = (x, z, size) => {
@@ -341,7 +431,7 @@ const TERRAIN = (() => {
       const dx = Math.max(0, Math.abs(cx - x) - size / 2), dz = Math.max(0, Math.abs(cz - z) - size / 2);
       const d = Math.hypot(dx, dz, Math.max(0, cy - 120) * 0.5);
       if (d > camera.far + size) return;
-      if (size > QUALITY.terrainMin && d < size * QUALITY.terrainK) { const q = size / 4; visit(x - q, z - q, size / 2); visit(x + q, z - q, size / 2); visit(x - q, z + q, size / 2); visit(x + q, z + q, size / 2); return; }
+      if (size > (size <= 64 && (DIG.list.length || GP.n) ? fineMin(x, z) : QUALITY.terrainMin) && d < size * QUALITY.terrainK) { const q = size / 4; visit(x - q, z - q, size / 2); visit(x + q, z - q, size / 2); visit(x - q, z + q, size / 2); visit(x + q, z + q, size / 2); return; }
       out.push({ key: size + ':' + x + ':' + z, x, z, size, d });
     };
     visit(0, 0, TERRAIN_ROOT);
@@ -395,5 +485,6 @@ const TERRAIN = (() => {
       }
     },
     busy() { return queue.length; },
+    nodes() { return [...live.values()]; },
   };
 })();

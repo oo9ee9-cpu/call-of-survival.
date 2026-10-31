@@ -24,7 +24,7 @@ function edTerrUnpack(obj) {
   EDT.ver++;
 }
 function edSerialize() {
-  return { v: 1, t: Date.now(), map: MAP_ID, nid: ED.nid, objs: ED.objs.map(edSnap).concat(ED.orphans || []), er: ED.er.map((z) => [r2(z.x), r2(z.z), r2(z.r), z.m]), ter: edTerrPack() };
+  return { v: 1, t: Date.now(), map: MAP_ID, nid: ED.nid, objs: ED.objs.map(edSnap).concat(ED.orphans || []), er: ED.er.map((z) => [r2(z.x), r2(z.z), r2(z.r), z.m]), ter: edTerrPack(), gm: gpPack() };
 }
 async function edPack(D) { const json = JSON.stringify(D), z = await packStr(json); return z ? { t: D.t, z } : { t: D.t, json }; }
 async function edUnpack(body) {
@@ -37,12 +37,14 @@ function edClearAll() {
   ED.orphans = [];
   for (const zn of ED.er) { zoneDel(zn); edTouch(zn.x, zn.z, zn.r, false, zn.m); } ED.er.length = 0;
   for (const k of [...EDT.ch.keys()]) edTerrSet(k, null);
+  gpClear();
   ED.undo.length = 0; ED.redo.length = 0;
 }
 // a saved world put back: the land first (brush, shapes, lakes, plots and buildings), then what stands on it
 function edApplyData(D) {
   if (!D || D.v !== 1) return false;
   edTerrUnpack(D.ter);
+  try { gpUnpack(D.gm); } catch (e) { console.warn('editor: ground paint', e); }
   for (const [x, z, r, m] of D.er || []) { const zn = zoneAdd({ t: 'c', x, z, r, m }); ED.er.push(zn); edTouch(x, z, r, false, m); }
   const pri = (s) => { const d = EDK[s.k], t = d.type; return t === 'shape' ? 0 : t === 'lake' ? 1 : t === 'land' || t === 'house' || t === 'villa' || d.pre === 'plot' ? 2 : t === 'mesh' ? 3 : 4; };
   const recs = (D.objs || []).filter((s) => s && EDK[s.k]).sort((a, b) => pri(a) - pri(b));
@@ -65,6 +67,7 @@ async function edFetch() {
   EDIO.db = db;
   if (user) { try { EDIO.owner = !!(await withTimeout(user.isOwner(), 3000)); } catch (_) {} }
   try { await withTimeout(upInit(), 12000); } catch (e) { console.warn('models', e); }      // the uploaded models, before the world that uses them
+  try { await withTimeout(gmInit(), 8000); } catch (e) { console.warn('ground materials', e); }
   let shared = null;
   if (db) {
     try {

@@ -1,0 +1,13 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "'lobby'"},
+ {"js": "begin(true); let best=null; for (let r=30; r<2500 && !best; r+=30) for (let a=0;a<6.28;a+=0.25){ const x=player.pos.x+Math.cos(a)*r, z=player.pos.z+Math.sin(a)*r; if (inPlay(x,z) && classAt(x,z)===0 && roadDist(x,z)>12 && slopeAt(x,z)<0.12 && terrainAt(x,z)>waterAt(x,z)+1.5 && !buildingAt(x,z,terrainAt(x,z)+1)) { best=[x,z]; break; } } player.pos.set(best[0], terrainAt(best[0],best[1]), best[1]); player.vel.set(0,0,0); window.__spot=best; JSON.stringify({best, b: biomeAt(best[0],best[1])})", "frames": 30},
+ {"js": "const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw); window.__dx=player.pos.x+fx*1.25; window.__dz=player.pos.z+fz*1.25; let n=0, why=''; for(let i=0;i<22;i++){ player.stamina=100; why=digWhy(window.__dx, window.__dz); if(why) break; groundWork('shovel'); n++; } JSON.stringify({n, why, depth:-digOffset(window.__dx, window.__dz), craters:DIG.list.length, c:DIG.list[0]})", "frames": 20},
+ {"js": "player.pos.set(window.__dx-5, terrainAt(window.__dx-5, window.__dz), window.__dz); edEnter(); edTool('sel'); EDC.x=window.__dx; EDC.z=window.__dz; EDC.tdist=EDC.dist=13; EDC.tpitch=EDC.pitch=0.62; EDC.tyaw=EDC.yaw=0.6; 1", "frames": 40, "shot": "a_hole"},
+ {"js": "(async()=>{ const b=await (await fetch('/shots/TestCobbles_1K-JPG.zip')).blob(); const d=await gmFiles([new File([b],'TestCobbles_1K-JPG.zip')], true); return JSON.stringify({n:d&&d.length, R:d&&d[0], recs:GMAT.recs.size}); })()", "frames": 4},
+ {"js": "const R=[...GMAT.recs.values()].pop(); GMAT.cur='m:'+R.id; edTool('paint'); GMAT.mode='p'; ED.br=6; ED.bk=1; const x=window.__dx+9, z=window.__dz-3; gmBrushStart({x,z}); for(let i=0;i<16;i++){ EDB.x=x+Math.cos(i*0.5)*3; EDB.z=z+i*0.5; gmBrushStep(0.12);} gmBrushEnd(); EDC.x=x; EDC.z=z+3; EDC.tdist=EDC.dist=16; EDC.tpitch=EDC.pitch=0.75; JSON.stringify({pal:GMAT.pal, arr: GMAT.arr && {S:GMAT.arr.S, cap:GMAT.arr.cap, ids:GMAT.arr.ids}, u:Array.from(TERR_U.uPal.value)})", "frames": 30, "wait": 2},
+ {"js": "JSON.stringify({arr: GMAT.arr && {S:GMAT.arr.S, ids:GMAT.arr.ids}, u:Array.from(TERR_U.uPal.value), busy:GMAT.busy})", "frames": 20, "shot": "b_cobbles"},
+ {"js": "GMAT.pickL=0; gmCardTap(GMAT.cur); JSON.stringify({base:GMAT.base, rm:Array.from(TERR_U.uRemap.value)})", "frames": 30, "shot": "c_base"},
+ {"js": "edUndo(false); edSave(); 1", "frames": 10},
+ {"js": "JSON.stringify({saved: !!localStorage.getItem(ED_LS), base:GMAT.base})", "reload": true, "frames": 1},
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "JSON.stringify({gp:GP.n, pal:GMAT.pal, recs:GMAT.recs.size})"}
+]

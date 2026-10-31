@@ -1,0 +1,23 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "'lobby'"},
+ {"js": "begin(true); edEnter(); libOpen('mat'); 1", "frames": 12},
+ {"until": "LIB.items.length>0 || /تعذّر|لا /.test($('libGrid').textContent)", "timeout": 60, "js": "JSON.stringify({n:LIB.items.length, it:LIB.items[0], app:LIB.app})", "frames": 6, "shot": "a_acg"},
+ {"js": "libItem(0); 1", "frames": 6, "shot": "b_item"},
+ {"js": "libGet(); 1", "frames": 4},
+ {"until": "!UPL.busy", "timeout": 120, "js": "JSON.stringify({recs:[...GMAT.recs.values()].map(R=>({n:R.n,m:R.m,cr:R.cr,a:!!R.a,nm:!!R.nm,r:!!R.r})), cur:GMAT.cur, up:$('edUp')&&$('edUp').textContent})", "frames": 8, "shot": "c_added"},
+ {"js": "edCatOpen(false); libOpen('mat'); libSite('phm'); 1", "frames": 4},
+ {"until": "LIB.items.length>0 || /تعذّر/.test($('libGrid').textContent)", "timeout": 60, "js": "libItem(0); 1", "frames": 4},
+ {"until": "LIB.sel && LIB.sel.infoDone", "timeout": 60, "js": "JSON.stringify({res:LIB.sel.res, pick:LIB.sel.pick})", "frames": 4, "shot": "d_ph"},
+ {"js": "libGet(); 1", "frames": 4},
+ {"until": "!UPL.busy", "timeout": 120, "js": "JSON.stringify({recs:[...GMAT.recs.values()].map(R=>({n:R.n,m:R.m,cr:R.cr&&R.cr.site}))})", "frames": 4},
+ {"js": "edCatOpen(false); libOpen('model'); libSite('sf'); 1", "frames": 4},
+ {"until": "LIB.items.length>0 || /تعذّر/.test($('libGrid').textContent)", "timeout": 60, "js": "libItem(0); 1", "frames": 6, "shot": "e_sf"},
+ {"js": "SET.sfTok=''; libGet(); 1", "frames": 4},
+ {"until": "!UPL.busy", "timeout": 60, "js": "JSON.stringify({msg:$('edUp').textContent})", "frames": 4, "shot": "f_notoken"},
+ {"js": "$('edUp').hidden=true; SET.sfTok='secret-token'; libGet(); 1", "frames": 4},
+ {"until": "!UPL.busy", "timeout": 120, "js": "JSON.stringify({models:[...UPL.recs.values()].map(R=>({n:R.n,cr:R.cr})), sel:ED.sel&&ED.sel.k})", "frames": 20, "shot": "g_placed"},
+ {"js": "libOpen('model'); libSite('f3d'); 1", "frames": 6, "shot": "h_f3d"},
+ {"js": "libClose(); window.cosAppEvent({t:'dl', path:'dl/house.glb', name:'house.glb'}); 1", "frames": 4},
+ {"until": "!UPL.busy && !LIB.pend.length", "timeout": 120, "js": "JSON.stringify({models:[...UPL.recs.values()].map(R=>R.n)})", "frames": 10, "shot": "i_fromweb"},
+ {"js": "edLeave(false); openSettings('about'); 1", "frames": 6, "shot": "j_credits"}
+]

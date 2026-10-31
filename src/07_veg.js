@@ -496,7 +496,7 @@ function grassTile(ti, tj) {
   const hAt = (x, z) => { const fx = (x - x0) / 2, fz = (z - z0) / 2, i = Math.min(3, fx | 0), j = Math.min(3, fz | 0), u = fx - i, v = fz - j, k = j * 5 + i; return (HG[k] * (1 - u) + HG[k + 1] * u) * (1 - v) + (HG[k + 5] * (1 - u) + HG[k + 6] * u) * v; };
   const slp = (x, z) => { const fx = (x - x0) / 2, fz = (z - z0) / 2, i = Math.min(3, fx | 0), j = Math.min(3, fz | 0), k = j * 5 + i; return Math.hypot(HG[k + 1] - HG[k], HG[k + 5] - HG[k]) / 2; };
   const out = [];
-  const crop = cropAt(x0 + 4, z0 + 4), cls = classAt(x0 + 4, z0 + 4), blocked = GBLOCK.has(ti * 100000 + tj);
+  const crop = cropAt(x0 + 4, z0 + 4), cls = classAt(x0 + 4, z0 + 4), blocked = GBLOCK.has(ti * 100000 + tj) || (GP.n > 0 && GP.tiles.has(gpKey(Math.floor(x0 / 64), Math.floor(z0 / 64))));
   const painted = ED_HOOK.grass ? ED_HOOK.grass : null;          // grass and flowers the world editor painted (they grow anywhere dry)
   if (cls === 1 && crop && !(painted && painted(x0 + 4, z0 + 4))) {
     // crops in rows, every row the same kind; the field's own rows run along x or z

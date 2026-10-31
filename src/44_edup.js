@@ -1,10 +1,11 @@
 /* ═════════ وضع التطوير (4/4): your own models, straight from the phone. A .glb, a .gltf with its files, a Sketchfab .zip, an
-   .obj (with its .mtl and pictures) or an .fbx is read here in the page: its pictures made lighter (WebP or JPEG, at most
-   2048 px, the shapes untouched), the whole packed into one glTF and kept with the game (the artifact's own storage; on this
-   device when the page runs on its own). It joins the catalogue under «من جهازك» and stands in the world like everything
+   .obj (with its .mtl and pictures) or an .fbx is read here in the page: its pictures and shapes kept exactly as they came
+   (only GIF or BMP pictures written again as PNG, every pixel kept), packed into one glTF and kept with the game (the
+   artifact's own storage; on this device when the page runs on its own). A device whose graphics cannot hold a picture that
+   big draws it at the size it can, from the whole file each time (a strong computer draws 8K). It joins the catalogue under «من جهازك» and stands in the world like everything
    else: moved, turned, sized, animated, solid as a box or exactly (walls you cannot pass, floors and stairs you walk on) ═════════ */
 const UPL = { assets: null, idbOK: false, idb: null, recs: new Map(), cache: new Map(), urls: new Map(), busy: false, input: null, usage: null };
-const UP_MAX_TEX = 2048, UP_CHUNK = 15 * 1024 * 1024, UP_CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/';
+const UP_MAX_TEX = 16384, UP_CHUNK = 15 * 1024 * 1024, UP_CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/';
 const upErr = (msg) => Object.assign(new Error(msg), { ui: msg });
 const upWait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -32,8 +33,8 @@ async function upDraco() {
 function upIdb() {
   if (UPL.idb) return UPL.idb;
   return (UPL.idb = new Promise((res, rej) => {
-    const r = indexedDB.open('cos-models', 1);
-    r.onupgradeneeded = () => { const d = r.result; for (const n of ['blobs', 'recs']) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n); };
+    const r = indexedDB.open('cos-models', 2);
+    r.onupgradeneeded = () => { const d = r.result; for (const n of ['blobs', 'recs', 'mats']) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   }));
 }
@@ -267,6 +268,16 @@ async function upDecode(blob, w, h) {
 const upToBlob = (cv, type, q) => new Promise((res) => { try { cv.toBlob((b) => res(b), type, q); } catch (_) { res(null); } });
 async function upPicture(blob) {
   const head = new Uint8Array(await blob.slice(0, 65536).arrayBuffer()), type = upSniff(head) || blob.type || '';
+  if (/^image\/(png|jpeg|webp)$/.test(type)) return { bytes: new Uint8Array(await blob.arrayBuffer()), type };     // kept exactly as it came
+  if (/^image\/(gif|bmp)$/.test(type)) {           // a format a glTF may not hold: written again as PNG, every pixel kept
+    const bmp = await upDecode(blob, 0, 0), cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+    cv.getContext('2d').drawImage(bmp, 0, 0); if (bmp.close) bmp.close();
+    const out = await upToBlob(cv, 'image/png'); cv.width = cv.height = 1; if (!out) throw new Error('picture encode');
+    return { bytes: new Uint8Array(await out.arrayBuffer()), type: 'image/png' };
+  }
+  return upPictureOld(blob, head, type);
+}
+async function upPictureOld(blob, head, type) {
   if (!/^image\/(png|jpeg|webp|gif|bmp)$/.test(type)) throw new Error('picture type ' + (type || '?'));
   const sz = upImgSize(head, type);
   let tw = 0, th = 0;
@@ -324,6 +335,27 @@ async function upThreeToGlb(G) {
   return glb;
 }
 
+/* ── the pictures as this device can draw them: one bigger than its graphics take is drawn smaller here, the file keeps it whole ── */
+const upGpuCap = () => Math.min(renderer.capabilities.maxTextureSize || 4096, qsel(1024, 2048, 4096, 8192));
+async function upFitGpu(u8) {
+  const buf = u8 instanceof ArrayBuffer ? u8 : u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength ? u8.buffer : u8.slice().buffer;
+  const cap = upGpuCap(), s = upGlbSplit(buf); if (!s || !s.bin || !(s.json.images || []).length) return buf;
+  const json = s.json, bin = s.bin, pics = []; let any = false;
+  for (const im of json.images) {
+    pics.push(null); if (im.bufferView === undefined) continue;
+    const bv = json.bufferViews[im.bufferView], o = bv.byteOffset || 0, bytes = bin.subarray(o, o + bv.byteLength), type = upSniff(bytes) || im.mimeType || '', sz = upImgSize(bytes, type);
+    if (!sz || Math.max(sz[0], sz[1]) <= cap) continue;
+    const k = cap / Math.max(sz[0], sz[1]), w = Math.max(1, Math.round(sz[0] * k)), h = Math.max(1, Math.round(sz[1] * k));
+    try {
+      const bmp = await upDecode(new Blob([bytes], { type }), w, h), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(bmp, 0, 0, w, h); if (bmp.close) bmp.close();
+      const out = await upToBlob(cv, type === 'image/jpeg' ? 'image/jpeg' : 'image/png', 0.95); cv.width = cv.height = 1;
+      if (out) { pics[pics.length - 1] = { bytes: new Uint8Array(await out.arrayBuffer()), type: out.type }; any = true; }
+    } catch (e) { console.warn('picture for this device', e); }
+  }
+  return any ? glbFrom(json, upAssemble(json, bin, pics)) : buf;
+}
+
 /* ── a GLB read as the game reads it, and measured ── */
 async function upParse(buf) {
   const s = upGlbSplit(buf), used = (s && s.json.extensionsUsed) || [];
@@ -370,7 +402,7 @@ function upModel(mid) {
     const parts = await Promise.all((R.b || []).map(upText));
     let u8 = b64Bytes(parts.join(''));
     if (R.z) u8 = await upInflate(u8);
-    return upPrep(await upParse(u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength ? u8.buffer : u8.slice().buffer), R.u);
+    return upPrep(await upParse(await upFitGpu(u8)), R.u);
   })();
   UPL.cache.set(mid, P); P.catch(() => { if (UPL.cache.get(mid) === P) UPL.cache.delete(mid); });
   return P;
@@ -422,7 +454,7 @@ async function upOne(G, tag) {
   // the pictures, lighter
   const imgs = json.images || [], pics = []; let missing = 0;
   for (let i = 0; i < imgs.length; i++) {
-    step('تخفيف الصور ' + toAr(i + 1) + ' من ' + toAr(imgs.length), 0.06 + 0.32 * i / Math.max(1, imgs.length));
+    step('تجهيز الصور ' + toAr(i + 1) + ' من ' + toAr(imgs.length), 0.06 + 0.32 * i / Math.max(1, imgs.length));
     const im = imgs[i]; let blob = null;
     if (im.bufferView !== undefined) { const bv = json.bufferViews[im.bufferView], o = bv.byteOffset || 0; blob = new Blob([bin.subarray(o, o + bv.byteLength)], { type: im.mimeType || '' }); }
     else if (im.uri && /^data:/i.test(im.uri)) blob = await (await fetch(im.uri)).blob();
@@ -435,7 +467,7 @@ async function upOne(G, tag) {
   const glb = glbFrom(json, bin);
   // read back exactly as the game will, measured and pictured
   step('قراءة النموذج', 0.4);
-  const raw = upPrep(await upParse(glb.slice(0)), 1), b = raw.box, sz = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z].map((v) => Math.round(v * 1000) / 1000), maxD = Math.max(...sz);
+  const raw = upPrep(await upParse(await upFitGpu(glb.slice(0))), 1), b = raw.box, sz = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z].map((v) => Math.round(v * 1000) / 1000), maxD = Math.max(...sz);
   // its units: glTF means metres, but a model far bigger than any building was made in centimetres (FBX and OBJ often are)
   let u = 1;
   if (((G.ext === 'fbx' || G.ext === 'obj') && maxD > 30) || maxD > 250) u = 0.01;
@@ -450,6 +482,7 @@ async function upOne(G, tag) {
   if (typeof CompressionStream !== 'undefined') { try { const d = await upDeflate(data); if (d.length < data.length) { data = d; z = 1; } } catch (_) {} }
   const b64 = edB64(data), refs = [], mid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const R = { mid, n: G.name, b: [], z, th: null, by: glb.byteLength, tr: raw.tris, sz, u, an: raw.anims.map((a) => a.name || ''), ext: G.ext, t: Date.now(), v: 1, src: UPL.assets && EDIO.db ? 'cloud' : 'local' };
+  if (G.cr) R.cr = G.cr;            // where it came from, by whom, under which licence (shown in the settings)
   if (R.src === 'local' && !UPL.idbOK) throw upErr('لا مكان لحفظ النماذج على هذا الجهاز');
   if (R.src === 'local') UPL.assets = null;
   try {
@@ -476,7 +509,16 @@ async function upFiles(files) {
   try {
     if (!THREE.GLTFLoader) throw upErr('قارئ النماذج لم يُحمَّل، أعد فتح اللعبة');
     const groups = await upGroups(files);
-    if (!groups.length) throw upErr('لم أجد نموذجاً ثلاثي الأبعاد (glb أو gltf أو obj أو fbx، أو zip فيه أحدها)');
+    if (!groups.length) {
+      // no model: ground pictures (a material's colour, normal, roughness…) become a ground material
+      const mats = await gmFiles(files, true);
+      if (mats && mats.length) { gmAfterImport(mats); return; }
+      const ex = files.map((f) => UP_EXT(f.name));
+      if (ex.some((e) => e === 'rar' || e === '7z')) throw upErr('ملفات RAR و 7z لا تُفتح هنا بعد: استخرجها في تطبيق الملفات ثم ارفع ما بداخلها (obj أو fbx أو glb أو zip)');
+      if (ex.some((e) => e === 'blend' || e === 'max' || e === 'c4d' || e === 'ma' || e === 'mb' || e === 'skp')) throw upErr('هذه صيغة برنامج تصميم (blend أو max…): اختر من الموقع نسخة obj أو fbx أو glb');
+      if (ex.some((e) => /^(mp3|wav|ogg|m4a|aac|flac)$/.test(e))) throw upErr('هذه ملفات صوت: الأصوات تُضاف للعبة مع تحديثاتها (ارفعها في مجلد uploads على GitHub)');
+      throw upErr('لم أجد نموذجاً ثلاثي الأبعاد ولا صور خامة أرض (glb أو gltf أو obj أو fbx، أو zip فيه أحدها، أو صور Color و Normal و Roughness)');
+    }
     const done = []; let fail = null;
     for (let i = 0; i < groups.length; i++) {
       try { done.push(await upOne(groups[i], groups.length > 1 ? ' (' + toAr(i + 1) + ' من ' + toAr(groups.length) + ')' : '')); }
@@ -511,7 +553,8 @@ function upCards() {
   const can = upCanUp(), where = UPL.assets ? 'تُحفظ مع لعبتك ويراها كل من يفتحها' : 'تُحفظ على هذا الجهاز فقط';
   const use = UPL.usage && UPL.usage.maxBytes ? ' · المساحة ' + upMB(UPL.usage.bytes) + ' من ' + upMB(UPL.usage.maxBytes) : '';
   return `<button type="button" class="edcard edup${can ? '' : ' off'}" data-up="1"${can ? '' : ' disabled'}><span class="edph">${edSvg('upl')}</span><span class="ednm">${can ? 'ارفع نموذجاً من جهازك' : 'الرفع غير متاح هنا'}</span></button>` +
-    `<p class="edupinfo">glb · gltf · zip من Sketchfab · obj · fbx — بلا حدّ لعدد الملفات · الصور تُخفَّف إلى ٢٠٤٨ بكسل · ${where}${use}</p>`;
+    `<button type="button" class="edcard edup" data-net="model"><span class="edph">${edSvg('web')}</span><span class="ednm">مكتبات الإنترنت: Sketchfab · Poly Haven · free3d</span></button>` +
+    `<p class="edupinfo">glb · gltf · zip من Sketchfab · obj · fbx · وخامات الأرض (zip أو صور) — بلا حدّ لعدد الملفات · كل شيء يُحفظ بدقته الأصلية · ${where}${use}</p>`;
 }
 function upCardImg(d) { return d.thumb ? `<img src="${d.thumb}" alt="" loading="lazy" decoding="async">` : ''; }
 function upDelBtn(d) { return d.type === 'umodel' && upCanDel(d) ? `<span class="eddel" data-del="${d.key}" role="button" aria-label="حذف النموذج">${edSvg('del')}</span>` : ''; }

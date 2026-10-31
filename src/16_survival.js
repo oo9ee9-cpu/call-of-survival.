@@ -285,7 +285,7 @@ function digWhy(x, z) {
   if (roadDist(x, z) < 1.2 || classAt(x, z) === 2) return 'الأرض هنا مرصوفة';
   if (onPlatform(x, z, player.pos.y + 0.5)) return 'لا تحفر في الأرضية';
   if (buildingAt(x, z, h + 1)) return 'لا تحفر داخل المباني';
-  if (-digOffset(x, z) > 3.0) return 'الحفرة عميقة بما يكفي';
+  if (-digOffset(x, z) > 40) return 'وصلت إلى الصخر الصلب';
   return '';
 }
 function groundWork(tool) {
@@ -301,7 +301,8 @@ function groundWork(tool) {
   if (player.stamina < 6) { toast('أنت متعب', 'استرح لحظة'); return; }
   const why = digWhy(x, z); if (why) { toast(why, ''); AUDIO.dry(); return; }
   const r = tool === 'shovel' ? 1.0 : tool === 'pickaxe' ? 0.8 : 0.7, d = (tool === 'shovel' ? 0.42 : tool === 'pickaxe' ? 0.36 : 0.26) * Math.min(1.4, tierMul());
-  addCrater(x, z, r, d); grassDirtyArea(x, z, r + 1.5); GBLOCK.add(Math.floor(x / 8) * 100000 + Math.floor(z / 8)); HOOK.dug(x, z, r, d);
+  const hole = addCrater(x, z, r, d); grassDirtyArea(hole.x, hole.z, hole.r + 1.5); HOOK.dug(x, z, r, d);
+  for (let i = Math.floor((hole.x - hole.r) / 8); i <= Math.floor((hole.x + hole.r) / 8); i++) for (let j = Math.floor((hole.z - hole.r) / 8); j <= Math.floor((hole.z + hole.r) / 8); j++) GBLOCK.add(i * 100000 + j);
   player.stamina = Math.max(0, player.stamina - 5); player.staminaWait = 0.8;
   const depth = -digOffset(x, z), b = biomeAt(x, z);
   spawnPuff(x, terrainAt(x, z) + 0.2, z, b === 7 || b === 1 ? 0xd8c49a : 0x6a5238, 10, 2.6, 0.07, -9, 0.8);
@@ -341,6 +342,7 @@ function reapField(x, z, tool) {
 /* grass and crops stay away from craters, reaped patches, plots and floors */
 function grassBlocked(x, z, crop) {
   if (DIG.list.length && digOffset(x, z) < -0.15) return true;
+  if (GP.n && gpBare(x, z)) return true;           // painted stone, sand, earth… (painted grass keeps its grass)
   if (crop) for (const c of CROPCUT) if (c.until > T_GAME && (x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) return true;
   if (typeof builtBlocksGrass === 'function' && builtBlocksGrass(x, z)) return true;
   if (typeof edBlocksGrass === 'function' && edBlocksGrass(x, z)) return true;     // floors, paving and cleared ground of the world editor

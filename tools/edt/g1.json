@@ -1,0 +1,12 @@
+[
+ {"until": "(typeof LOBBY!=='undefined'&&LOBBY.on)||window.__err", "timeout": 300, "js": "'lobby'"},
+ {"js": "begin(true); 1", "frames": 20},
+ {"js": "edEnter(); edTool('paint'); EDC.tdist=EDC.dist=30; EDC.tpitch=EDC.pitch=0.95; JSON.stringify({ctx: $('edCtx').textContent.slice(0,200)})", "frames": 16, "shot": "a_tool"},
+ {"js": "GMAT.cur='b:7'; GMAT.mode='p'; ED.br=5; ED.bk=1; const x=EDC.x-8, z=EDC.z; gmBrushStart({x,z}); for(let i=0;i<24;i++){ EDB.x=x+i*0.7; EDB.z=z+Math.sin(i*0.4)*3; gmBrushStep(0.12);} gmBrushEnd(); JSON.stringify({n:GP.n, pal:GMAT.pal, u:Array.from(TERR_U.uPal.value), undo:ED.undo.length})", "frames": 24, "shot": "b_paint"},
+ {"js": "GMAT.cur='b:8'; GMAT.mode='d'; ED.br=4; ED.bk=1; const x=EDC.x+6, z=EDC.z+6; gmBrushStart({x,z}); for(let i=0;i<14;i++){ EDB.x=x; EDB.z=z+i*0.3; gmBrushStep(0.15);} gmBrushEnd(); JSON.stringify({h: terrainAt(x,z)-hBase(x,z), pal:GMAT.pal})", "frames": 24, "shot": "c_dig"},
+ {"js": "GMAT.cur='b:10'; GMAT.mode='u'; ED.br=4; const x=EDC.x-6, z=EDC.z+8; gmBrushStart({x,z}); for(let i=0;i<12;i++){ gmBrushStep(0.15);} gmBrushEnd(); JSON.stringify({h: terrainAt(x,z)-hBase(x,z)})", "frames": 24, "shot": "d_raise"},
+ {"js": "edUndo(false); 1", "frames": 16, "shot": "e_undo"},
+ {"js": "EDUI.cat='gmat'; edCatOpen(true); 1", "frames": 6, "shot": "f_cat"},
+ {"js": "edCatOpen(false); edLeave(false); const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw); window.__dx=player.pos.x+fx*1.25; window.__dz=player.pos.z+fz*1.25; let n=0, why=''; for(let i=0;i<18;i++){ player.stamina=100; why=digWhy(window.__dx, window.__dz); if(why) break; groundWork('shovel'); n++; } JSON.stringify({n, why, depth:-digOffset(window.__dx, window.__dz), craters:DIG.list.length, r:DIG.list[0]&&DIG.list[0].r})", "frames": 10},
+ {"js": "edEnter(); edTool('sel'); EDC.x=window.__dx; EDC.z=window.__dz; EDC.tdist=EDC.dist=11; EDC.tpitch=EDC.pitch=0.75; 1", "frames": 30, "shot": "g_hole"}
+]
