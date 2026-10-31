@@ -269,3 +269,5 @@ Publish target: update artifact https://claude.ai/artifact/6gq2bVqVUv19bWBas36eY
   steps back in the browser. Updater offers CallOfSurvival-lite.apk. version.json stays "shell": 1 (the page feature-detects).
 - Tests: tools/edt/g1.json (paint, dig/raise with material, undo, catalogue), g2.json (shovel hole, material zip, paint with
   it, map-wide layer, save/reload), g3.json with --netmock (stand-ins for the three sites and the app's /_net, /_lib).
+- PUBLISHED 2026-10-31: Version 19 (1793448165-592a), capabilities as v18 + devmats (read view, write owner). OTA: game/version.json v19
+  (files at e2ba8ae). APK workflow run 41197662649 built shell 2 and replaced both APKs on release v18 (the newest; no v19 release).
