@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<rect width="128" height="128" rx="18" fill="#1c1d1a"/>
+<path d="M14 92 L30 92 L36 70 L40 92 L58 92 L64 54 L70 92 L88 92 L92 74 L98 92 L114 92" stroke="#6b6152" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M26 66 C28 40 44 26 64 26 C84 26 100 40 102 66 L108 70 L20 70 Z" fill="#4a5232"/>
+<rect x="20" y="66" width="88" height="7" rx="3" fill="#353a24"/>
+<circle cx="98" cy="22" r="7" fill="#c3262a"/>
+<text x="64" y="116" font-family="sans-serif" font-size="15" font-weight="bold" fill="#c9c2b0" text-anchor="middle">FRONT</text>
+</svg>
