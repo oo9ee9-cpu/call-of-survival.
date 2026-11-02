@@ -207,6 +207,8 @@ func _process(delta: float) -> void:
 		_menu_camera(delta)
 	var cam := get_viewport().get_camera_3d()
 	var strength := float(Settings.get_v("bodycam")) if state != "menu" else 0.55
+	if state != "menu" and player:
+		strength *= 1.0 - smoothstep(0.0, 1.0, player.tpp_k)   # the chest-camera look belongs to first person only
 	post_mat.set_shader_parameter("strength", strength)
 	post_mat.set_shader_parameter("exposure", world.env.view_exposure())
 	post_mat.set_shader_parameter("time_s", Time.get_ticks_msec() * 0.001)
@@ -218,10 +220,10 @@ func _process(delta: float) -> void:
 		var dpitch := b.z.y - _last_basis.z.y
 		_last_basis = b
 		var fov := deg_to_rad(cam.fov)
-		smear = Vector2(-dyaw / fov, dpitch / fov) * 0.6
-		if smear.length() < 0.0015:
+		smear = Vector2(-dyaw / fov, dpitch / fov) * 0.25
+		if smear.length() < 0.003:
 			smear = Vector2.ZERO
-		smear = smear.limit_length(0.035)
+		smear = smear.limit_length(0.012)
 	post_mat.set_shader_parameter("smear", smear)
 
 func _menu_camera(delta: float) -> void:

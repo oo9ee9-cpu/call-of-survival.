@@ -236,7 +236,9 @@ func _build_settings() -> void:
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(tabs)
 	var g := _page(tabs, "الرسومات")
-	_row(g, "الجودة", _opt("quality", ["منخفضة", "متوسطة", "عالية", "فائقة"], func(i): Settings.apply_preset(i)))
+	_row(g, "الجودة", _opt("quality", ["منخفضة", "متوسطة", "عالية", "فائقة", "قصوى"], func(i): Settings.apply_preset(i)))
+	_row(g, "الإطارات في الثانية", _opt("fps_limit", ["30", "40", "60", "90", "120", "144", "165", "240", "400", "بلا حد"]))
+	_row(g, "المزامنة العمودية", _check("vsync"))
 	_row(g, "دقة العرض", _slider("render_scale", 0.5, 1.0, 0.05))
 	_row(g, "مسافة الرؤية", _opt("view_distance", ["قريبة", "عادية", "بعيدة"]))
 	_row(g, "الظلال", _opt("shadows", ["بدون", "ناعمة", "عالية"]))
@@ -244,6 +246,7 @@ func _build_settings() -> void:
 	_row(g, "ضبابية الحركة", _check("motion_blur"))
 	_row(g, "عداد الإطارات", _check("show_fps"))
 	var c := _page(tabs, "الكاميرا")
+	_row(c, "المنظور", _opt("view_mode", ["الشخص الأول", "الشخص الثالث"]))
 	_row(c, "تأثير كاميرا الجسم", _slider("bodycam", 0.0, 1.0, 0.05))
 	_row(c, "مجال الرؤية", _slider("fov", 70.0, 115.0, 1.0, false))
 	_row(c, "اهتزاز المشي", _slider("head_bob", 0.0, 1.5, 0.05))

@@ -1,7 +1,8 @@
 class_name Player
 extends CharacterBody3D
-## First person with a chest-mounted camera: the camera rides on the torso (bob, sway, lean into turns),
-## steps up small ledges by itself, climbs out of trenches with the jump button, crouches, sprints.
+## The player: first person with a chest-mounted camera (bob, sway, lean into turns) or third person over
+## the shoulder with the whole soldier visible (a Soldier body that aims and holds the rifle). Steps up small
+## ledges, climbs out of trenches with the jump button, crouches, sprints. Aiming always looks down the sights.
 
 signal message(text: String)
 
@@ -38,6 +39,16 @@ var fall_v := 0.0
 var cam_h := CAM_STAND
 var active := false
 var stamina := 1.0
+var tpp := true               # third person (Settings "view_mode")
+var tpp_k := 1.0              # 1 = camera behind the shoulder, 0 = at the eyes (blends while aiming)
+var health := 100.0
+var dead := false
+var team := 0
+
+var body: Soldier
+var tpp_pivot: Node3D
+var spring: SpringArm3D
+var tpp_anchor: Node3D
 
 var col: CollisionShape3D
 var capsule: CapsuleShape3D
@@ -86,6 +97,26 @@ func _ready() -> void:
 	weapon.player = self
 	cam.add_child(weapon)
 	breath = Sfx.loop("breath_loop", -80.0, "SFX")
+	body = Soldier.new()
+	add_child(body)
+	body.set_outfit.call_deferred(Color(0.46, 0.48, 0.4))
+	tpp_pivot = Node3D.new()
+	tpp_pivot.position = Vector3(0, 1.58, 0)
+	add_child(tpp_pivot)
+	spring = SpringArm3D.new()
+	spring.position = Vector3(0.52, 0.12, 0.0)
+	spring.spring_length = 2.55
+	spring.margin = 0.12
+	spring.collision_mask = 1 | 2
+	var sph := SphereShape3D.new()
+	sph.radius = 0.18
+	spring.shape = sph
+	spring.add_excluded_object(get_rid())
+	tpp_pivot.add_child(spring)
+	tpp_anchor = Node3D.new()
+	spring.add_child(tpp_anchor)
+	cam.top_level = true
+	apply_settings.call_deferred()
 
 func setup(w: World) -> void:
 	world = w
@@ -104,10 +135,19 @@ func spawn(pos: Vector3, facing: float) -> void:
 	pitch = -0.05
 	velocity = Vector3.ZERO
 	yaw_node.rotation.y = yaw
+	health = 100.0
+	dead = false
+	body.dead = false
+	body.body_yaw = facing
 
 func apply_settings() -> void:
 	cam.fov = float(Settings.get_v("fov"))
 	flashlight.shadow_enabled = int(Settings.get_v("quality")) >= 1
+	tpp = int(Settings.get_v("view_mode")) == 1
+	body.set_shadows(int(Settings.get_v("shadows")) > 0)
+
+func toggle_view() -> void:
+	Settings.set_v("view_mode", 0 if tpp else 1)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not active:
@@ -128,6 +168,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		weapon.reload()
 	if event.is_action_pressed("fire_mode"):
 		weapon.toggle_mode()
+	if event.is_action_pressed("view_toggle"):
+		toggle_view()
 
 func toggle_flashlight() -> void:
 	flashlight.visible = not flashlight.visible
@@ -341,7 +383,36 @@ func _camera(delta: float, turn_rate: float, mv: Vector2, on_floor: bool) -> voi
 	var sh := Vector3(sin(shake_t * 1.3) * 0.5 + sin(shake_t * 2.9) * 0.5, sin(shake_t * 1.7 + 1.0) * 0.5 + sin(shake_t * 3.3) * 0.5, 0.0) * shake * 0.03
 	chest.position = Vector3(bob.x, cam_h + bob.y - land_kick, -0.08) + sh
 	var rec := weapon.recoil_cam
-	cam.rotation = Vector3(pitch + rec.x + sh.y * 0.6, rec.y + sh.x * 0.6, roll)
+	# eyes: the chest camera with the look, recoil and roll
+	var eye := chest.global_transform * Transform3D(Basis.from_euler(Vector3(pitch + rec.x + sh.y * 0.6, rec.y + sh.x * 0.6, roll)), Vector3.ZERO)
+	# third person: a pivot over the shoulders, a spring arm that keeps the camera out of walls;
+	# aiming always goes to the sights (the camera slides forward to the eyes)
+	var want := 1.0 if (tpp and not aiming) else 0.0
+	tpp_k = move_toward(tpp_k, want, delta * 5.5)
+	var tk := smoothstep(0.0, 1.0, tpp_k)
+	if tk > 0.001:
+		tpp_pivot.position.y = lerpf(tpp_pivot.position.y, 1.12 if crouching else 1.58, clampf(delta * 8.0, 0.0, 1.0))
+		tpp_pivot.rotation = Vector3(pitch + rec.x * 0.7, yaw + rec.y * 0.7, 0.0)
+		var third := Transform3D(tpp_pivot.global_transform.basis, tpp_anchor.global_position + sh * 0.5)
+		cam.global_transform = eye.interpolate_with(third, tk)
+	else:
+		cam.global_transform = eye
+	weapon.model.visible = tk < 0.5
+	# a camera squeezed against the soldier (narrow trench, doorway) would look through him: hide him then
+	body.visible = tk > 0.25 and not (tpp_k < 0.6 and aiming) and (tk < 0.99 or spring.get_hit_length() > 0.75)
+	_update_body(delta)
+
+func _update_body(delta: float) -> void:
+	body.aim_yaw = yaw
+	body.aim_pitch = pitch + weapon.recoil_cam.x
+	var hv := Vector3(velocity.x, 0.0, velocity.z)
+	body.speed = hv.length() if mantle_t < 0.0 else 0.0
+	body.move_dir = Vector2(hv.x, hv.z).normalized() if body.speed > 0.05 else Vector2.ZERO
+	body.crouch = move_toward(body.crouch, 1.0 if crouching else 0.0, delta * 4.0)
+	body.airborne = not is_on_floor() and mantle_t < 0.0
+	var low := 1.0 if ((sprinting and not aiming) or weapon.reload_t >= 0.0 or mantle_t >= 0.0) else 0.0
+	body.low_ready = move_toward(body.low_ready, low, delta * 5.0)
+	body.face(delta, aiming or weapon.trigger_held())
 
 func add_shake(a: float) -> void:
 	shake = clampf(shake + a, 0.0, 1.5)

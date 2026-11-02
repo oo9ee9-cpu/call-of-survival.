@@ -34,6 +34,7 @@ func _layout() -> void:
 		"interact": [Vector2(W * 0.5 + 170 * s, H - 150 * s), 42.0 * s, "تفاعل"],
 		"light": [Vector2(W - 80 * s, 205 * s), 34.0 * s, "مصباح"],
 		"mode": [Vector2(W - 165 * s, 205 * s), 34.0 * s, "نمط"],
+		"view": [Vector2(W - 250 * s, 205 * s), 34.0 * s, "منظور"],
 		"pause": [Vector2(54 * s, 54 * s), 30.0 * s, "قائمة"],
 	}
 	queue_redraw()
@@ -92,6 +93,8 @@ func _press(i: int, p: Vector2) -> void:
 				player.toggle_flashlight()
 			"mode":
 				player.weapon.toggle_mode()
+			"view":
+				player.toggle_view()
 			"pause":
 				pause_pressed.emit()
 		queue_redraw()

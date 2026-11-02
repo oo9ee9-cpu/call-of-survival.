@@ -192,7 +192,13 @@ func _fire() -> void:
 	var fwd := -cam.global_transform.basis.z
 	var gun_dir := -(global_transform.basis.z).normalized()
 	var dir := fwd.lerp(gun_dir, 0.35 * (1.0 - ads)).normalized()
-	var spread := deg_to_rad(lerpf(1.1, 0.18, ads) + bloom * 2.2 + (0.8 if not player.is_on_floor() else 0.0))
+	var third := player.tpp_k > 0.5
+	if third:
+		# over the shoulder: shoot where the crosshair is, starting level with the soldier (nothing behind him counts)
+		dir = fwd
+		origin += fwd * (player.spring.get_hit_length() + 0.35)
+		player.body.shot_flash()
+	var spread := deg_to_rad(lerpf(1.1, 0.18, ads) + bloom * 2.2 + (0.8 if not player.is_on_floor() else 0.0) + (0.5 if third else 0.0))
 	var r1 := randf() * TAU
 	var r2 := sqrt(randf()) * spread
 	var right := cam.global_transform.basis.x
@@ -285,7 +291,7 @@ func _pose(delta: float) -> void:
 	q.exclude = [player.get_rid()]
 	var hit := ss.intersect_ray(q)
 	var wk := 0.0
-	if not hit.is_empty():
+	if not hit.is_empty() and player.tpp_k < 0.5:
 		wk = clampf(1.0 - cam.global_position.distance_to(hit["position"]) / 0.85, 0.0, 1.0)
 	wall_k = lerpf(wall_k, wk, clampf(delta * 10.0, 0.0, 1.0))
 	var sprint_k := 1.0 if (player.sprinting and reload_t < 0.0) else 0.0

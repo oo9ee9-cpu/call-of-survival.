@@ -54,6 +54,7 @@ func _place(p: Vector3, yaw: float, pitch: float) -> void:
 	pl.yaw = yaw
 	pl.pitch = pitch
 	pl.yaw_node.rotation.y = yaw
+	pl.body.body_yaw = yaw
 	main.world.focus = p
 	main.world.terrain.update_collision(p, 1.0, true)
 	main.world.veg.update(p, 1.0, true)
