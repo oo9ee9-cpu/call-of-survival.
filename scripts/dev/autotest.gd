@@ -86,6 +86,11 @@ func _run() -> void:
 		print("AUTOTEST DONE")
 		Sfx.quit_game()
 		return
+	if only == "online":
+		await _online_test()
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
 	if only == "ui" or only.begins_with("coop"):
 		Settings.set_v("team_size", 0)
 	main._start()
@@ -842,4 +847,18 @@ func _coop_guest_test(w: World) -> void:
 	while not m.over and Time.get_ticks_msec() - t0 < 240000:
 		await get_tree().process_frame
 	print("COOP guest: over %s score %s stats %s sent %d got %d" % [m.over, m.score, m.stats, c.rt.sent, c.rt.got])
+
+## signing in and the friends' calls against a local stand-in for the project (-- --supabase http://127.0.0.1:4200 <key>)
+func _online_test() -> void:
+	var on := get_node("/root/Online")
+	print("ONLINE configured %s key %s…" % [on.configured(), String(on.ANON).substr(0, 18)])
+	var ok: bool = await on.sign_in_guest()
+	print("ONLINE guest sign-in %s status '%s' user %s" % [ok, on.status, on.session.get("user_id", "")])
+	await get_tree().create_timer(1.0).timeout
+	print("ONLINE status after the profile: '%s'" % on.status)
+	var p: Dictionary = await on.find_player("77777777")
+	print("ONLINE find_player -> %s" % [p])
+	await on.set_room("m123")
+	print("ONLINE hosting room %s" % on.hosting_room)
+	on.sign_out()
 

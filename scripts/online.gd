@@ -30,6 +30,11 @@ var _poll_t := 0.0
 func _ready() -> void:
 	_load_config()
 	var args := OS.get_cmdline_user_args()
+	var si := args.find("--supabase")
+	if si >= 0 and si + 2 < args.size():
+		URL = args[si + 1]                 # developer checks: a local stand-in for the project, and a key
+		ANON = args[si + 2]
+		session = {}
 	var ri := args.find("--realtime")
 	if ri >= 0 and ri + 1 < args.size():
 		dev_realtime = args[ri + 1]
@@ -132,10 +137,32 @@ func sign_in_guest() -> bool:
 	_set_status("جارٍ الدخول كضيف…")
 	var r := await call_api(HTTPClient.METHOD_POST, "/auth/v1/signup", {"data": {"guest": true}})
 	if not r["ok"]:
-		_set_status("تعذر الدخول (%d) — تابع اللعب دون اتصال" % int(r["code"]))
+		_set_status("تعذر الدخول: " + why(r))
 		return false
 	_take_session(r["data"], "anonymous")
 	return true
+
+## what went wrong with a call, said so the player knows what to change
+func why(r: Dictionary) -> String:
+	var code := int(r.get("code", 0))
+	var d = r.get("data", "")
+	var msg := ""
+	if d is Dictionary:
+		msg = String((d as Dictionary).get("msg", (d as Dictionary).get("message", (d as Dictionary).get("error_description", (d as Dictionary).get("error", "")))))
+	elif d is String:
+		msg = d
+	var low := msg.to_lower()
+	if code == 0:
+		return "لا اتصال بالإنترنت (أو لم يُحفظ المفتاح)"
+	if low.contains("anonymous"):
+		return "الدخول كضيف مطفأ في مشروعك: Authentication ← Sign In / Providers ← فعّل Anonymous sign-ins"
+	if low.contains("invalid api key") or low.contains("no api key") or code == 401:
+		return "المفتاح غير صحيح — انسخ Publishable key من Settings ← API Keys"
+	if low.contains("relation") or low.contains("does not exist") or code == 404:
+		return "الجداول غير موجودة — شغّل الملف supabase/schema.sql في SQL Editor"
+	if low.contains("provider") or low.contains("not enabled"):
+		return "طريقة الدخول هذه غير مفعّلة في Authentication ← Sign In / Providers"
+	return "(%d) %s" % [code, msg.substr(0, 90)]
 
 func _take_session(d: Variant, provider: String) -> void:
 	if not (d is Dictionary):
@@ -214,7 +241,7 @@ func _handle_callback(peer: StreamPeerTCP) -> void:
 	if r["ok"]:
 		_take_session(r["data"], String(session.get("provider_pending", "oauth")))
 	else:
-		_set_status("تعذر إكمال الدخول (%d)" % int(r["code"]))
+		_set_status("تعذر إكمال الدخول: " + why(r))
 
 func _random_string(n: int) -> String:
 	var chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
@@ -233,9 +260,11 @@ func upsert_profile() -> void:
 	p["user_id"] = session.get("user_id", "")
 	p["guest"] = String(session.get("provider", "")) == "anonymous"
 	Profile.save_profile(p)
-	await call_api(HTTPClient.METHOD_POST, "/rest/v1/profiles", {"id": p["user_id"], "public_id": p["id"], "name": p["name"],
+	var r := await call_api(HTTPClient.METHOD_POST, "/rest/v1/profiles", {"id": p["user_id"], "public_id": p["id"], "name": p["name"],
 		"rating": p["rating"], "tier": Match.tier_of(int(p["rating"])), "last_seen": Time.get_datetime_string_from_system(true) + "Z"},
 		PackedStringArray(["Prefer: resolution=merge-duplicates"]))
+	if not r["ok"]:
+		_set_status("متصل، لكن تعذر حفظ بطاقتك: " + why(r))
 
 func touch_presence() -> void:
 	if signed():
