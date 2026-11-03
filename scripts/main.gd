@@ -64,6 +64,8 @@ func _ready() -> void:
 	_on_setting("")
 	loading.queue_free()
 	_to_menu()
+	if Online.pending_room != "" and world.map_id == "valley":
+		_start()                                 # joining a friend's match (the valley was loaded for it)
 
 func _build_loading() -> void:
 	var layer := CanvasLayer.new()
@@ -170,11 +172,18 @@ func _to_menu() -> void:
 
 func _start() -> void:
 	state = "play"
-	if world.map_id == "valley" and String(Settings.get_v("mode")) == "domination" and match_ == null:
+	var join := Online.pending_room if world.map_id == "valley" else ""
+	Online.pending_room = ""
+	var args := OS.get_cmdline_user_args()
+	if join == "" and args.has("--guest"):
+		var ri := args.find("--room")
+		join = args[ri + 1] if ri >= 0 and ri + 1 < args.size() else "dev"
+	if world.map_id == "valley" and (String(Settings.get_v("mode")) == "domination" or join != "") and match_ == null:
 		match_ = Match.new()
 		match_.name = "Match"
 		world.add_child(match_)
-		match_.setup(world, player)
+		match_.setup(world, player, join != "")
+		_start_coop(join)
 		match_.note.connect(func(t: String): hud.show_message(t))
 		match_.ended.connect(_on_match_end)
 		player.died.connect(_on_player_died)
@@ -296,6 +305,27 @@ func _menu_camera(delta: float) -> void:
 	menu_cam.global_transform = menu_cam.global_transform.interpolate_with(t, clampf(delta * 1.5, 0.0, 1.0))
 
 
+## a match with friends: hosted here (a room on the player's profile that his friends can join) or a friend's one
+func _start_coop(join: String) -> void:
+	var args := OS.get_cmdline_user_args()
+	var dev_room := ""
+	var ri := args.find("--room")
+	if ri >= 0 and ri + 1 < args.size():
+		dev_room = args[ri + 1]
+	if join == "" and not Online.can_host():
+		return
+	var coop := Coop.new()
+	coop.name = "Coop"
+	match_.coop = coop
+	match_.add_child(coop)
+	var prof := Profile.load_profile()
+	var room := join if join != "" else (dev_room if dev_room != "" else "m" + String(prof.get("id", "")))
+	coop.start(match_, player, room, join == "")
+	if join == "":
+		Online.set_room(room)
+	elif world.raid:
+		world.raid.enabled = false            # the host's game has the raids
+
 func _on_player_died(a: Node) -> void:
 	match_.on_player_death(a)
 	touch.reset()
@@ -308,6 +338,8 @@ func _on_player_respawned() -> void:
 
 ## the match is over: the results over the game, then back to the menu with a new match
 func _on_match_end(r: Dictionary) -> void:
+	if match_ and match_.coop and not match_.guest:
+		Online.set_room("")
 	hud.show_results(r)
 	player.active = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

@@ -40,6 +40,7 @@ var aim_toggle := false
 var trigger_was := false
 var shots_in_burst := 0
 var wall_k := 0.0
+var shots_fired := 0                # all shots so far (others in the room are told how many since last time)
 var model: Node3D
 var flash_root: Node3D
 var flash_quads: Array[MeshInstance3D] = []
@@ -252,6 +253,7 @@ func _reload_step(delta: float) -> void:
 
 func _fire() -> void:
 	ammo -= 1
+	shots_fired += 1
 	cool = 60.0 / RPM
 	shots_in_burst += 1
 	var cam := player.cam
@@ -328,6 +330,8 @@ func _trace(origin: Vector3, dir: Vector3) -> void:
 			Sfx.play_at("impact_metal", pos, 0.0, 4.0)
 			return
 		if col is Bot and (col as Bot).team == player.team:
+			return
+		if col is RemoteSoldier and (col as RemoteSoldier).team == player.team:
 			return
 		if col != null and col.has_method("take_damage") and col != player:
 			col.call("take_damage", dmg, pos, player)

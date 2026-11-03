@@ -47,6 +47,18 @@ var cover_cool := 0.0                  # time before it looks for cover again
 var crouch := false
 var kneel_t := 0.0                     # crouched shooting at range, for a while
 var lod_force := -1                    # developer checks: a fixed level of detail
+var puppet := false                    # a bot of the host's game, shown in a guest's game (moved by the host's messages)
+var retired := false                   # stepped out for a friend who joined (host)
+var shots_out := 0                     # shots since the host last told the others
+# puppet: where the host says it is
+var _pp_from := Vector3.ZERO
+var _pp_to := Vector3.ZERO
+var _pp_t0 := 0.0
+var _pp_len := 0.33
+var _pp_yaw := 0.0
+var _pp_speed := 0.0
+var _pp_shots := 0
+var _pp_shot_t := 0.0
 
 func setup(w: World, m: Match, t: int, nm: String) -> void:
 	world = w
@@ -99,9 +111,14 @@ func spawn_at(p: Vector3, facing: float) -> void:
 
 # ------------------------------------------------------------------ damage
 func take_damage(amount: float, from: Vector3, attacker: Node = null) -> void:
-	if dead:
+	if dead or retired:
 		return
 	var head := from.y - global_position.y > (0.95 if crouch else 1.45)
+	if puppet:
+		# it lives in the host's game: the hit goes there
+		if match_ and match_.coop:
+			match_.coop.send_hit("b%d" % match_.bots.find(self), amount, head, from, attacker)
+		return
 	health -= amount * (2.0 if head else 1.0)
 	if attacker and is_instance_valid(attacker) and attacker is Node3D:
 		if target == null or randf() < 0.6:
@@ -127,6 +144,11 @@ func _die(attacker: Node, head: bool) -> void:
 # ------------------------------------------------------------------ the brain
 func _physics_process(delta: float) -> void:
 	if world == null or not world.ready_built:
+		return
+	if retired:
+		return
+	if puppet:
+		_puppet_step(delta)
 		return
 	var ref := world.phys_focus if world.phys_set else world.focus
 	var dist := ref.distance_to(global_position)
@@ -220,6 +242,89 @@ func _physics_process(delta: float) -> void:
 	body.low_ready = 0.0 if target else 0.7
 	body.face(delta, target != null)
 
+## (host) out of the match while a friend plays in its place
+func retire() -> void:
+	retired = true
+	dead = true
+	body.dead = false
+	target = null
+	collision_layer = 0
+	collision_mask = 0
+	near = false                       # the next life sets the collisions again
+	visible = false
+	body.set_lod(3)
+
+## (guest) the host's word on this bot: where, facing where, dead or alive, crouched, its gun, shots since last time
+func puppet_state(p: Vector3, yaw_v: float, flags: int, gun_id: String, shots: int, pitch: float, speed: float, now: float, interval: float) -> void:
+	var was_dead := dead
+	var was_retired := retired
+	retired = flags & 8 != 0
+	team = 1 if flags & 16 != 0 else 0
+	dead = flags & 1 != 0 or retired
+	if gun_id != gun:
+		gun = gun_id
+		spec = Guns.DATA.get(gun, spec)
+		body.set_weapon(gun)
+	if body.team_color != (Color(0.42, 0.46, 0.36) if team == 0 else Color(0.62, 0.52, 0.38)):
+		body.team_color = Color(0.42, 0.46, 0.36) if team == 0 else Color(0.62, 0.52, 0.38)
+		body.set_outfit(body.team_color)
+	if retired:
+		visible = false
+		collision_layer = 0
+		return
+	visible = true
+	if (was_dead or was_retired) and not dead:
+		# back in: no sliding over from where it died
+		body.revive()
+		global_position = p
+		_pp_from = p
+		_pp_to = p
+	elif dead and not was_dead:
+		body.dead = true
+	_pp_from = global_position
+	_pp_to = p
+	if _pp_from.distance_to(_pp_to) > 30.0:
+		_pp_from = p
+		global_position = p
+	_pp_t0 = now
+	_pp_len = maxf(interval, 0.1)
+	_pp_yaw = yaw_v
+	_pp_speed = speed
+	_set_crouch(flags & 2 != 0)
+	target = self if flags & 4 != 0 else null      # only "aiming at someone" matters here
+	_pp_shots = mini(_pp_shots + shots, 30)
+	body.aim_pitch = pitch
+	collision_layer = 0 if dead else 4
+
+func _puppet_step(delta: float) -> void:
+	var now := Time.get_ticks_msec() * 0.001
+	var f := clampf((now - _pp_t0) / _pp_len, 0.0, 1.25)
+	if not dead:
+		global_position = _pp_from.lerp(_pp_to, f)
+	yaw = lerp_angle(yaw, _pp_yaw, clampf(delta * 8.0, 0.0, 1.0))
+	var cam := get_viewport().get_camera_3d()
+	var ref := cam.global_position if cam else global_position
+	var dist := ref.distance_to(global_position)
+	near = dist < NEAR
+	body.set_lod(0 if dist < 35.0 else (1 if dist < 120.0 else (2 if dist < 450.0 else 3)))
+	var mv := (_pp_to - _pp_from) / _pp_len
+	velocity = Vector3(mv.x, 0.0, mv.z) if f < 1.0 and not dead else Vector3.ZERO
+	body.aim_yaw = yaw
+	body.crouch = move_toward(body.crouch, 1.0 if crouch else 0.0, delta * 4.0)
+	body.speed = Vector2(velocity.x, velocity.z).length()
+	body.move_dir = Vector2(velocity.x, velocity.z).normalized() if body.speed > 0.1 else Vector2.ZERO
+	body.low_ready = 0.0 if target else 0.7
+	body.face(delta, target != null)
+	# its shots, a few a second as the host counted them
+	if _pp_shots > 0 and not dead:
+		_pp_shot_t -= delta
+		if _pp_shot_t <= 0.0:
+			_pp_shot_t = clampf(_pp_len / maxf(_pp_shots, 1), 0.06, 0.25)
+			_pp_shots -= 1
+			body.shot_flash()
+			if dist < 400.0:
+				Sfx.play_at("enemy_fire" if dist > 90.0 else String(spec.get("sound", "ak_shot")), global_position + Vector3(0, 1.5, 0), -4.0 if dist < 90.0 else 2.0, 12.0, 600.0, 0.0, 0.08)
+
 func _set_crouch(on: bool) -> void:
 	if on == crouch:
 		return
@@ -267,6 +372,8 @@ func _alive(n: Node3D) -> bool:
 		return not (n as Bot).dead
 	if n is Player:
 		return not (n as Player).dead
+	if n is RemoteSoldier:
+		return not (n as RemoteSoldier).dead and not (n as RemoteSoldier).in_vehicle
 	return is_instance_valid(n)
 
 func _move(dir: Vector3, spd: float, delta: float) -> void:
@@ -366,6 +473,8 @@ static func team_of(n: Node) -> int:
 		return (n as Bot).team
 	if n is Player:
 		return (n as Player).team
+	if n is RemoteSoldier:
+		return (n as RemoteSoldier).team
 	return -1
 
 func _can_see(s: Node3D) -> bool:
@@ -404,6 +513,7 @@ func _shoot(t: Node3D, d: float) -> void:
 	if randf() < 0.25 and bool(spec["auto"]):
 		cool += randf_range(0.25, 0.6)          # short bursts
 	mag -= 1
+	shots_out += 1
 	body.shot_flash()
 	if near or d < 200.0:
 		var cam := get_viewport().get_camera_3d()

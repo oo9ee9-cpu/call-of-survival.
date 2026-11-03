@@ -13,6 +13,10 @@ create table if not exists public.profiles (
   last_seen timestamptz not null default now()
 );
 
+-- playing together: the room of the match a player is hosting (his friends see a join button while it is fresh)
+alter table public.profiles add column if not exists room text;
+alter table public.profiles add column if not exists room_at timestamptz;
+
 create table if not exists public.friend_requests (
   id bigint generated always as identity primary key,
   from_id uuid not null references public.profiles (id) on delete cascade,
@@ -41,3 +45,7 @@ drop policy if exists "requests send" on public.friend_requests;
 create policy "requests send" on public.friend_requests for insert to authenticated with check (auth.uid() = from_id and status = 'pending');
 drop policy if exists "requests answer" on public.friend_requests;
 create policy "requests answer" on public.friend_requests for update to authenticated using (auth.uid() = to_id) with check (auth.uid() = to_id);
+
+-- Realtime (playing a match together) uses public broadcast channels named "m<player id>": nothing to create.
+-- If "Realtime -> Settings -> Allow public access" is turned off in the project, turn it on (or the guests cannot join).
+

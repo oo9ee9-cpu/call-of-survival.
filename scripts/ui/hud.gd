@@ -270,6 +270,20 @@ func _match_bar() -> void:
 				continue
 			var sp := cam.unproject_position(p)
 			draw_colored_polygon(PackedVector2Array([sp + Vector2(-6, -8), sp + Vector2(6, -8), sp + Vector2(0, 2)]), Color(0.35, 0.65, 1.0, 0.85))
+		# friends in the room: a bigger marker, at any distance, with the distance under it
+		if match_.coop:
+			for r in match_.coop.remotes.values():
+				var rs := r as RemoteSoldier
+				if rs.dead or rs.team != player.team:
+					continue
+				var p := rs.global_position + Vector3(0, 2.6, 0)
+				if cam.is_position_behind(p):
+					continue
+				var sp := cam.unproject_position(p)
+				draw_colored_polygon(PackedVector2Array([sp + Vector2(-9, -12), sp + Vector2(9, -12), sp + Vector2(0, 3)]), Color(0.3, 0.95, 0.55, 0.95))
+				var d := int(p.distance_to(cam.global_position))
+				if d > 40:
+					draw_string(UiTheme.font_bold, sp + Vector2(-40, -16), "%s  %d م" % [rs.who, d], HORIZONTAL_ALIGNMENT_CENTER, 80, 14, Color(0.6, 1.0, 0.75, 0.9))
 
 ## while the player waits for his next life: where to come back (the deployment line, a zone his team holds with no
 ## enemy near it, the base with the vehicles, or a parachute jump over his side of the city)

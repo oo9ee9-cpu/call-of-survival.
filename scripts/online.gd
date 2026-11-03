@@ -20,12 +20,21 @@ const PORT := 43123
 
 var session := {}                    # access_token, refresh_token, user_id, provider, expires_at
 var status := "غير متصل"
+var pending_room := ""               # a friend's match to join once the valley is loaded
+var hosting_room := ""               # the room of the match this player hosts (kept fresh on his profile)
+var dev_realtime := ""               # developer checks: a local Realtime stand-in (-- --realtime ws://127.0.0.1:4100)
 var _server: TCPServer
 var _verifier := ""
 var _poll_t := 0.0
 
 func _ready() -> void:
 	_load_config()
+	var args := OS.get_cmdline_user_args()
+	var ri := args.find("--realtime")
+	if ri >= 0 and ri + 1 < args.size():
+		dev_realtime = args[ri + 1]
+		if ANON == "":
+			ANON = "dev-anon-key-for-the-local-realtime-stand-in-0000"
 	if FileAccess.file_exists(SESSION):
 		var j = JSON.parse_string(FileAccess.get_file_as_string(SESSION))
 		if j is Dictionary:
@@ -53,7 +62,30 @@ func set_key(key: String, url := "") -> void:
 	_load_config()
 
 func configured() -> bool:
-	return URL != "" and ANON.length() > 40
+	return (URL != "" or dev_realtime != "") and key_looks_right(ANON)
+
+## the project's public key: the new publishable key (sb_publishable_…) or the legacy anon key (a JWT, eyJ…)
+func key_looks_right(k: String) -> bool:
+	return (k.begins_with("sb_publishable_") and k.length() > 24) or (k.begins_with("eyJ") and k.length() > 40) or k.begins_with("dev-anon-key")
+
+## where Realtime lives (the project, or the local stand-in of the developer checks)
+func realtime_base() -> String:
+	return dev_realtime if dev_realtime != "" else URL
+
+## the signed-in player's token for Realtime (empty: the anon key alone)
+func token() -> String:
+	return String(session.get("access_token", "")) if signed() else ""
+
+## matches can be played with friends: Realtime is reachable (a key, and signed in, or the developer stand-in)
+func can_host() -> bool:
+	return dev_realtime != "" or (configured() and signed())
+
+## the room of the match the player is hosting ("" when none), on his profile so his friends see the join button
+func set_room(room: String) -> void:
+	hosting_room = room
+	if signed():
+		await call_api(HTTPClient.METHOD_PATCH, "/rest/v1/profiles?id=eq." + String(session.get("user_id", "")),
+			{"room": room if room != "" else null, "room_at": Time.get_datetime_string_from_system(true) + "Z"})
 
 func signed() -> bool:
 	return not session.is_empty() and String(session.get("access_token", "")) != ""
@@ -78,8 +110,8 @@ func call_api(method: int, path: String, body: Variant = null, extra_headers: Pa
 	var headers := PackedStringArray(["apikey: " + ANON, "Content-Type: application/json"])
 	if signed():
 		headers.append("Authorization: Bearer " + String(session["access_token"]))
-	else:
-		headers.append("Authorization: Bearer " + ANON)
+	elif ANON.begins_with("eyJ"):
+		headers.append("Authorization: Bearer " + ANON)      # the legacy anon key is a JWT; a publishable key is not
 	headers.append_array(extra_headers)
 	var err := req.request(URL + path, headers, method, JSON.stringify(body) if body != null else "")
 	if err != OK:
@@ -155,7 +187,7 @@ func _process(delta: float) -> void:
 		var peer := _server.take_connection()
 		_handle_callback(peer)
 	if _poll_t <= 0.0:
-		_poll_t = 120.0
+		_poll_t = 60.0 if hosting_room != "" else 120.0
 		if signed():
 			refresh_if_needed()
 			touch_presence()
@@ -207,8 +239,11 @@ func upsert_profile() -> void:
 
 func touch_presence() -> void:
 	if signed():
-		await call_api(HTTPClient.METHOD_PATCH, "/rest/v1/profiles?id=eq." + String(session.get("user_id", "")),
-			{"last_seen": Time.get_datetime_string_from_system(true) + "Z"})
+		var now := Time.get_datetime_string_from_system(true) + "Z"
+		var d := {"last_seen": now}
+		if hosting_room != "":
+			d["room_at"] = now
+		await call_api(HTTPClient.METHOD_PATCH, "/rest/v1/profiles?id=eq." + String(session.get("user_id", "")), d)
 
 ## a player by the ID shown on his card
 func find_player(public_id: String) -> Dictionary:
@@ -233,7 +268,7 @@ func answer_request(id: int, accept: bool) -> bool:
 ## accepted friends with their names and when they were last seen
 func friends() -> Array:
 	var me := String(session.get("user_id", ""))
-	var r := await call_api(HTTPClient.METHOD_GET, "/rest/v1/friend_requests?select=from_id,to_id,a:profiles!friend_requests_from_id_fkey(public_id,name,last_seen),b:profiles!friend_requests_to_id_fkey(public_id,name,last_seen)&status=eq.accepted&or=(from_id.eq.%s,to_id.eq.%s)" % [me, me])
+	var r := await call_api(HTTPClient.METHOD_GET, "/rest/v1/friend_requests?select=from_id,to_id,a:profiles!friend_requests_from_id_fkey(public_id,name,last_seen,room,room_at),b:profiles!friend_requests_to_id_fkey(public_id,name,last_seen,room,room_at)&status=eq.accepted&or=(from_id.eq.%s,to_id.eq.%s)" % [me, me])
 	var out := []
 	if r["ok"] and r["data"] is Array:
 		for row in r["data"]:

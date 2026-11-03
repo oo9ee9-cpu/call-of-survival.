@@ -86,9 +86,19 @@ func _run() -> void:
 		print("AUTOTEST DONE")
 		Sfx.quit_game()
 		return
-	if only == "ui":
+	if only == "ui" or only.begins_with("coop"):
 		Settings.set_v("team_size", 0)
 	main._start()
+	if w.map_id == "valley" and only == "coop_host":
+		await _coop_host_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "coop_guest":
+		await _coop_guest_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
 	if w.map_id == "valley" and only == "ui":
 		await _ui_test(w)
 		print("AUTOTEST DONE")
@@ -713,4 +723,123 @@ func _ui_test(w: World) -> void:
 	m.finish()
 	await _wait(1.0)
 	await shot("u02_results")
+
+## playing together, the host's side (the guest runs in another game, see _coop_guest_test): the guest comes in and
+## takes a bot's place, we see him and his shots, his hit kills one of our bots, the end goes to him
+func _coop_host_test(w: World) -> void:
+	var pl: Player = main.player
+	var m: Match = main.match_
+	var c: Coop = m.coop
+	if w.raid:
+		w.raid.enabled = false
+	print("COOP host room %s joined %s" % [c.room, c.rt.state])
+	var t0 := Time.get_ticks_msec()
+	while c.rt.peers.is_empty() and Time.get_ticks_msec() - t0 < 240000:
+		await get_tree().process_frame
+	print("COOP host: peers %s retired %s bots %d" % [c.rt.peers.keys(), c.retired, m.bots.size()])
+	var za: Vector3 = m.zone_pos(0)
+	var me := m.free_spot(za + (m.side_dir[0] as Vector3) * 70.0, 4.0)
+	var at := m.free_spot(za + (m.side_dir[0] as Vector3) * 60.0 + Vector3(3, 0, 0), 4.0)
+	var to := at - me
+	await _place(me, atan2(-to.x, -to.z), -0.08)
+	pl.tpp = false
+	# the enemy bots out of the way except three, 50 m in front
+	var enemies := 0
+	for b in m.bots:
+		if b.team == 1 and not b.retired:
+			if enemies < 3:
+				var q := m.free_spot(za + (m.side_dir[0] as Vector3) * 15.0 + Vector3(enemies * 6.0 - 6.0, 0, 0), 4.0)
+				b.spawn_at(q, 0.0)
+				b.set_physics_process(false)
+			else:
+				b.retire()
+			enemies += 1
+		elif b.team == 0 and not b.retired:
+			b.retire()
+	t0 = Time.get_ticks_msec()
+	while c.remotes.is_empty() and Time.get_ticks_msec() - t0 < 120000:
+		await get_tree().process_frame
+	for f in 240:
+		await get_tree().physics_frame
+	for r in c.remotes.values():
+		var rs := r as RemoteSoldier
+		print("COOP host sees %s (%s) at %s, %.1f m away, gun %s, rate %.1f/s" % [rs.who, rs.id, rs.global_position, rs.global_position.distance_to(pl.global_position), rs.gun, c.p_hz])
+		to = rs.global_position - pl.global_position
+		pl.yaw = atan2(-to.x, -to.z)
+		pl.yaw_node.rotation.y = pl.yaw
+	for f in 30:
+		await get_tree().physics_frame
+	await shot("k01_host_sees_guest")
+	# the guest shoots the first enemy bot (his test does it): wait for it to die here
+	var e0: Bot = null
+	for b in m.bots:
+		if b.team == 1 and not b.retired:
+			e0 = b
+			break
+	t0 = Time.get_ticks_msec()
+	while e0 and not e0.dead and Time.get_ticks_msec() - t0 < 120000:
+		await get_tree().process_frame
+	print("COOP host: enemy %s dead %s (feed %s) stats %s" % [e0.bot_name if e0 else "-", e0.dead if e0 else false, m.feed.map(func(f): return f["text"]), m.stats])
+	pl.tpp = true
+	for f in 60:
+		await get_tree().physics_frame
+	await shot("k02_host_tpp")
+	print("COOP host: realtime sent %d got %d" % [c.rt.sent, c.rt.got])
+	m.finish()
+	for f in 120:
+		await get_tree().physics_frame
+	await shot("k03_host_results")
+
+## playing together, the guest's side: in the host's room, his bots and zones here, a hit on his bot, his end
+func _coop_guest_test(w: World) -> void:
+	var pl: Player = main.player
+	var m: Match = main.match_
+	var c: Coop = m.coop
+	print("COOP guest room %s guest %s" % [c.room, m.guest])
+	var t0 := Time.get_ticks_msec()
+	while m.bots.is_empty() and Time.get_ticks_msec() - t0 < 240000:
+		await get_tree().process_frame
+	print("COOP guest: %d puppets after %.1f s, peers %s" % [m.bots.size(), (Time.get_ticks_msec() - t0) / 1000.0, c.rt.peers.keys()])
+	var za: Vector3 = m.zone_pos(0)
+	var me := m.free_spot(za + (m.side_dir[0] as Vector3) * 60.0 + Vector3(3, 0, 0), 4.0)
+	await _place(me, 0.0, 0.0)
+	# wait for the host's set-up (three enemies in front of us)
+	t0 = Time.get_ticks_msec()
+	var target: Bot = null
+	while target == null and Time.get_ticks_msec() - t0 < 120000:
+		await get_tree().process_frame
+		for b in m.bots:
+			if b.team == 1 and not b.dead and not b.retired and b.global_position.distance_to(za) < 40.0:
+				target = b
+				break
+	for f in 120:
+		await get_tree().physics_frame
+	var alive := m.bots.filter(func(b): return not b.dead).size()
+	print("COOP guest: alive puppets %d, zones %s, score %s, t %.0f, host seen %s" % [alive, m.zones.map(func(z): return int(z["owner"])), m.score, m.t, c.remotes.keys()])
+	if target:
+		# aim and fire at it with the rifle
+		var to := target.global_position + Vector3(0, 1.3, 0) - pl.cam.global_position
+		pl.yaw = atan2(-to.x, -to.z)
+		pl.yaw_node.rotation.y = pl.yaw
+		pl.pitch = atan2(to.y, Vector2(to.x, to.z).length())
+		print("COOP guest: shooting %s at %.0f m" % [target.bot_name, to.length()])
+		for k in 3:
+			pl.weapon.touch_fire = true
+			for f in 30:
+				await get_tree().physics_frame
+			pl.weapon.touch_fire = false
+			for f in 30:
+				await get_tree().physics_frame
+			if target.dead:
+				break
+		if not target.dead:
+			target.take_damage(500.0, target.global_position + Vector3(0, 1.6, 0), pl)
+		t0 = Time.get_ticks_msec()
+		while not target.dead and Time.get_ticks_msec() - t0 < 30000:
+			await get_tree().process_frame
+		print("COOP guest: target dead %s, my stats %s, feed %s" % [target.dead, m.stats, m.feed.map(func(f): return f["text"])])
+	t0 = Time.get_ticks_msec()
+	while not m.over and Time.get_ticks_msec() - t0 < 240000:
+		await get_tree().process_frame
+	print("COOP guest: over %s score %s stats %s sent %d got %d" % [m.over, m.score, m.stats, c.rt.sent, c.rt.got])
 

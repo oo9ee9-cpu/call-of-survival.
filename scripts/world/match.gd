@@ -6,6 +6,8 @@ extends Node3D
 ## four seconds). Every zone held scores a point every two seconds; first to 600 wins, or the higher score after
 ## fifteen minutes. The player comes back three times; after that, or at the end, the results: kills, zones, the
 ## rating points won or lost, the tier and the coins (kept in user://profile.json).
+## With friends (Coop, over Supabase Realtime): the host's game runs all of this; a guest's game only shows the host's
+## bots (puppets), zones, score and clock, and sends its hits and its hacks to the host.
 ## Coming in: each team has deployment points on its own side of the city (in front of the zones nearest its base),
 ## and comes back there or at a zone it holds while no enemy is close to it. The player picks while he waits: the
 ## deployment line, one of his zones, the base with the vehicles, or a parachute jump over his side (the match starts
@@ -42,11 +44,14 @@ var deploy: Array = [[], []]           # per team: deployment points on its side
 var side_dir: Array = [Vector3.BACK, Vector3.FORWARD]   # from the middle of the zones towards each team's side
 var mid := Vector3.ZERO
 var choice := "deploy"                 # where the player comes back: "deploy", "zone<i>", "base", "air"
+var guest := false                     # a friend's match: the host's game decides
+var coop: Coop
 
-func setup(w: World, p: Player) -> void:
+func setup(w: World, p: Player, as_guest := false) -> void:
 	world = w
 	player = p
 	player.team = 0
+	guest = as_guest
 	var comps: Array = world.valley.models.computers if world.valley and world.valley.models else []
 	var caps: Array = world.lay.get("capture", [])
 	for i in caps.size():
@@ -55,6 +60,8 @@ func setup(w: World, p: Player) -> void:
 		var comp: Vector3 = (comps[i] as Dictionary)["pos"] if i < comps.size() else pos
 		zones.append({"name": String(c["name"]), "pos": pos, "computer": comp, "owner": -1, "progress": 0.0, "c": [0, 0], "around": [0, 0]})
 	_deploy_points()
+	if guest:
+		return                         # the bots come from the host
 	# the teams come in a few at a time (keeps the first frames smooth); smaller teams on slow phones (settings)
 	var n: int = [10, 20, 30, 50][clampi(int(Settings.get_v("team_size")), 0, 3)]
 	for i in n - 1:
@@ -70,10 +77,40 @@ func _spawn_some() -> void:
 		var team: int = _to_spawn.pop_back()
 		var b := Bot.new()
 		b.name = "Bot%d" % bots.size()
-		b.setup(world, self, team, NAMES[bots.size() % NAMES.size()] + ("" if bots.size() < NAMES.size() else " %d" % (bots.size() / NAMES.size())))
+		b.setup(world, self, team, bot_name_for(bots.size()))
 		add_child(b)
 		bots.append(b)
 		respawn(b)
+
+static func bot_name_for(i: int) -> String:
+	return NAMES[i % NAMES.size()] + ("" if i < NAMES.size() else " %d" % (i / NAMES.size()))
+
+## (guest) one more of the host's bots, moved by his messages
+func add_puppet() -> void:
+	var b := Bot.new()
+	b.name = "Bot%d" % bots.size()
+	b.puppet = true
+	b.setup(world, self, 1, bot_name_for(bots.size()))
+	add_child(b)
+	bots.append(b)
+
+## (host) a friend came in: a bot of his team steps out (a dead one if there is one); its index, or -1
+func retire_bot(team: int) -> int:
+	var best := -1
+	for i in bots.size():
+		var b := bots[i]
+		if b.team != team or b.retired:
+			continue
+		if best < 0 or (b.dead and not bots[best].dead):
+			best = i
+	if best >= 0:
+		bots[best].retire()
+	return best
+
+func unretire_bot(i: int) -> void:
+	if i >= 0 and i < bots.size() and bots[i].retired:
+		bots[i].retired = false
+		respawn(bots[i])
 
 ## the deployment points: in front of each zone on the team's side (nearer its base than the enemy's), 150 m back
 ## towards the base, and one on the edge of the city in the middle of its side
@@ -206,6 +243,9 @@ func _process(delta: float) -> void:
 	if _cap_t <= 0.0:
 		_cap_t = 0.5
 		_capture(0.5)
+	_hack(delta)
+	if guest:
+		return                         # the score and the end come from the host
 	_tick -= delta
 	if _tick <= 0.0:
 		_tick = 2.0
@@ -213,7 +253,6 @@ func _process(delta: float) -> void:
 			var o := int(z["owner"])
 			if o >= 0:
 				score[o] += 1
-	_hack(delta)
 	if int(score[0]) >= WIN or int(score[1]) >= WIN or t >= TIME:
 		finish()
 
@@ -224,6 +263,10 @@ func _capture(dt: float) -> void:
 			soldiers.append([b.global_position, b.team])
 	if player and not player.dead:
 		soldiers.append([player.global_position, player.team])
+	if coop:
+		for r in coop.remotes.values():
+			if not (r as RemoteSoldier).dead:
+				soldiers.append([(r as RemoteSoldier).global_position, (r as RemoteSoldier).team])
 	for i in zones.size():
 		var z: Dictionary = zones[i]
 		var c := [0, 0]
@@ -236,6 +279,8 @@ func _capture(dt: float) -> void:
 				around[int(s[1])] += 1
 		z["c"] = c
 		z["around"] = around
+		if guest:
+			continue
 		var pr := float(z["progress"])
 		if c[0] > 0 and c[1] == 0:
 			pr = maxf(pr - dt / CAPTURE_TIME * minf(c[0], 3) * 0.6, -1.0)
@@ -253,6 +298,11 @@ func _take(i: int, team: int, by_player: bool) -> void:
 	z["progress"] = -1.0 if team == 0 else 1.0
 	if by_player:
 		stats["zones"] = int(stats["zones"]) + 1
+	on_zone_taken(i, team)
+
+## the news of a zone that changed hands (here, or in the host's game for a guest)
+func on_zone_taken(i: int, team: int) -> void:
+	var z: Dictionary = zones[i]
 	var who := "فريقك" if team == player.team else "العدو"
 	note.emit("%s سيطر على المنطقة «%s»" % [who, z["name"]])
 	_feed("المنطقة %s ← %s" % [z["name"], who])
@@ -283,7 +333,14 @@ func _hack(delta: float) -> void:
 	if hack_t >= HACK_TIME:
 		var i := hacking
 		hacking = -1
-		_take(i, player.team, true)
+		if guest:
+			# the host's game owns the zones: tell it, count it here
+			stats["zones"] = int(stats["zones"]) + 1
+			note.emit("اخترقت حاسوب المنطقة «%s»" % zones[i]["name"])
+			if coop:
+				coop.send_hack(i)
+		else:
+			_take(i, player.team, true)
 
 # ------------------------------------------------------------------ kills and the end
 func on_kill(attacker: Node, victim: Node, head: bool) -> void:
@@ -294,19 +351,39 @@ func on_kill(attacker: Node, victim: Node, head: bool) -> void:
 		stats["kills"] = int(stats["kills"]) + 1
 		if head:
 			stats["headshots"] = int(stats["headshots"]) + 1
+	if coop:
+		coop.send_kill(victim, attacker, head)
 
 func on_player_death(attacker: Node) -> void:
 	stats["deaths"] = int(stats["deaths"]) + 1
 	_feed("%s ⟵ %s" % ["أنت", _name(attacker)])
-	if player.lives <= 0:
+	if coop:
+		coop.send_kill(player, attacker, false)
+	if player.lives <= 0 and not guest and (coop == null or coop.players() <= 1):
 		get_tree().create_timer(2.5, false).timeout.connect(finish)
+	elif player.lives <= 0:
+		note.emit("انتهت محاولاتك — تتابع المباراة مع أصدقائك حتى نهايتها")
 
 func _name(n: Node) -> String:
 	if n == player:
 		return "أنت"
+	return _name_for_others(n)
+
+## how the others in the room call this soldier
+func _name_for_others(n: Node) -> String:
+	if n == null:
+		return "؟"
+	if n == player:
+		return coop.my_name if coop else "لاعب"
 	if n is Bot:
 		return (n as Bot).bot_name
+	if n is RemoteSoldier:
+		return (n as RemoteSoldier).who
 	return "غارة" if n is AirRaid else "؟"
+
+## a line from the room (a death in another game)
+func feed_line(text: String) -> void:
+	_feed(text)
 
 func _feed(text: String) -> void:
 	feed.push_front({"text": text, "t": 6.0})
@@ -324,6 +401,8 @@ func finish() -> void:
 	if over:
 		return
 	over = true
+	if coop and not guest:
+		coop.send_end()
 	var win: bool = int(score[0]) > int(score[1])
 	var draw: bool = int(score[0]) == int(score[1])
 	var prof := Profile.load_profile()

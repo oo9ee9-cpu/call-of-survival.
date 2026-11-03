@@ -355,14 +355,23 @@ func _login() -> void:
 		return
 	v.add_child(UiTheme.label("الحالة: " + String(on.status), 20, false, UiTheme.DIM))
 	if not on.configured():
-		v.add_child(UiTheme.label("الصق مفتاح Supabase العام (anon public) من: لوحة Supabase ← Project Settings ← API", 19))
+		v.add_child(UiTheme.label("الصق مفتاح مشروعك العام من لوحة Supabase: Settings ← API Keys ← Publishable key (يبدأ بـ sb_publishable_) أو المفتاح القديم anon public (يبدأ بـ eyJ). لا تضع المفتاح السري (secret / service_role) أبداً.", 18))
 		var key := LineEdit.new()
-		key.placeholder_text = "eyJ…"
+		key.placeholder_text = "sb_publishable_…  أو  eyJ…"
 		key.custom_minimum_size = Vector2(0, 50)
 		v.add_child(key)
+		var warn := UiTheme.label("", 18, false, Color(1.0, 0.6, 0.45))
 		v.add_child(_btn("حفظ المفتاح", func():
-			on.set_key(key.text)
+			var k := key.text.strip_edges()
+			if k.begins_with("sb_secret_"):
+				warn.text = "هذا هو المفتاح السري — لا تضعه في اللعبة. انسخ Publishable key."
+				return
+			if not on.key_looks_right(k):
+				warn.text = "المفتاح غير صحيح: يجب أن يبدأ بـ sb_publishable_ أو eyJ"
+				return
+			on.set_key(k)
 			_login(), 50))
+		v.add_child(warn)
 		return
 	v.add_child(_btn("الدخول كضيف (معرّف فريد)", func():
 		await on.sign_in_guest()
@@ -433,5 +442,27 @@ func _friends() -> void:
 		if seen != "":
 			var t := Time.get_unix_time_from_datetime_string(seen.substr(0, 19))
 			online = Time.get_unix_time_from_system() - t < 300.0
-		v.add_child(UiTheme.label("%s %s (%s)" % ["●" if online else "○", d.get("name", "?"), d.get("public_id", "")], 20, false, Color(0.5, 1.0, 0.6) if online else UiTheme.DIM))
-	v.add_child(UiTheme.label("اللعب مع الأصدقاء في نفس المباراة يحتاج خادم لعب — قيد البناء.", 17, false, UiTheme.DIM))
+		# hosting a match right now (his profile's room, refreshed every minute while he plays)
+		var room := String(d.get("room", "")) if d.get("room") is String else ""
+		var playing := false
+		if room != "" and d.get("room_at") is String:
+			var rt := Time.get_unix_time_from_datetime_string(String(d["room_at"]).substr(0, 19))
+			playing = Time.get_unix_time_from_system() - rt < 180.0
+		var h := HBoxContainer.new()
+		var l := UiTheme.label("%s %s (%s)%s" % ["●" if online else "○", d.get("name", "?"), d.get("public_id", ""), "  — في مباراة" if playing else ""], 20, false, Color(0.5, 1.0, 0.6) if online else UiTheme.DIM)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(l)
+		if playing:
+			h.add_child(_btn("انضم", func(): _join(room), 44))
+		v.add_child(h)
+	v.add_child(UiTheme.label("حين يبدأ صديقك مباراة يظهر بجانبه زر «انضم»: تدخل فريقه مكان أحد الجنود الآليين.", 17, false, UiTheme.DIM))
+
+## into a friend's match: the valley is needed (loaded again if another map is open)
+func _join(room: String) -> void:
+	Online.pending_room = room
+	Settings.set_v("mode", "domination")
+	if String(Settings.get_v("map")) != "valley":
+		Settings.set_v("map", "valley")
+		get_tree().reload_current_scene()
+		return
+	start_pressed.emit()
