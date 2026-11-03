@@ -15,6 +15,14 @@ uniform float height_scale = 0.5;
 uniform bool flat_cards = false;     // litter lies on the ground, grass stands up
 uniform vec4 density_w = vec4(0.25, 0.2, 1.4, 0.05);   // weights of needles, litter, dry grass, soil
 uniform vec3 tint : source_color = vec3(1.0);
+// nothing grows where a layer of the second splat map is above its threshold (trench map: mud only; valley: mud, sand,
+// rock and the gravel of roads, the airfield and the bases)
+uniform vec4 kill_b = vec4(0.5, 2.0, 2.0, 2.0);
+// floors of the buildings around the camera: x, z, half width, half depth (in the building's own axes) and the cos/sin of
+// its turn; nothing grows inside them
+uniform int hole_n = 0;
+uniform vec4 holes[24];
+uniform vec2 holes_r[24];
 global uniform vec4 wind;
 global uniform vec3 view_pos;
 
@@ -43,7 +51,14 @@ void vertex() {
 	float h = terrain_height(xz);
 	float dig = dig_depth(xz, h);
 	float d = distance(xz, view_pos.xz);
-	float keep = step(r3, dens) * (1.0 - step(0.08, dig)) * (1.0 - smoothstep(max_dist * 0.65, max_dist, d)) * (1.0 - step(0.5, wb.x));
+	float keep = step(r3, dens) * (1.0 - step(0.08, dig)) * (1.0 - smoothstep(max_dist * 0.65, max_dist, d)) * (1.0 - step(kill_b.x, wb.x)) * (1.0 - step(kill_b.y, wb.y)) * (1.0 - step(kill_b.z, wb.z)) * (1.0 - step(kill_b.w, wb.w));
+	for (int i = 0; i < hole_n; i++) {
+		vec2 dd = xz - holes[i].xy;
+		vec2 l = vec2(dd.x * holes_r[i].x - dd.y * holes_r[i].y, dd.x * holes_r[i].y + dd.y * holes_r[i].x);
+		if (abs(l.x) < holes[i].z && abs(l.y) < holes[i].w) {
+			keep = 0.0;
+		}
+	}
 	float sc = keep * size * mix(0.65, 1.25, r4);
 	float yaw = r1 * 6.2831;
 	mat2 rot = mat2(vec2(cos(yaw), sin(yaw)), vec2(-sin(yaw), cos(yaw)));

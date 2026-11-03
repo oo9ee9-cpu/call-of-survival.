@@ -4,6 +4,7 @@ uniform sampler2D base_h : filter_nearest, repeat_disable;
 uniform sampler2D war_h : filter_nearest, repeat_disable;
 uniform vec4 base_rect = vec4(-1536.0, -1536.0, 0.5, 1536.0);   // x0, z0, 1/spacing, last texel index
 uniform vec4 war_rect = vec4(-256.0, -256.0, 4.0, 2048.0);
+uniform vec4 splat_rects = vec4(-1536.0, 3072.0, -256.0, 512.0);   // base x0 (= z0), base size, war x0, war size
 
 // ground layers: 0 needles 1 litter 2 dry grass 3 soil 4 mud 5 ash 6 clay (walls) 7 gravel
 uniform sampler2DArray t_alb : filter_linear_mipmap_anisotropic, repeat_enable;   // sRGB data, converted below
@@ -61,12 +62,12 @@ float dig_depth(vec2 xz, float h) {
 }
 
 void splat_weights(vec2 xz, out vec4 wa, out vec4 wb) {
-	vec2 pw = (xz + 256.0) / 512.0;
+	vec2 pw = (xz - splat_rects.z) / splat_rects.w;
 	if (pw.x > 0.0 && pw.y > 0.0 && pw.x < 1.0 && pw.y < 1.0) {
 		wa = texture(splat_wa, pw);
 		wb = texture(splat_wb, pw);
 	} else {
-		vec2 pb = (xz + 1536.0) / 3072.0;
+		vec2 pb = (xz - splat_rects.x) / splat_rects.y;
 		wa = texture(splat_ba, pb);
 		wb = texture(splat_bb, pb);
 	}

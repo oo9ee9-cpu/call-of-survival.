@@ -141,21 +141,32 @@ func update_collision(p: Vector3, delta: float, force := false) -> void:
 		return
 	_tile_t = 0.3
 	var need := {}
-	# war area: 32 m tiles at 0.25 m
+	var wsp: float = world.war_sp
+	var bsp: float = world.base_sp
+	var wx0: float = world.war_x0
+	var bx0: float = world.base_x0
+	var wtm := WAR_TILE * wsp
+	var btm := BASE_TILE * bsp
+	var wmax := int((world.war_n - 1) / WAR_TILE) - 1
+	var bmax := int((world.base_n - 1) / BASE_TILE) - 1
+	var war_size: float = (world.war_n - 1) * wsp
+	# detail (war) area: 128-texel tiles
 	var rw := 56.0
-	for tj in range(int(floor((p.z - rw + 256.0) / 32.0)), int(floor((p.z + rw + 256.0) / 32.0)) + 1):
-		for ti in range(int(floor((p.x - rw + 256.0) / 32.0)), int(floor((p.x + rw + 256.0) / 32.0)) + 1):
-			if ti < 0 or tj < 0 or ti > 15 or tj > 15:
+	for tj in range(int(floor((p.z - rw - wx0) / wtm)), int(floor((p.z + rw - wx0) / wtm)) + 1):
+		for ti in range(int(floor((p.x - rw - wx0) / wtm)), int(floor((p.x + rw - wx0) / wtm)) + 1):
+			if ti < 0 or tj < 0 or ti > wmax or tj > wmax:
 				continue
 			need["w%d,%d" % [ti, tj]] = Vector3i(0, ti, tj)
-	# everywhere else: 64 m tiles at 2 m
+	# everywhere else: 32-texel tiles of the base grid
 	var rb := 140.0
-	for tj in range(int(floor((p.z - rb + 1536.0) / 64.0)), int(floor((p.z + rb + 1536.0) / 64.0)) + 1):
-		for ti in range(int(floor((p.x - rb + 1536.0) / 64.0)), int(floor((p.x + rb + 1536.0) / 64.0)) + 1):
-			if ti < 0 or tj < 0 or ti > 47 or tj > 47:
+	for tj in range(int(floor((p.z - rb - bx0) / btm)), int(floor((p.z + rb - bx0) / btm)) + 1):
+		for ti in range(int(floor((p.x - rb - bx0) / btm)), int(floor((p.x + rb - bx0) / btm)) + 1):
+			if ti < 0 or tj < 0 or ti > bmax or tj > bmax:
 				continue
-			if ti >= 20 and ti < 28 and tj >= 20 and tj < 28:
-				continue   # covered by the war tiles
+			var tx0 := bx0 + ti * btm
+			var tz0 := bx0 + tj * btm
+			if tx0 >= wx0 and tx0 + btm <= wx0 + war_size and tz0 >= wx0 and tz0 + btm <= wx0 + war_size:
+				continue   # covered by the detail tiles
 			need["b%d,%d" % [ti, tj]] = Vector3i(1, ti, tj)
 	for k in tiles.keys():
 		if not need.has(k):
@@ -173,15 +184,15 @@ func update_collision(p: Vector3, delta: float, force := false) -> void:
 		if t.x == 0:
 			n = WAR_TILE
 			img = war_img.get_region(Rect2i(t.y * n, t.z * n, n + 1, n + 1))
-			sp = 0.25
-			x0 = -256.0 + t.y * 32.0
-			z0 = -256.0 + t.z * 32.0
+			sp = wsp
+			x0 = wx0 + t.y * wtm
+			z0 = wx0 + t.z * wtm
 		else:
 			n = BASE_TILE
 			img = base_img.get_region(Rect2i(t.y * n, t.z * n, n + 1, n + 1))
-			sp = 2.0
-			x0 = -1536.0 + t.y * 64.0
-			z0 = -1536.0 + t.z * 64.0
+			sp = bsp
+			x0 = bx0 + t.y * btm
+			z0 = bx0 + t.z * btm
 		var sh := HeightMapShape3D.new()
 		sh.update_map_data_from_image(img, 0.0, 1.0 / sp)
 		var body := PhysicsServer3D.body_create()

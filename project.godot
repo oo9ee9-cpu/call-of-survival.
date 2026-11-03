@@ -25,6 +25,7 @@ buses/default_bus_layout="res://default_bus_layout.tres"
 
 Settings="*res://scripts/settings.gd"
 Sfx="*res://scripts/sfx.gd"
+Online="*res://scripts/online.gd"
 
 [display]
 

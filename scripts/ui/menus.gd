@@ -5,6 +5,7 @@ extends Control
 signal start_pressed
 signal resume_pressed
 signal main_menu_pressed
+signal layout_editor
 
 var main_panel: Control
 var pause_panel: Control
@@ -84,44 +85,12 @@ func _back() -> void:
 
 # ------------------------------------------------------------------ main
 func _build_main() -> void:
-	main_panel = Control.new()
-	main_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	main_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	main_panel.layout_direction = Control.LAYOUT_DIRECTION_LTR
+	var lobby := Lobby.new()
+	lobby.start_pressed.connect(func(): start_pressed.emit())
+	lobby.settings_pressed.connect(func(): show_settings("main"))
+	lobby.credits_pressed.connect(show_credits)
+	main_panel = lobby
 	add_child(main_panel)
-	main_panel.add_child(_shade(0.0, 0.82))
-	var holder := Control.new()
-	holder.layout_direction = Control.LAYOUT_DIRECTION_LTR
-	holder.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
-	holder.offset_left = -560
-	holder.offset_right = -70
-	holder.offset_top = 90
-	holder.offset_bottom = -40
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	main_panel.add_child(holder)
-	var v := VBoxContainer.new()
-	v.layout_direction = Control.LAYOUT_DIRECTION_RTL
-	v.set_anchors_preset(Control.PRESET_FULL_RECT)
-	v.add_theme_constant_override("separation", 14)
-	holder.add_child(v)
-	var t := UiTheme.label("الجبهة", 86, true, Color(0.95, 0.92, 0.84))
-	v.add_child(t)
-	for line in [["نداء البقاء — نسخة تجريبية على محرك Godot", 22, UiTheme.ACCENT], ["غابة صنوبر محروقة، خنادق، ملاجئ تحت الأرض — خريطة ٣×٣ كم", 18, UiTheme.DIM]]:
-		var l := UiTheme.label(line[0], line[1], false, line[2])
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(l)
-	var sp := Control.new()
-	sp.custom_minimum_size = Vector2(0, 26)
-	v.add_child(sp)
-	v.add_child(_btn("ابدأ", func(): start_pressed.emit()))
-	v.add_child(_btn("الإعدادات", func(): show_settings("main")))
-	v.add_child(_btn("حول اللعبة والحقوق", show_credits))
-	v.add_child(_btn("خروج", func(): Sfx.quit_game()))
-	var foot := UiTheme.label("Godot %s · %s" % [Engine.get_version_info()["string"], RenderingServer.get_current_rendering_method()], 15, false, UiTheme.DIM)
-	foot.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	foot.layout_direction = Control.LAYOUT_DIRECTION_LTR
-	foot.position = Vector2(24, -40)
-	main_panel.add_child(foot)
 
 func _build_pause() -> void:
 	pause_panel = Control.new()
@@ -257,6 +226,8 @@ func _build_settings() -> void:
 	_row(k, "عكس المحور العمودي", _check("invert_y"))
 	_row(k, "حجم الأزرار", _slider("touch_scale", 0.7, 1.4, 0.05))
 	_row(k, "وضوح الأزرار", _slider("touch_opacity", 0.2, 1.0, 0.05))
+	_row(k, "مواقع الأزرار", _btn("تخصيص (اسحب الأزرار)", func(): layout_editor.emit(), 300))
+	_row(k, "التقاط تلقائي للذخيرة والعلاج", _check("auto_pickup"))
 	var a := _page(tabs, "الصوت")
 	_row(a, "الصوت العام", _slider("vol_master", 0.0, 1.0, 0.05))
 	_row(a, "المؤثرات", _slider("vol_sfx", 0.0, 1.0, 0.05))
@@ -264,14 +235,21 @@ func _build_settings() -> void:
 	var w := _page(tabs, "العالم")
 	_row(w, "الوقت", _opt("time", ["فجر", "نهار غائم", "غروب", "ليل"]))
 	_row(w, "الطقس", _opt("weather", ["غائم", "ضباب", "مطر"]))
-	_row(w, "معركة بعيدة", _check("battle"))
+	_row(w, "معركة بعيدة (الجبهة)", _check("battle"))
+	_row(w, "الغارات الجوية (الوادي)", _check("raids"))
+	_row(w, "الجنود في كل فريق (عند بدء المباراة)", _opt("team_size", ["١٠", "٢٠", "٣٠", "٥٠"]))
+	var maps := ["valley", "front"]
+	_row(w, "الخريطة (عند إعادة التشغيل)", _opt("map", ["الوادي ٨×٨ كم", "الجبهة ٣×٣ كم"], func(i): Settings.set_v("map", maps[i])))
 
 func _refresh() -> void:
 	for key in _widgets:
 		var w: Control = _widgets[key]
 		var val = Settings.get_v(key)
 		if w is OptionButton:
-			(w as OptionButton).select(int(val))
+			if key == "map":
+				(w as OptionButton).select(0 if String(val) == "valley" else 1)
+			else:
+				(w as OptionButton).select(int(val))
 		elif w is HSlider:
 			(w as HSlider).set_value_no_signal(float(val))
 			(w as HSlider).value_changed.emit(float(val))
@@ -306,29 +284,44 @@ func _build_credits() -> void:
 	var rt := RichTextLabel.new()
 	rt.bbcode_enabled = true
 	rt.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	rt.text = CREDITS
+	rt.text = CREDITS + _model_credits()
 	v.add_child(rt)
 
-const CREDITS := """[b]نداء البقاء: الجبهة[/b] — نسخة تجريبية على محرك Godot 4.7: خريطة ٣×٣ كم لغابة صنوبر محروقة وخط جبهة بخنادقه وملاجئه، بكاميرا جسم.
+const CREDITS := """[b]نداء البقاء[/b] — نسخة تجريبية على محرك Godot 4.7: خريطة الوادي ٨×٨ كم (مدن مهجورة، مطار، حاملات طائرات على البحيرات، غارات جوية، مركبات وطائرات تقودها) وخريطة الجبهة ٣×٣ كم (خنادق وملاجئ) بكاميرا جسم.
 
 [b]التحكم على الهاتف[/b]
-• العصا على اليسار للمشي، ادفعها إلى الأمام حتى الحافة للركض.
-• اسحب في النصف الأيمن للنظر. زر «رمي» يرمي ويمكنك السحب عليه للتصويب أثناء الرمي.
-• «قفز» يتسلق حافة الخندق أو أكياس الرمل إذا كانت أمامك، وإلا يقفز.
-• «تفاعل» يظهر قرب المصباح واللاسلكي وصناديق الذخيرة.
+• العصا على اليسار للمشي، ادفعها إلى الأمام حتى الحافة للركض. اسحب في النصف الأيمن للنظر.
+• «تفاعل» يظهر قرب الأبواب والمركبات: فتح الباب، ركوب المركبة، النزول منها.
+• في المركبة: العصا للقيادة، «فرامل» لفرامل اليد، «رمي» مدفع الدبابة.
+• في الطائرة: «رفع»/«خفض» للمحرك، العصا للمقدمة والميلان، «رمي» الرشاش، «صاروخ» الصواريخ أو القنابل. «قفز» يفتح المظلة.
 
 [b]التحكم بالحاسوب[/b]
-WASD حركة · Shift ركض · C انحناء · Space قفز/تسلّق · زر الفأرة الأيسر رمي · الأيمن تصويب · R تلقيم · E تفاعل · L مصباح · B نمط الرمي · Esc قائمة · F3 عداد الإطارات
+WASD حركة · Shift ركض · C انحناء · Space قفز/تسلّق/مظلة · الفأرة اليسرى رمي · اليمنى تصويب · R تلقيم · F تفاعل/ركوب · V المنظور · L مصباح · B نمط الرمي · Esc قائمة · F3 عداد الإطارات
+الطائرة: Shift/Ctrl المحرك · W/S المقدمة · A/D الميلان · Q/E الدفة · X صاروخ أو قنبلة
 
 [b]الحقوق والتراخيص[/b]
 • بندقية AK: نموذج «RAINIER AK - 3D» للفنان skartemka على Sketchfab — رخصة CC-BY-NC 4.0 (غير تجارية).
   https://sketchfab.com/3d-models/rainier-ak-3d-57aef8cdf42046a39f1ad9b428756213
-• الجيب المحترق: «UAZ 469 1973 (Classic)» للفنان zhe_kan على Sketchfab — CC-BY 4.0 (أُعيد تلوينه كهيكل محترق).
+• الجيب UAZ (والجيب المحترق): «UAZ 469 1973 (Classic)» للفنان zhe_kan على Sketchfab — CC-BY 4.0.
   https://sketchfab.com/3d-models/uaz-469-1973-classic-027fa204ce25452fac61a93ccfb8f1f8
-• أنسجة الأرض: من مجموعة أنسجة اللعبة الأصلية — ambientCG (CC0) وBabylon.js Assets (CC-BY 4.0) وأداة ez-tree لـ Daniel Greenheck (MIT).
-• أنسجة اللحاء: ambientCG (CC0). خريطة نتوءات الماء: أمثلة three.js (MIT).
+• الجندي: «Vanguard» من Mixamo (كما في أمثلة three.js).
+• أنسجة الأرض والأشجار والأعشاب: من مجموعة أنسجة اللعبة الأصلية — ambientCG (CC0) وBabylon.js Assets (CC-BY 4.0) وأداة ez-tree لـ Daniel Greenheck (MIT).
+• خريطة نتوءات الماء: أمثلة three.js (MIT).
 • الخطوط: Vazirmatn (SIL OFL 1.1) — Saber Rastikerdar وفريق Vazirmatn؛ JetBrains Mono (SIL OFL 1.1) — JetBrains.
-• كل ما سوى ذلك صُنع لهذه النسخة: الأشجار، الخنادق، الملاجئ وأثاثها، أبراج الكهرباء، أكياس الرمل، الأسلاك، الأنسجة الخشبية والمعدنية والقماشية، المؤثرات، الأصوات (مولّدة بالحاسوب)، والشيفرة.
-
-نصوص التراخيص الكاملة في مجلد المشروع: CREDITS.md وfonts/OFL.txt.
+• صُنع لهذه النسخة: الخرائط، البيوت وأثاثها، الأشجار، الدبابة، الخنادق والملاجئ، الأنسجة، المؤثرات، الأصوات المولّدة، والشيفرة.
 """
+
+## the owner's models with their authors and licences (data/credits_models.json, made by tools/credits.py)
+func _model_credits() -> String:
+	var rows = JSON.parse_string(FileAccess.get_file_as_string("res://data/credits_models.json"))
+	if not (rows is Array):
+		return ""
+	var t := "\n[b]نماذجك (من مستودع uploads)[/b]\n"
+	for r in rows:
+		var d: Dictionary = r
+		if String(d["author"]) == "owner":
+			t += "• %s — من صنعك\n" % d["ar"]
+		else:
+			t += "• %s: «%s» للفنان %s — %s\n  %s\n" % [d["ar"], d["title"], d["author"], d["license"], d["source"]]
+	t += "\nنصوص التراخيص الكاملة في مجلد المشروع: CREDITS.md وfonts/OFL.txt.\n"
+	return t

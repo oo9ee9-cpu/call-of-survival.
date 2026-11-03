@@ -46,6 +46,8 @@ const DEFAULTS := {
 	"map": "valley",       # valley (8 x 8 km) | front (3 x 3 km)
 	"mode": "domination",
 	"region": "me",        # eu | me | na | sa
+	"raids": true,         # air raids on the valley (sirens, jets, missiles)
+	"team_size": 3,        # soldiers per team: 10 | 20 | 30 | 50 (index)
 }
 
 func _ready() -> void:

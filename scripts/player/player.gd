@@ -5,6 +5,9 @@ extends CharacterBody3D
 ## ledges, climbs out of trenches with the jump button, crouches, sprints. Aiming always looks down the sights.
 
 signal message(text: String)
+signal hit_marker
+signal died(attacker: Node)
+signal respawned
 
 const STAND_H := 1.75
 const CROUCH_H := 1.15
@@ -58,10 +61,30 @@ var cam: Camera3D
 var weapon: Weapon
 var flashlight: SpotLight3D
 var breath: AudioStreamPlayer
+# vehicles and the parachute
+var vehicle: Vehicle
+var seat := -1
+var touch_up := false              # phone buttons while flying / driving
+var touch_down := false
+var touch_brake := false
+var touch_fire2 := false
+var para := 0                      # 0 on foot, 1 free fall, 2 under the canopy
+# what the soldier carries: two long guns and a pistol, ammunition by calibre, medicine, armour levels
+var inv := {"guns": [{"id": "ak", "ammo": 30, "sight": ""}, {}, {"id": "pistol", "ammo": 15, "sight": ""}], "cur": 0,
+	"ammo": {"762": 90, "556": 0, "9mm": 30, "338": 0, "12g": 0}, "meds": {"bandage": 2, "kit": 1, "medkit": 0}, "helmet": 0, "vest": 0}
+var heal_t := -1.0
+var heal_kind := ""
+var kills := 0
+var deaths := 0
+var lives := 3
+var respawn_timer: SceneTreeTimer  # the wait for the next life
+var chute: Node3D
+var snd_fall: AudioStreamPlayer
 
 func _ready() -> void:
+	add_to_group("soldiers")
 	collision_layer = 4
-	collision_mask = 1 | 2
+	collision_mask = 1 | 2 | Vehicle.LAYER
 	floor_max_angle = deg_to_rad(48.0)
 	floor_snap_length = 0.45
 	safe_margin = 0.02
@@ -99,7 +122,8 @@ func _ready() -> void:
 	breath = Sfx.loop("breath_loop", -80.0, "SFX")
 	body = Soldier.new()
 	add_child(body)
-	body.set_outfit.call_deferred(Color(0.46, 0.48, 0.4))
+	var prof := Profile.load_profile()
+	body.set_outfit.call_deferred((Lobby.OUTFITS.get(String(prof.get("outfit", "olive")), Lobby.OUTFITS["olive"]) as Dictionary)["color"])
 	tpp_pivot = Node3D.new()
 	tpp_pivot.position = Vector3(0, 1.58, 0)
 	add_child(tpp_pivot)
@@ -121,7 +145,7 @@ func _ready() -> void:
 func setup(w: World) -> void:
 	world = w
 	weapon.world = w
-	var L: Dictionary = w.lay["props"].get("ladder", {})
+	var L: Dictionary = w.lay["props"].get("ladder", {}) if w.lay.has("props") else {}
 	for k in L:
 		var arr: PackedFloat32Array = L[k]
 		for n in arr.size() / 12:
@@ -137,7 +161,7 @@ func spawn(pos: Vector3, facing: float) -> void:
 	yaw_node.rotation.y = yaw
 	health = 100.0
 	dead = false
-	body.dead = false
+	body.revive()
 	body.body_yaw = facing
 
 func apply_settings() -> void:
@@ -156,8 +180,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		var mm := event as InputEventMouseMotion
 		var s := 0.0022 * float(Settings.get_v("sens_mouse")) * (0.6 if aiming else 1.0)
 		look_in += Vector2(-mm.relative.x * s, -mm.relative.y * s * (-1.0 if Settings.get_v("invert_y") else 1.0))
+	if vehicle:
+		if event.is_action_pressed("interact"):
+			exit_vehicle()
+		elif event.is_action_pressed("view_toggle"):
+			vehicle.first_person = not vehicle.first_person
+		return
 	if event.is_action_pressed("jump"):
-		jump_or_climb()
+		if para == 1:
+			open_chute()
+		else:
+			jump_or_climb()
 	if event.is_action_pressed("crouch"):
 		crouching = not crouching
 	if event.is_action_pressed("flashlight"):
@@ -168,6 +201,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		weapon.reload()
 	if event.is_action_pressed("fire_mode"):
 		weapon.toggle_mode()
+	for i in 3:
+		if event.is_action_pressed("weapon_%d" % (i + 1)):
+			switch_weapon(i)
+	if event.is_action_pressed("heal"):
+		heal()
 	if event.is_action_pressed("view_toggle"):
 		toggle_view()
 
@@ -189,6 +227,20 @@ func _physics_process(delta: float) -> void:
 	last_look = look_in
 	look_in = Vector2.ZERO
 	yaw_node.rotation.y = yaw
+	world.phys_focus = vehicle.global_position if vehicle else global_position
+	world.phys_set = true
+	if dead:
+		velocity = Vector3(0.0, velocity.y - 9.8 * delta, 0.0)
+		move_and_slide()
+		_camera(delta, 0.0, Vector2.ZERO, is_on_floor())
+		return
+	_heal_step(delta)
+	if vehicle:
+		_ride(delta)
+		return
+	if para > 0:
+		_parachute(delta)
+		return
 	if mantle_t >= 0.0:
 		_mantle(delta)
 		_camera(delta, turn_rate, Vector2.ZERO, true)
@@ -359,7 +411,7 @@ func _foot_surface() -> String:
 	var q := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, 0.3, 0), global_position + Vector3(0, -0.4, 0), 1 | 2)
 	var r := ss.intersect_ray(q)
 	if not r.is_empty():
-		var s := world.props.surface_of(r["rid"], int(r["shape"]))
+		var s: String = world.props.surface_of(r["rid"], int(r["shape"]))
 		if s == "wood" or s == "metal" or s == "bag":
 			return s
 	return world.surface_at(global_position)
@@ -387,7 +439,7 @@ func _camera(delta: float, turn_rate: float, mv: Vector2, on_floor: bool) -> voi
 	var eye := chest.global_transform * Transform3D(Basis.from_euler(Vector3(pitch + rec.x + sh.y * 0.6, rec.y + sh.x * 0.6, roll)), Vector3.ZERO)
 	# third person: a pivot over the shoulders, a spring arm that keeps the camera out of walls;
 	# aiming always goes to the sights (the camera slides forward to the eyes)
-	var want := 1.0 if (tpp and not aiming) else 0.0
+	var want := 1.0 if dead or (tpp and not aiming) else 0.0      # dead: the camera steps back from the body
 	tpp_k = move_toward(tpp_k, want, delta * 5.5)
 	var tk := smoothstep(0.0, 1.0, tpp_k)
 	if tk > 0.001:
@@ -417,27 +469,512 @@ func _update_body(delta: float) -> void:
 func add_shake(a: float) -> void:
 	shake = clampf(shake + a, 0.0, 1.5)
 
+## where the soldier's eyes are and where they look (the camera may be behind the shoulder)
+func eye_xf() -> Transform3D:
+	return chest.global_transform * Transform3D(Basis.from_euler(Vector3(pitch, 0.0, 0.0)), Vector3.ZERO)
+
 func interact() -> void:
-	var fwd := -cam.global_transform.basis.z
-	var it := world.props.interactable_near(cam.global_position, fwd)
+	if vehicle:
+		exit_vehicle()
+		return
+	var m := _match()
+	if m and m.computer_near(global_position + Vector3(0, 1.0, 0)) >= 0:
+		var zi := m.computer_near(global_position + Vector3(0, 1.0, 0))
+		if m.zone_owner(zi) != team:
+			m.start_hack(zi)
+			return
+	var lt := loot_near()
+	if not lt.is_empty():
+		pick_up(lt)
+		return
+	var v := vehicle_near()
+	if v:
+		enter_vehicle(v)
+		return
+	var ex := eye_xf()
+	var it: Dictionary = world.props.interactable_near(ex.origin, -ex.basis.z)
 	if it.is_empty():
 		return
 	match it["kind"]:
+		"door":
+			world.props.toggle_door(String(it["key"]))
 		"lamp":
-			var on := world.props.toggle_lamp(int(it["dug"]))
+			var on: bool = world.props.toggle_lamp(int(it["dug"]))
 			Sfx.play("lamp_click", -4.0)
 			message.emit("أُشعل المصباح" if on else "أُطفئ المصباح")
 		"radio":
 			Sfx.play_at("radio", it["pos"], -2.0, 3.0)
 			message.emit("اللاسلكي: «…الوحدة الثالثة، اثبتوا في مواقعكم…»")
 		"ammo":
-			weapon.reserve = Weapon.MAX_RESERVE
+			for c in inv["ammo"]:
+				inv["ammo"][c] = maxi(int(inv["ammo"][c]), 120)
 			Sfx.play("ammo_pickup", -2.0)
 			message.emit("أخذت الذخيرة")
 
 func interact_hint() -> String:
-	var fwd := -cam.global_transform.basis.z
-	var it := world.props.interactable_near(cam.global_position, fwd)
+	if vehicle:
+		return "نزول"
+	var m := _match()
+	if m:
+		var zi := m.computer_near(global_position + Vector3(0, 1.0, 0))
+		if zi >= 0 and m.zone_owner(zi) != team:
+			return ("جارٍ الاختراق… %d%%" % int(m.hack_t / Match.HACK_TIME * 100.0)) if m.hacking == zi else "اختراق حاسوب المنطقة «%s»" % m.zones[zi]["name"]
+	var lt := loot_near()
+	if not lt.is_empty():
+		return "التقاط: " + Loot.title(lt["item"])
+	var v := vehicle_near()
+	if v:
+		return "ركوب: " + v.title
+	var ex := eye_xf()
+	var it: Dictionary = world.props.interactable_near(ex.origin, -ex.basis.z)
 	if it.is_empty():
 		return ""
+	if it["kind"] == "door":
+		return "إغلاق الباب" if bool(it["open"]) else "فتح الباب"
 	return {"lamp": "المصباح", "radio": "اللاسلكي", "ammo": "صندوق الذخيرة"}.get(it["kind"], "")
+
+# ------------------------------------------------------------------ vehicles
+## the closest vehicle with a free seat within a step or two of the soldier
+func vehicle_near() -> Vehicle:
+	if dead or para > 0:
+		return null
+	var best: Vehicle = null
+	var bd := 2.2
+	for n in get_tree().get_nodes_in_group("vehicles"):
+		var v := n as Vehicle
+		if v == null or v.dead or v.free_seat() < 0:
+			continue
+		var lp := v.global_transform.affine_inverse() * (global_position + Vector3(0, 1.0, 0))
+		var d := Vector3(maxf(absf(lp.x) - v.half_size.x, 0.0), 0.0, maxf(absf(lp.z) - v.half_size.z, 0.0)).length()
+		if d < bd and absf(lp.y) < v.half_size.y * 2.0 + 2.0:
+			bd = d
+			best = v
+	return best
+
+func enter_vehicle(v: Vehicle) -> void:
+	var s := v.board(self)
+	if s < 0:
+		return
+	vehicle = v
+	seat = s
+	collision_layer = 0
+	collision_mask = 0
+	velocity = Vector3.ZERO
+	crouching = false
+	body.visible = false
+	weapon.model.visible = false
+	v.first_person = not tpp
+	v.cam_yaw = 0.0
+	v.cam.fov = float(Settings.get_v("fov"))
+	v.cam.current = true
+	Sfx.play_at("car_door", v.global_position, -4.0, 4.0)
+	message.emit(v.title + ("  — القيادة" if s == 0 else "  — راكب"))
+
+func exit_vehicle() -> void:
+	if vehicle == null:
+		return
+	var v := vehicle
+	var p := v.exit_point(seat)
+	var high := v.global_position.y - world.height(v.global_position.x, v.global_position.z) > 12.0
+	if high:
+		# out of an aircraft in flight: drop clear of it
+		p = v.global_position + v.global_transform.basis.x * (v.half_size.x + 2.0) - Vector3(0, 3.0, 0)
+	v.leave(self)
+	vehicle = null
+	seat = -1
+	global_position = p
+	velocity = v.linear_velocity * (0.6 if high else 0.0)
+	collision_layer = 4
+	collision_mask = 1 | 2 | Vehicle.LAYER
+	body.visible = true
+	cam.current = true
+	yaw = atan2(-v.global_transform.basis.z.x, -v.global_transform.basis.z.z) + PI
+	Sfx.play_at("car_door", v.global_position, -4.0, 4.0)
+	if high:
+		para = 1
+		_fall_sound(true)
+
+func _ride(delta: float) -> void:
+	var v := vehicle
+	if v.dead and seat >= 0:
+		exit_vehicle()
+		return
+	var mv := Input.get_vector("move_left", "move_right", "move_back", "move_forward")
+	if move_in.length() > 0.05:
+		mv = move_in
+	if seat == 0:
+		if v is Aircraft:
+			var a := v as Aircraft
+			var thr := 0.0
+			if Input.is_action_pressed("throttle_up") or touch_up:
+				thr += 1.0
+			if Input.is_action_pressed("throttle_down") or touch_down:
+				thr -= 1.0
+			a.set_throttle_input(thr, delta)
+			var rud := 0.0
+			if Input.is_action_pressed("lean_right"):
+				rud += 1.0
+			if Input.is_action_pressed("lean_left"):
+				rud -= 1.0
+			# stick back (pull) = nose up
+			v.ctl = Vector3(mv.x, -mv.y if not a.heli else mv.y, rud)
+		else:
+			v.ctl = Vector3(mv.x, mv.y, 1.0 if (Input.is_action_pressed("brake") or touch_brake) else 0.0)
+	if seat == 0:
+		if Input.is_action_pressed("fire") or weapon.touch_fire:
+			v.fire_primary()
+		if Input.is_action_just_pressed("vehicle_fire2") or touch_fire2:
+			touch_fire2 = false
+			v.fire_secondary()
+	v.look(look_in * 0.8)
+	look_in = Vector2.ZERO
+	global_position = v.seat_xf(seat).origin - Vector3(0, 1.0, 0)
+	velocity = v.linear_velocity
+	v.update_camera(delta)
+	if breath:
+		breath.volume_db = -80.0
+
+# ------------------------------------------------------------------ parachute
+func open_chute() -> void:
+	if para != 1:
+		return
+	para = 2
+	Sfx.play("chute_open", -2.0)
+	if chute == null:
+		chute = _make_chute()
+		add_child(chute)
+	chute.visible = true
+	chute.scale = Vector3(0.2, 0.2, 0.2)
+	message.emit("المظلة مفتوحة — وجّه بالعصا")
+
+func _parachute(delta: float) -> void:
+	var mv := Input.get_vector("move_left", "move_right", "move_back", "move_forward")
+	if move_in.length() > 0.05:
+		mv = move_in
+	var yb := Basis(Vector3.UP, yaw)
+	var ground := world.height(global_position.x, global_position.z)
+	var h := global_position.y - ground
+	if para == 1:
+		# free fall: belly to earth, lean forward to dive; the chute opens by itself at 120 m
+		var dive := clampf(mv.y, 0.0, 1.0)
+		var vt := lerpf(54.0, 72.0, dive)
+		velocity.y = move_toward(velocity.y, -vt, 9.8 * delta)
+		var hv := yb * Vector3(mv.x, 0.0, -mv.y) * lerpf(9.0, 24.0, dive)
+		velocity.x = move_toward(velocity.x, hv.x, delta * 6.0)
+		velocity.z = move_toward(velocity.z, hv.z, delta * 6.0)
+		if h < 120.0:
+			open_chute()
+	else:
+		# under the canopy: a slow descent, glide where the stick points, pull back to brake
+		var brake_k := clampf(-mv.y, 0.0, 1.0)
+		velocity.y = move_toward(velocity.y, -lerpf(5.2, 3.6, brake_k), 18.0 * delta)
+		var fwd_v := lerpf(9.5, 3.0, brake_k)
+		var hv := yb * Vector3(mv.x * 4.0, 0.0, -fwd_v)
+		velocity.x = move_toward(velocity.x, hv.x, delta * 3.0)
+		velocity.z = move_toward(velocity.z, hv.z, delta * 3.0)
+		yaw -= mv.x * delta * 0.6
+		if chute:
+			chute.scale = chute.scale.move_toward(Vector3.ONE, delta * 2.5)
+			chute.rotation = Vector3(0.0, yaw, -mv.x * 0.25)
+	move_and_slide()
+	body.airborne = true
+	_camera(delta, 0.0, mv, false)
+	if is_on_floor() or h < 0.3:
+		_land()
+
+func _land() -> void:
+	para = 0
+	if chute:
+		chute.visible = false
+	body.airborne = false
+	_fall_sound(false)
+	if velocity.y < -20.0:
+		take_damage(100.0, global_position)
+	velocity = Vector3.ZERO
+	land_kick = 0.06
+
+func _fall_sound(on: bool) -> void:
+	if on and snd_fall == null:
+		snd_fall = Sfx.loop("wind_fall_loop", -4.0, "SFX")
+	elif not on and snd_fall:
+		snd_fall.queue_free()
+		snd_fall = null
+
+## a round canopy on its lines over the soldier (cloth panels in two colours)
+func _make_chute() -> Node3D:
+	var root := Node3D.new()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 20
+	var R := 3.6
+	var top := 6.2
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		var c := Color(0.36, 0.42, 0.28) if i % 2 == 0 else Color(0.62, 0.6, 0.5)
+		for ring in 4:
+			var t0 := ring / 4.0
+			var t1 := (ring + 1) / 4.0
+			var r0 := R * sin(t0 * PI * 0.5 + 0.08)
+			var r1 := R * sin(t1 * PI * 0.5 + 0.08)
+			var y0 := top - (1.0 - cos(t0 * PI * 0.5)) * 1.8
+			var y1 := top - (1.0 - cos(t1 * PI * 0.5)) * 1.8
+			var v := [Vector3(cos(a0) * r0, y0, sin(a0) * r0), Vector3(cos(a1) * r0, y0, sin(a1) * r0), Vector3(cos(a1) * r1, y1, sin(a1) * r1), Vector3(cos(a0) * r1, y1, sin(a0) * r1)]
+			for k in [0, 1, 2, 0, 2, 3]:
+				st.set_color(c)
+				var vv: Vector3 = v[k]
+				st.set_normal(Vector3(vv.x, 1.0, vv.z).normalized())
+				st.add_vertex(vv)
+	st.index()
+	var mesh := st.commit()
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.roughness = 0.8
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = m
+	root.add_child(mi)
+	# the lines
+	var lm := StandardMaterial3D.new()
+	lm.albedo_color = Color(0.15, 0.15, 0.13)
+	for i in 8:
+		var a := TAU * i / 8.0
+		var tip := Vector3(cos(a) * R * 0.98, top - 1.75, sin(a) * R * 0.98)
+		var base := Vector3(0, 1.45, 0)
+		var line := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.008
+		cm.bottom_radius = 0.008
+		cm.height = tip.distance_to(base)
+		cm.radial_segments = 4
+		cm.material = lm
+		line.mesh = cm
+		line.transform = Transform3D(Basis.looking_at(tip - base, Vector3.FORWARD if absf((tip - base).normalized().y) > 0.99 else Vector3.UP) * Basis(Vector3.RIGHT, PI * 0.5), (tip + base) * 0.5)
+		root.add_child(line)
+	return root
+
+# ------------------------------------------------------------------ getting hurt
+func take_damage(amount: float, from: Vector3, attacker: Node = null) -> void:
+	if dead:
+		return
+	# a hit high on the body is a head shot (the helmet takes part of it); the vest covers the chest
+	var head := from.y - global_position.y > 1.45 and from.distance_to(global_position) < 3.0
+	var k := 1.0
+	if head:
+		amount *= 2.0
+		k = [1.0, 0.7, 0.6, 0.45][clampi(int(inv["helmet"]), 0, 3)]
+	else:
+		k = [1.0, 0.7, 0.6, 0.45][clampi(int(inv["vest"]), 0, 3)]
+	amount *= k
+	heal_t = -1.0
+	health -= amount
+	add_shake(clampf(amount / 60.0, 0.1, 1.0))
+	if health <= 0.0:
+		_die(attacker)
+
+func _die(attacker: Node = null) -> void:
+	health = 0.0
+	if vehicle:
+		exit_vehicle()
+	deaths += 1
+	if _loot():
+		_loot().drop_crate(global_position + Vector3(0, 0.05, 0), kit())
+	dead = true
+	body.dead = true
+	weapon.aim_toggle = false
+	para = 0
+	if chute:
+		chute.visible = false
+	_fall_sound(false)
+	lives -= 1
+	died.emit(attacker)
+	if lives >= 0:
+		var wait := 8.0 if _match() else 5.0          # in a match: time to pick where to come back
+		message.emit("قُتلت — بقي لك %d %s" % [lives, "محاولة" if lives == 1 else "محاولات"])
+		respawn_timer = get_tree().create_timer(wait, false)
+		respawn_timer.timeout.connect(_respawn)
+	else:
+		message.emit("قُتلت — انتهت محاولاتك")
+
+## seconds until the next life
+func respawn_left() -> float:
+	return respawn_timer.time_left if respawn_timer else 0.0
+
+func _respawn() -> void:
+	var m := _match()
+	if m and m.over:
+		return
+	var sp: Array = m.player_spawn() if m else world.spawn_point()
+	inv = {"guns": [{"id": "ak", "ammo": 30, "sight": ""}, {}, {"id": "pistol", "ammo": 15, "sight": ""}], "cur": 0,
+		"ammo": {"762": 90, "556": 0, "9mm": 30, "338": 0, "12g": 0}, "meds": {"bandage": 2, "kit": 1, "medkit": 0}, "helmet": 0, "vest": 0}
+	weapon.equip("ak", 30)
+	body.set_weapon("ak")
+	spawn(sp[0], sp[1])
+	if sp.size() > 2 and bool(sp[2]):
+		air_start()
+	respawned.emit()
+
+## in the air over the battlefield (the start of a match, or the jump chosen while waiting): free fall, then the chute
+func air_start() -> void:
+	para = 1
+	velocity = Vector3(0.0, -12.0, 0.0)
+	_fall_sound(true)
+	message.emit("قفز حر — المظلة تُفتح وحدها على ١٢٠ م، أو بزر القفز")
+
+# ------------------------------------------------------------------ the kit
+func _match() -> Match:
+	return world.get_node_or_null("Match") as Match
+
+func _loot() -> Loot:
+	return world.valley.loot if world.valley else null
+
+func loot_near() -> Dictionary:
+	var l := _loot()
+	if l == null or dead or vehicle or para > 0:
+		return {}
+	var ex := eye_xf()
+	return l.nearest(ex.origin - Vector3(0, 0.8, 0), (-ex.basis.z + Vector3(0, -0.6, 0)).normalized())
+
+func pick_up(lt: Dictionary) -> void:
+	var it: Dictionary = lt["item"]
+	if String(it["type"]) == "crate":
+		var n := 0
+		for k in it["kit"]:
+			if give(k):
+				n += 1
+		_loot().take(String(lt["key"]))
+		message.emit("أخذت %d من محتويات الصندوق" % n)
+		return
+	if give(it):
+		_loot().take(String(lt["key"]))
+	else:
+		message.emit("لا حاجة لك به")
+
+## what this soldier leaves in his crate
+func kit() -> Array:
+	var out := []
+	save_ammo()
+	for g in inv["guns"]:
+		if not (g as Dictionary).is_empty():
+			out.append({"type": "gun", "id": g["id"], "n": g["ammo"]})
+	for c in inv["ammo"]:
+		if int(inv["ammo"][c]) > 0:
+			out.append({"type": "ammo", "id": c, "n": int(inv["ammo"][c])})
+	for m in inv["meds"]:
+		if int(inv["meds"][m]) > 0:
+			out.append({"type": "med", "id": m, "n": int(inv["meds"][m])})
+	if int(inv["helmet"]) > 0:
+		out.append({"type": "helmet", "id": "helmet", "n": int(inv["helmet"])})
+	if int(inv["vest"]) > 0:
+		out.append({"type": "vest", "id": "vest", "n": int(inv["vest"])})
+	return out
+
+func save_ammo() -> void:
+	var g: Dictionary = inv["guns"][int(inv["cur"])]
+	if not g.is_empty():
+		g["ammo"] = weapon.ammo
+
+func switch_weapon(i: int) -> void:
+	var g: Dictionary = inv["guns"][i]
+	if g.is_empty() or i == int(inv["cur"]) or vehicle:
+		return
+	save_ammo()
+	inv["cur"] = i
+	weapon.equip(String(g["id"]), int(g["ammo"]), String(g.get("sight", "")))
+	body.set_weapon(String(g["id"]))
+	message.emit(String(Guns.DATA[g["id"]]["title"]))
+
+## the next gun in hand (the phone button)
+func next_weapon() -> void:
+	for k in range(1, 4):
+		var i := (int(inv["cur"]) + k) % 3
+		if not (inv["guns"][i] as Dictionary).is_empty():
+			switch_weapon(i)
+			return
+
+## use the best medicine for how hurt the soldier is (it takes a few seconds; moving on cancels nothing, a hit does)
+func heal() -> void:
+	if heal_t >= 0.0 or health >= 99.0 or dead:
+		return
+	var m: Dictionary = inv["meds"]
+	for kind in (["medkit", "kit", "bandage"] if health < 60.0 else ["bandage", "kit", "medkit"]):
+		if int(m.get(kind, 0)) > 0:
+			if kind == "bandage" and health >= 75.0:
+				continue
+			heal_kind = kind
+			heal_t = 0.0
+			message.emit({"bandage": "ضمادة…", "kit": "إسعافات أولية…", "medkit": "حقيبة طبية…"}[kind])
+			return
+	message.emit("لا يوجد علاج")
+
+func _heal_step(delta: float) -> void:
+	if heal_t < 0.0:
+		return
+	heal_t += delta
+	var need: float = {"bandage": 3.0, "kit": 5.0, "medkit": 7.0}[heal_kind]
+	if heal_t >= need:
+		heal_t = -1.0
+		inv["meds"][heal_kind] = int(inv["meds"][heal_kind]) - 1
+		match heal_kind:
+			"bandage":
+				health = minf(health + 15.0, 75.0)
+			"kit":
+				health = maxf(health, 75.0)
+			"medkit":
+				health = 100.0
+		message.emit("الصحة %d" % int(health))
+
+## a picked-up item; returns false when there is no room / no use for it
+func give(it: Dictionary) -> bool:
+	var t := String(it.get("type", ""))
+	match t:
+		"gun":
+			var id := String(it["id"])
+			var slot := int(Guns.DATA[id]["slot"])
+			if slot == 0:
+				# a long gun: the free long slot, else swap with the one in hand (dropped where it was found)
+				if (inv["guns"][0] as Dictionary).is_empty():
+					slot = 0
+				elif (inv["guns"][1] as Dictionary).is_empty():
+					slot = 1
+				else:
+					slot = int(inv["cur"]) if int(inv["cur"]) < 2 else 0
+			save_ammo()
+			var old: Dictionary = inv["guns"][slot]
+			if not old.is_empty() and _loot():
+				# the gun it replaces is left where it was found
+				_loot().drop_item({"type": "gun", "id": old["id"], "n": int(old["ammo"])}, global_position + global_transform.basis.x * 0.5)
+			inv["guns"][slot] = {"id": id, "ammo": int(it.get("n", Guns.DATA[id]["mag"])), "sight": ""}
+			if slot == int(inv["cur"]) or (inv["guns"][int(inv["cur"])] as Dictionary).is_empty():
+				inv["cur"] = slot
+				weapon.equip(id, int(inv["guns"][slot]["ammo"]), "")
+				body.set_weapon(id)
+			message.emit("أخذت " + String(Guns.DATA[id]["title"]))
+		"ammo":
+			var cal := String(it["id"])
+			inv["ammo"][cal] = int(inv["ammo"].get(cal, 0)) + int(it.get("n", 30))
+			message.emit("ذخيرة %s +%d" % [Guns.CALIBERS.get(cal, cal), int(it.get("n", 30))])
+		"sight":
+			# onto the gun in hand if it has a rail and the sight is better than what it has
+			var g: Dictionary = inv["guns"][int(inv["cur"])]
+			if g.is_empty() or Guns.points(String(g["id"]))["rail"] == Vector3.INF:
+				return false
+			g["sight"] = String(it["id"])
+			save_ammo()
+			weapon.equip(String(g["id"]), int(g["ammo"]), String(g["sight"]))
+			message.emit("ركّبت " + String(Guns.SIGHTS[it["id"]]["title"]))
+		"med":
+			var k := String(it["id"])
+			inv["meds"][k] = int(inv["meds"].get(k, 0)) + int(it.get("n", 1))
+			message.emit({"bandage": "ضمادات", "kit": "إسعافات أولية", "medkit": "حقيبة طبية"}.get(k, k))
+		"helmet", "vest":
+			var lv := int(it.get("n", 1))
+			if lv <= int(inv[t]):
+				return false
+			inv[t] = lv
+			message.emit(("خوذة" if t == "helmet" else "درع") + " مستوى %d" % lv)
+		_:
+			return false
+	Sfx.play("ammo_pickup", -4.0)
+	return true

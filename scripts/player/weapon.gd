@@ -1,20 +1,28 @@
 class_name Weapon
 extends Node3D
-## The AK: hip / aimed pose, sway and bob, recoil that climbs, muzzle flash and light, ejected cases,
-## reload with its sounds, semi / auto, bullets traced against everything (and the far height field).
+## The gun in the soldier's hands (any of Guns.DATA): hip / aimed pose, sway and bob, recoil that climbs, muzzle
+## flash and light, ejected cases, reload with its sounds, semi / auto, pellets for the shotgun, a sight on the rail
+## (red dot, holographic, 2x .. 8x: the camera zooms and the HUD draws the reticle), bullets traced against the world,
+## the soldiers and the vehicles (head shots hurt twice as much; helmets and vests take part of it).
 
-const MAG := 30
 const MAX_RESERVE := 210
-const RPM := 600.0
-const MUZZLE := Vector3(0.0, -0.0061, 0.5479)
-const HIP := Vector3(0.11, -0.2, -0.42)
-const HIP_ROT := Vector3(0.06, 0.06, 0.03)
-const ADS := Vector3(0.0, -0.105, -0.32)
+const ADS_Z := -0.32
 
+var gun := "ak"
+var sight := ""
+var spec: Dictionary = Guns.DATA["ak"]
+var pts: Dictionary = {}
+var MAG := 30
+var RPM := 600.0
+var MUZZLE := Vector3(0.0, -0.0061, 0.5479)
+var HIP := Vector3(0.11, -0.2, -0.42)
+var HIP_ROT := Vector3(0.06, 0.06, 0.03)
+var ADS := Vector3(0.0, -0.105, -0.32)
+var zoom := 1.1
+var sight_node: Node3D
 var player: Player
 var world: World
-var ammo := MAG
-var reserve := 150
+var ammo := 30
 var auto := true
 var cool := 0.0
 var reload_t := -1.0
@@ -41,13 +49,9 @@ var shells: Array[CPUParticles3D] = []
 var shell_i := 0
 
 func _ready() -> void:
-	model = (load("res://models/ak.glb") as PackedScene).instantiate() as Node3D
-	model.rotation.y = PI
-	add_child(model)
-	_no_shadows(model)
 	flash_root = Node3D.new()
-	flash_root.position = Vector3(-MUZZLE.x, MUZZLE.y, -MUZZLE.z - 0.02)
 	add_child(flash_root)
+	_build_gun()
 	var star := StandardMaterial3D.new()
 	star.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	star.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
@@ -116,6 +120,67 @@ func _ready() -> void:
 		add_child(p)
 		shells.append(p)
 
+## take another gun in hand (its own ammo in the magazine), with a sight on its rail ("" = iron sights)
+func equip(id: String, mag_ammo: int, sight_id := "") -> void:
+	gun = id if Guns.DATA.has(id) else "ak"
+	sight = sight_id
+	ammo = mag_ammo
+	reload_t = -1.0
+	_build_gun()
+	Sfx.play("ak_select", -6.0)
+
+func _build_gun() -> void:
+	if model:
+		model.queue_free()
+	spec = Guns.DATA[gun]
+	pts = Guns.points(gun)
+	MAG = int(spec["mag"])
+	RPM = float(spec["rpm"])
+	auto = bool(spec["auto"])
+	HIP = spec["hip"]
+	var m: Vector3 = pts["muzzle"]
+	MUZZLE = Vector3(-m.x, m.y, -m.z)
+	model = Guns.model(gun)
+	add_child(model)
+	move_child(model, 0)
+	flash_root.position = Vector3(m.x, m.y, m.z - 0.02)
+	# the sight: on the middle of the rail; the eye looks down its axis (or over the iron sights)
+	sight_node = null
+	var sight_y := float(pts["iron_y"])
+	var sid := sight
+	if sid == "" and spec.has("default_sight"):
+		sid = String(spec["default_sight"])
+	var rail: Vector3 = pts["rail"]
+	if sid != "" and rail != Vector3.INF:
+		sight_node = Guns.sight_model(sid)
+		model.add_child(sight_node)
+		# the gun model is turned round: in its own frame the sight sits at the mirrored rail point, unturned
+		sight_node.rotation = Vector3.ZERO
+		sight_node.position = Vector3(-rail.x, rail.y, -rail.z)
+		sight_y = rail.y + Guns.sight_axis(sid)
+		zoom = float(Guns.SIGHTS[sid]["zoom"])
+	else:
+		zoom = 1.12
+	ADS = Vector3(0.0, -sight_y, ADS_Z - (0.06 if zoom > 1.5 else 0.0))
+	_no_shadows(model)
+
+## the reticle the HUD draws when aimed: "" (iron sights), "dot", "holo", "scope", "acog", "mil"
+func overlay() -> String:
+	var sid := sight
+	if sid == "" and spec.has("default_sight"):
+		sid = String(spec["default_sight"])
+	return String(Guns.SIGHTS[sid]["overlay"]) if Guns.SIGHTS.has(sid) else ""
+
+func reserve() -> int:
+	return int((player.inv["ammo"] as Dictionary).get(String(spec["cal"]), 0)) if player else 0
+
+func _take_reserve(n: int) -> int:
+	var cal := String(spec["cal"])
+	var have := int((player.inv["ammo"] as Dictionary).get(cal, 0))
+	var t := mini(n, have)
+	player.inv["ammo"][cal] = have - t
+	return t
+
 func _no_shadows(n: Node) -> void:
 	if n is GeometryInstance3D:
 		(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -129,15 +194,18 @@ func trigger_held() -> bool:
 	return (Input.is_action_pressed("fire") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED) or touch_fire
 
 func toggle_mode() -> void:
+	if not bool(spec["auto"]):
+		auto = false
+		return
 	auto = not auto
 	Sfx.play("ak_select", -6.0)
 	player.message.emit("رمي آلي" if auto else "رمي فردي")
 
 func reload() -> void:
-	if reload_t >= 0.0 or ammo >= MAG + 1 or reserve <= 0:
+	if reload_t >= 0.0 or ammo >= MAG + 1 or reserve() <= 0:
 		return
 	reload_empty = ammo == 0
-	reload_len = 2.9 if reload_empty else 2.25
+	reload_len = float(spec.get("reload", 2.25)) + (0.65 if reload_empty else 0.0)
 	reload_t = 0.0
 	reload_done = {}
 
@@ -178,10 +246,9 @@ func _reload_step(delta: float) -> void:
 	if reload_t >= reload_len:
 		var want := MAG - ammo + (0 if reload_empty else 1)
 		want = mini(want, MAG)
-		var take := mini(want, reserve)
-		ammo += take
-		reserve -= take
+		ammo += _take_reserve(want)
 		reload_t = -1.0
+		player.save_ammo()
 
 func _fire() -> void:
 	ammo -= 1
@@ -198,20 +265,27 @@ func _fire() -> void:
 		dir = fwd
 		origin += fwd * (player.spring.get_hit_length() + 0.35)
 		player.body.shot_flash()
-	var spread := deg_to_rad(lerpf(1.1, 0.18, ads) + bloom * 2.2 + (0.8 if not player.is_on_floor() else 0.0) + (0.5 if third else 0.0))
-	var r1 := randf() * TAU
-	var r2 := sqrt(randf()) * spread
+	var base_spread := float(spec.get("spread", 1.1))
+	var pellets := int(spec.get("pellets", 1))
+	var aimed_spread := 0.05 if (zoom > 1.5 and pellets == 1) else 0.18
+	var spread := deg_to_rad(lerpf(base_spread, aimed_spread * (3.0 if pellets > 1 else 1.0), ads) + bloom * 2.2 + (0.8 if not player.is_on_floor() else 0.0) + (0.5 if third else 0.0))
 	var right := cam.global_transform.basis.x
 	var up := cam.global_transform.basis.y
-	dir = (dir + right * cos(r1) * r2 + up * sin(r1) * r2).normalized()
-	_trace(origin, dir)
-	bloom = minf(bloom + 0.12, 1.0)
-	var climb := lerpf(0.016, 0.011, ads) * (1.0 + minf(shots_in_burst, 8) * 0.08)
+	for k in pellets:
+		var r1 := randf() * TAU
+		var r2 := sqrt(randf()) * spread
+		_trace(origin, (dir + right * cos(r1) * r2 + up * sin(r1) * r2).normalized())
+	bloom = minf(bloom + 0.12 * float(spec.get("climb", 1.0)), 1.0)
+	var climb := lerpf(0.016, 0.011, ads) * (1.0 + minf(shots_in_burst, 8) * 0.08) * float(spec.get("climb", 1.0))
 	recoil_vel += Vector2(climb * 14.0, randf_range(-0.6, 0.75) * climb * 7.0)
 	kick = minf(kick + 0.045, 0.09)
-	Sfx.play("ak_shot", 1.0, 0.04)
+	var snd := Sfx.play(String(spec.get("sound", "ak_shot")), 1.0 + (3.0 if gun == "sniper" or gun == "shotgun" else 0.0), 0.04)
+	if snd:
+		snd.pitch_scale *= float(spec.get("pitch", 1.0))
 	if Sfx.inside < 0.5:
-		Sfx.play("ak_tail", -5.0, 0.05, "Ambience")
+		var tail := Sfx.play("ak_tail", -5.0 + (4.0 if gun == "sniper" else 0.0), 0.05, "Ambience")
+		if tail:
+			tail.pitch_scale *= clampf(float(spec.get("pitch", 1.0)), 0.7, 1.2)
 	player.add_shake(0.045)
 	flash_t = 0.045
 	for q in flash_quads:
@@ -233,8 +307,10 @@ func _fire() -> void:
 func _trace(origin: Vector3, dir: Vector3) -> void:
 	var ss := get_world_3d().direct_space_state
 	var to := origin + dir * 700.0
-	var q := PhysicsRayQueryParameters3D.create(origin, to, 1 | 2)
+	var q := PhysicsRayQueryParameters3D.create(origin, to, 1 | 2 | 4 | Vehicle.LAYER)
 	q.exclude = [player.get_rid()]
+	if player.vehicle:
+		q.exclude.append(player.vehicle.get_rid())
 	var r := ss.intersect_ray(q)
 	var far := world.ray_ground(origin, dir, 700.0)
 	if not r.is_empty():
@@ -245,6 +321,20 @@ func _trace(origin: Vector3, dir: Vector3) -> void:
 		var nrm: Vector3 = r["normal"]
 		var col = r.get("collider")
 		var surface := ""
+		var dmg := float(spec.get("dmg", 35.0)) * clampf(1.15 - origin.distance_to(pos) / 900.0, 0.55, 1.0)
+		if col is Vehicle:
+			(col as Vehicle).damage(dmg * 0.35, pos)
+			world.fx.burst("spark", pos, nrm)
+			Sfx.play_at("impact_metal", pos, 0.0, 4.0)
+			return
+		if col is Bot and (col as Bot).team == player.team:
+			return
+		if col != null and col.has_method("take_damage") and col != player:
+			col.call("take_damage", dmg, pos, player)
+			world.fx.impact(pos, nrm, "flesh" if world.fx.pools.has("flesh") else "mud")
+			if player.has_signal("hit_marker"):
+				player.emit_signal("hit_marker")
+			return
 		if col is RigidBody3D:
 			var rb := col as RigidBody3D
 			surface = str(rb.get_meta("surface", "metal"))
@@ -309,3 +399,7 @@ func _pose(delta: float) -> void:
 	rot += Vector3(-0.35, 0.6, 0.35) * sprint_k
 	position = position.lerp(pos, clampf(delta * 16.0, 0.0, 1.0))
 	rotation = rotation.lerp(rot, clampf(delta * 14.0, 0.0, 1.0))
+	var base_fov := float(Settings.get_v("fov"))
+	player.cam.fov = lerpf(base_fov, base_fov / zoom, a)
+	if model and player.tpp_k < 0.5:
+		model.visible = not (zoom > 1.5 and ads > 0.9)

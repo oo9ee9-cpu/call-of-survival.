@@ -49,6 +49,13 @@ func _drag(i: int, p: Vector2, rel: Vector2) -> void:
 
 func _place(p: Vector3, yaw: float, pitch: float) -> void:
 	var pl: Player = main.player
+	if pl.para > 0:
+		# the match starts with a jump: put away the chute
+		pl.para = 0
+		if pl.chute:
+			pl.chute.visible = false
+		pl._fall_sound(false)
+		pl.body.airborne = false
 	pl.global_position = p
 	pl.velocity = Vector3.ZERO
 	pl.yaw = yaw
@@ -57,7 +64,10 @@ func _place(p: Vector3, yaw: float, pitch: float) -> void:
 	pl.body.body_yaw = yaw
 	main.world.focus = p
 	main.world.terrain.update_collision(p, 1.0, true)
-	main.world.veg.update(p, 1.0, true)
+	if main.world.veg:
+		main.world.veg.update(p, 1.0, true)
+	if main.world.valley:
+		main.world.valley.update(p + Vector3(0, 1.6, 0), 1.0, true)
 
 func _run() -> void:
 	main = get_parent()
@@ -67,12 +77,51 @@ func _run() -> void:
 	print("LOADED in ", Time.get_ticks_msec() - t0, " ms")
 	var w: World = main.world
 	await _wait(1.0)
-	if only == "" or only == "menu":
+	if only == "" or only == "menu" or only == "ui":
 		await shot("01_menu")
 		main.menus.show_settings("main")
 		await shot("02_settings")
 		main.menus.show_main()
+	if only == "menu":
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if only == "ui":
+		Settings.set_v("team_size", 0)
 	main._start()
+	if w.map_id == "valley" and only == "ui":
+		await _ui_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "match":
+		Engine.max_physics_steps_per_frame = 8
+		await _match_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "perf":
+		await _perf_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "combat":
+		Engine.max_physics_steps_per_frame = 8
+		await _combat_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "vehicles":
+		Engine.max_physics_steps_per_frame = 8
+		await _vehicles_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley":
+		await _valley_tour(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
 	await _wait(1.2)
 	await shot("03_dugout_door")
 	var pl: Player = main.player
@@ -200,3 +249,468 @@ func _weather(pl: Player) -> void:
 	await shot("13_night")
 	Settings.set_v("time", 1)
 	pl.toggle_flashlight()
+
+## the 8 x 8 km map: base, a street, a house inside, a door, a lake, the airfield, a view from a hill, the forest
+func _valley_tour(w: World) -> void:
+	var pl: Player = main.player
+	await _wait(1.0)
+	await shot("v01_base")
+	var b: Array = w.lay["buildings"]
+	var v: Valley = w.valley
+	# a city house: stand in the street in front of it, then go inside
+	var bi := 0
+	for i in b.size():
+		if String(b[i][0]) == "house2" and Vector2(b[i][1], b[i][3]).length() < 600.0:
+			bi = i
+			break
+	var xf: Transform3D = v.bxf[bi]
+	var pf: Dictionary = v.pref[v.btype[bi]]
+	var front := xf * Vector3(-1.5, 0.3, float(pf["d"]) * 0.5 + 7.0)
+	var look := xf.basis * Vector3(0, 0, -1)
+	await _place(front, atan2(-look.x, -look.z), 0.05)
+	await _settle()
+	await shot("v02_street")
+	# open the front door: stand in front of the first door of the house (outside), facing it
+	var dd: Array = pf["doors"][0]
+	var hinge: Vector3 = xf * Vector3(dd[0], dd[1], dd[2])
+	var db: Basis = xf.basis * Basis(Vector3.UP, float(dd[5]))
+	var dcen := hinge + db.x * float(dd[3]) * 0.5
+	var dn := db.z
+	if (dcen + dn - xf.origin).length() < (dcen - dn - xf.origin).length():
+		dn = -dn
+	var stand_d := dcen + dn * 1.3
+	stand_d.y = w.height(stand_d.x, stand_d.z) + 0.1
+	await _place(stand_d, atan2(dn.x, dn.z), -0.1)
+	await _settle()
+	print("DOOR hint before: '%s'" % pl.interact_hint())
+	pl.interact()
+	for f in 40:
+		await get_tree().physics_frame
+	print("DOOR hint after: '%s'" % pl.interact_hint())
+	await shot("v03_door")
+	var inside := xf * Vector3(1.5, 0.4, 1.0)
+	await _place(inside, atan2(-look.x, -look.z) + PI, 0.0)
+	await _settle()
+	await shot("v04_inside")
+	print("INSIDE factor %.2f" % v.inside_factor(inside + Vector3(0, 1.0, 0)).x)
+	# a carrier: drop onto its flight deck (the deck is solid), look along it
+	var vm: ValleyModels = v.models
+	var cv: Dictionary = vm.carriers[0]
+	var cxf: Transform3D = cv["xf"]
+	var deck_p := cxf * Vector3(0, 0, 0)
+	deck_p.y = float(cv["deck"]) + 3.0
+	var along := cxf.basis.z if String(cv["name"]) != "cvn65" else cxf.basis.x
+	await _place(deck_p, atan2(-along.x, -along.z), 0.0)
+	for f in 90:
+		await get_tree().physics_frame
+	print("CARRIER %s deck=%.2f player_y=%.2f on_floor=%s" % [cv["name"], float(cv["deck"]), pl.global_position.y, pl.is_on_floor()])
+	await _settle()
+	await shot("v05_carrier_deck")
+	# the same lake from its shore, a little uphill
+	var lk: Dictionary = w.lay["lakes"][0]
+	var dir := Vector3(1, 0, 0.3).normalized()
+	var shore := Vector3(float(lk["x"]), 0, float(lk["z"]))
+	for k in 200:
+		var q := Vector3(float(lk["x"]), 0, float(lk["z"])) + dir * (float(lk["r"]) * 0.6 + k * 6.0)
+		if w.height(q.x, q.z) > float(lk["level"]) + 3.0:
+			shore = q
+			break
+	shore.y = w.height(shore.x, shore.z) + 0.2
+	await _place(shore, atan2(dir.x, dir.z), -0.03)
+	await _settle()
+	await shot("v06_lake_carrier")
+	# the airfield: on the apron, the hangars with their aircraft ahead
+	var ap: Dictionary = w.lay["airport"]
+	var apron := Vector3(float(ap["x"]) - 760.0, 0, float(ap["z"]) - 160.0)
+	apron.y = w.height(apron.x, apron.z) + 0.2
+	await _place(apron, PI * 0.82, 0.04)
+	await _settle()
+	await shot("v07_airport")
+	# a base: the gate and the air defence
+	var bs: Dictionary = w.lay["bases"][0]
+	var byaw := float(bs["yaw"])
+	var gate := Vector3(float(bs["x"]), 0, float(bs["z"])) + Basis(Vector3.UP, byaw) * Vector3(18.0, 0, 150.0)
+	gate.y = w.height(gate.x, gate.z) + 0.2
+	var to_b := (Vector3(float(bs["x"]), 0, float(bs["z"])) - gate).normalized()
+	await _place(gate, atan2(-to_b.x, -to_b.z), 0.02)
+	await _settle()
+	await shot("v08_base_gate")
+	# a capture zone: the computer on the desk
+	var cp: Dictionary = vm.computers[0]
+	var cpos: Vector3 = cp["pos"]
+	var bi2 := 0
+	for i in b.size():
+		if String(b[i][0]) == "command_post":
+			bi2 = i
+			break
+	var pxf: Transform3D = v.bxf[bi2]
+	var stand := pxf * Vector3(0.3, 0.25, -0.2)
+	var lookd := (cpos - stand)
+	lookd.y = 0.0
+	await _place(stand, atan2(-lookd.x, -lookd.z), -0.35)
+	await _settle()
+	await shot("v09_computer")
+	# from a hill over the city
+	var mc: Array = w.lay["menu_cam"][0]
+	var hill := Vector3(mc[0], 0, mc[2])
+	hill.y = w.height(hill.x, hill.z) + 0.2
+	var to_c := -Vector3(hill.x, 0, hill.z).normalized()
+	await _place(hill, atan2(-to_c.x, -to_c.z), -0.05)
+	await _settle()
+	await shot("v10_city_view")
+	# the forest
+	var vg: Dictionary = w.lay["veg"]
+	var arr: PackedFloat32Array = vg[vg.keys()[0]]
+	var tp := Vector3(arr[0] + 6.0, 0, arr[2] + 6.0)
+	tp.y = w.height(tp.x, tp.z) + 0.2
+	await _place(tp, PI * 0.25, 0.08)
+	await _settle()
+	await shot("v11_forest")
+	# from the air: 400 m over the middle of the map, looking north-east (the far forest is cards there)
+	await _place(Vector3(-600, 420, 900), PI * 0.8, -0.45)
+	await _frames(4)
+	await shot("v12_aerial")
+
+func _settle() -> void:
+	for f in 30:
+		await get_tree().physics_frame
+	await _wait(0.5)
+
+## drive a jeep, an armoured car and a truck, take off in a jet, lift a helicopter off a carrier, bail out and float down
+func _vehicles_test(w: World) -> void:
+	var pl: Player = main.player
+	var vm: ValleyModels = w.valley.models
+	await _wait(0.5)
+	for kind in ["tank", "uaz", "fennek", "tam150"]:
+		var v: Vehicle = null
+		for c in vm.vehicles:
+			if c.kind == kind:
+				v = c
+				break
+		if v == null:
+			print("VEH %s missing" % kind)
+			continue
+		var side := v.global_transform * Vector3(v.half_size.x + 0.9, 0, 0)
+		side.y = w.height(side.x, side.z) + 0.1
+		await _place(side, 0.0, 0.0)
+		for f in 30:
+			await get_tree().physics_frame
+		pl.interact()
+		print("VEH %s entered=%s seat=%d frozen=%s wheels=%d" % [kind, pl.vehicle == v, pl.seat, v.freeze, v.wheels.size()])
+		var p0 := v.global_position
+		var yaw0 := atan2(v.global_transform.basis.z.x, v.global_transform.basis.z.z)
+		pl.move_in = Vector2(0.0, 1.0)
+		for f in 240:
+			await get_tree().physics_frame
+		print("VEH %s straight: moved %.1f m  speed %.1f km/h  fwd %.2f" % [kind, v.global_position.distance_to(p0), v.forward_speed() * 3.6, (v.global_position - p0).normalized().dot(v.global_transform.basis.z)])
+		await shot("x_%s" % kind)
+		if v is Tank:
+			pl.move_in = Vector2.ZERO
+			v.look(Vector2(-0.6, 0.0))
+			for f in 90:
+				await get_tree().physics_frame
+			v.fire_primary()
+			for f in 6:
+				await get_tree().physics_frame
+			print("TANK turret %.2f rad  gun %.2f  shells in flight %d" % [(v as Tank).turret_yaw, (v as Tank).gun_pitch, w.projectiles.live.size()])
+			await shot("x_tank_fire")
+			for f in 120:
+				await get_tree().physics_frame
+			pl.move_in = Vector2(1.0, 0.0)
+			var yy := atan2(v.global_transform.basis.z.x, v.global_transform.basis.z.z)
+			for f in 120:
+				await get_tree().physics_frame
+			print("TANK pivot turn: %.2f rad, moved %.1f m" % [wrapf(atan2(v.global_transform.basis.z.x, v.global_transform.basis.z.z) - yy, -PI, PI), v.linear_velocity.length()])
+		pl.move_in = Vector2(0.8, 0.8)
+		for f in 120:
+			await get_tree().physics_frame
+		var yaw1 := atan2(v.global_transform.basis.z.x, v.global_transform.basis.z.z)
+		print("VEH %s turn right: yaw change %.2f rad (negative = right)" % [kind, wrapf(yaw1 - yaw0, -PI, PI)])
+		pl.move_in = Vector2(0.0, -1.0)
+		for f in 120:
+			await get_tree().physics_frame
+		print("VEH %s braking: speed %.1f km/h" % [kind, v.forward_speed() * 3.6])
+		pl.move_in = Vector2.ZERO
+		pl.interact()
+		for f in 20:
+			await get_tree().physics_frame
+		print("VEH %s exited=%s player_y-ground=%.2f" % [kind, pl.vehicle == null, pl.global_position.y - w.height(pl.global_position.x, pl.global_position.z)])
+	# the fighter in a hangar: full throttle out of the door, rotate at take-off speed
+	var jet: Vehicle = null
+	for c in vm.vehicles:
+		if c.kind == "j36" and absf(c.global_position.x - float(w.lay["airport"]["x"])) < 1500.0:
+			jet = c
+			break
+	if jet:
+		var side := jet.global_transform * Vector3(jet.half_size.x * 0.4, 0, 0)
+		side.y = w.height(side.x, side.z) + 0.1
+		await _place(side, 0.0, 0.0)
+		for f in 20:
+			await get_tree().physics_frame
+		pl.enter_vehicle(jet)
+		print("JET entered=%s" % (pl.vehicle == jet))
+		pl.touch_up = true
+		var a := jet as Aircraft
+		for f in 900:
+			await get_tree().physics_frame
+			if a.linear_velocity.length() > 68.0:
+				pl.move_in = Vector2(0.0, -0.5)
+			if f % 150 == 0:
+				print("JET t=%.1fs speed %.0f km/h alt %.1f aoa %.1f ground %s thr %.2f" % [f / 60.0, a.linear_velocity.length() * 3.6, a.alt, rad_to_deg(a.aoa), a.on_ground, a.throttle])
+		pl.move_in = Vector2.ZERO
+		for f in 240:
+			await get_tree().physics_frame
+		print("JET after: speed %.0f km/h alt %.1f pitch %.2f" % [a.linear_velocity.length() * 3.6, a.alt, asin(clampf(a.global_transform.basis.z.y, -1, 1))])
+		await shot("x_jet")
+		a.fire_secondary()
+		for f in 20:
+			await get_tree().physics_frame
+			a.fire_primary()
+		print("JET fired: in flight %d, stores %d" % [w.projectiles.live.size(), a.stores])
+		await shot("x_jet_fire")
+		pl.touch_up = false
+		pl.exit_vehicle()
+		print("JET bailed: para=%d" % pl.para)
+		for f in 300:
+			await get_tree().physics_frame
+		print("CHUTE para=%d h=%.0f vy=%.1f" % [pl.para, pl.global_position.y - w.height(pl.global_position.x, pl.global_position.z), pl.velocity.y])
+		await shot("x_chute")
+		for f in 3000:
+			await get_tree().physics_frame
+			if pl.para == 0:
+				break
+		print("CHUTE landed para=%d dead=%s health=%.0f" % [pl.para, pl.dead, pl.health])
+	# the helicopter on a lake carrier
+	var heli: Vehicle = null
+	for c in vm.vehicles:
+		if c.kind == "mi171" and vm.carrier_at(c.global_position).size() > 0:
+			heli = c
+			break
+	if heli:
+		await _place(heli.global_transform * Vector3(heli.half_size.x * 0.3 + 2.0, 0.5, 0), 0.0, 0.0)
+		for f in 30:
+			await get_tree().physics_frame
+		pl.enter_vehicle(heli)
+		var h0 := heli.global_position.y
+		for f in 240:
+			await get_tree().physics_frame
+		print("HELI idle on deck: climb %.1f m rotor %.2f" % [heli.global_position.y - h0, (heli as Aircraft).rotor_spin])
+		pl.touch_up = true
+		for f in 240:
+			await get_tree().physics_frame
+		pl.touch_up = false
+		print("HELI after 4 s up: climb %.1f m vy %.1f" % [heli.global_position.y - h0, heli.linear_velocity.y])
+		for f in 600:
+			await get_tree().physics_frame
+			if f % 150 == 0:
+				print("HELI hold t=%.1fs climb %.1f m vy %.1f coll %.2f" % [f / 60.0, heli.global_position.y - h0, heli.linear_velocity.y, (heli as Aircraft).throttle])
+		pl.move_in = Vector2(0.0, 0.6)
+		for f in 300:
+			await get_tree().physics_frame
+		print("HELI forward: speed %.0f km/h climb %.1f" % [heli.linear_velocity.length() * 3.6, heli.global_position.y - h0])
+		await shot("x_heli")
+		pl.move_in = Vector2.ZERO
+
+## guns and sights, loot in a house, an air raid next to us
+func _combat_test(w: World) -> void:
+	var pl: Player = main.player
+	await _wait(0.5)
+	pl.give({"type": "gun", "id": "carbine", "n": 30})
+	pl.give({"type": "sight", "id": "x4"})
+	pl.inv["ammo"]["556"] = 120
+	print("GUN now %s sight %s ammo %d reserve %d" % [pl.weapon.gun, pl.weapon.sight, pl.weapon.ammo, pl.weapon.reserve()])
+	pl.tpp = false
+	pl.weapon.aim_toggle = true
+	await _wait(1.0)
+	await shot("c01_carbine_x4")
+	pl.weapon.touch_fire = true
+	for f in 20:
+		await get_tree().physics_frame
+	pl.weapon.touch_fire = false
+	print("GUN fired: ammo %d" % pl.weapon.ammo)
+	pl.give({"type": "gun", "id": "sniper", "n": 5})
+	await _wait(1.0)
+	await shot("c02_sniper_x8")
+	pl.weapon.aim_toggle = false
+	pl.tpp = true
+	await _wait(0.6)
+	await shot("c03_tpp_sniper")
+	# loot: the nearest house spot that has something
+	var lt: Loot = w.valley.loot
+	var best := ""
+	var bd := INF
+	for k in lt.items:
+		var it: Dictionary = lt.items[k]
+		var d: float = (it["pos"] as Vector3).distance_to(pl.global_position)
+		if d < bd and String(it["type"]) == "gun":
+			bd = d
+			best = k
+	if best != "":
+		var it2: Dictionary = lt.items[best]
+		var p: Vector3 = it2["pos"]
+		await _place(p + Vector3(0.9, 0.05, 0.0), PI * 0.5, -0.6)
+		for f in 30:
+			await get_tree().physics_frame
+		print("LOOT %s at %.0f m: hint '%s'" % [Loot.title(it2), bd, pl.interact_hint()])
+		await shot("c04_loot")
+		pl.interact()
+		print("LOOT after: guns %s" % [pl.inv["guns"]])
+	# an air raid 140 m away
+	var at := pl.global_position + Vector3(140, 0, 40)
+	w.raid.start(at)
+	print("RAID phase %s zone %s" % [w.raid.phase, w.raid.zone])
+	for f in 60 * 14:
+		await get_tree().physics_frame
+	pl.yaw = atan2(-(at.x - pl.global_position.x), -(at.z - pl.global_position.z))
+	pl.pitch = 0.15
+	for f in 60 * 5:
+		await get_tree().physics_frame
+	await shot("c05_raid_jets")
+	for f in 60 * 4:
+		await get_tree().physics_frame
+	await shot("c06_raid_strike")
+	for f in 60 * 3:
+		await get_tree().physics_frame
+	await shot("c07_raid_strike2")
+	print("RAID phase %s fired %d health %.0f" % [w.raid.phase, w.raid.fired, pl.health])
+
+## domination: the jump at the start, 99 bots coming in at their deployment points, a fight around the middle zone
+## seen from close and from far (the held-rifle clips), the player's death and the choice of where to come back, the end
+func _match_test(w: World) -> void:
+	var pl: Player = main.player
+	var m: Match = main.match_
+	if w.raid:
+		w.raid.enabled = false
+	var g0 := w.height(pl.global_position.x, pl.global_position.z)
+	print("MATCH start: para %d height %.0f m over the ground, %.0f m from the middle" % [pl.para, pl.global_position.y - g0, Vector2(pl.global_position.x - m.mid.x, pl.global_position.z - m.mid.z).length()])
+	pl.tpp = true
+	pl.pitch = -0.5
+	for f in 120:
+		await get_tree().physics_frame
+	await shot("m00_jump")
+	var t := 0
+	while pl.para > 0 and t < 60 * 45:
+		await get_tree().physics_frame
+		t += 1
+		if t == 60 * 9:
+			await shot("m01_chute")
+	print("MATCH landed after %.1f s: para %d health %.0f at %s" % [t / 60.0, pl.para, pl.health, pl.global_position])
+	print("MATCH bots %d (team0 %d) deploy0 %s deploy1 %s" % [m.bots.size(), m.bots.filter(func(b): return b.team == 0).size(), m.deploy[0], m.deploy[1]])
+	var far_from_zones := 0.0
+	for b in m.bots:
+		var dmin := INF
+		for zz in m.zones:
+			dmin = minf(dmin, b.global_position.distance_to(zz["pos"] as Vector3))
+		far_from_zones = maxf(far_from_zones, dmin)
+	print("MATCH the bots' farthest distance to a zone: %.0f m" % far_from_zones)
+	# mid-match: everyone around the middle zone, the player 70 m back on his side, on the ground
+	var za: Vector3 = m.zone_pos(0)
+	for b in m.bots:
+		var off := (m.side_dir[b.team] as Vector3) * randf_range(25.0, 140.0) + Vector3(randf_range(-60, 60), 0, randf_range(-60, 60))
+		var q := m.free_spot(za + off, 12.0)
+		if q.x < 1e9:
+			b.spawn_at(q, atan2(-(za - q).x, -(za - q).z))
+	var pp := m.free_spot(za + (m.side_dir[0] as Vector3) * 70.0, 10.0)
+	var to := za - pp
+	await _place(pp, atan2(-to.x, -to.z), -0.03)
+	pl.tpp = false
+	for k in 4:
+		for f in 300:
+			await get_tree().physics_frame
+		var alive := m.bots.filter(func(b): return not b.dead).size()
+		var near := m.bots.filter(func(b): return b.near).size()
+		var lods := [0, 0, 0, 0]
+		for b in m.bots:
+			lods[b.body.lod] += 1
+		var owners := []
+		for zz in m.zones:
+			owners.append(int(zz["owner"]))
+		print("MATCH t=%.0fs score %s owners %s alive %d near %d lods %s feed %s player %.0f  proc %.1f ms phys %.1f ms" % [m.t, m.score, owners, alive, near, lods,
+			m.feed.map(func(f): return f["text"]), pl.health, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
+		await shot("m%02d_fight" % (k + 2))
+	# the same fight from 300 m through the x8 scope (the far soldiers' clips)
+	var pf := m.free_spot(za + (m.side_dir[0] as Vector3) * 300.0, 20.0)
+	to = za - pf
+	await _place(pf + Vector3(0, 0.1, 0), atan2(-to.x, -to.z), -0.02)
+	pl.give({"type": "gun", "id": "sniper", "n": 5})
+	for i in 3:
+		if String((pl.inv["guns"][i] as Dictionary).get("id", "")) == "sniper":
+			pl.switch_weapon(i)
+	pl.weapon.aim_toggle = true
+	for f in 120:
+		await get_tree().physics_frame
+	await shot("m06_scope_far")
+	pl.weapon.aim_toggle = false
+	# the player dies: the choice of where to come back
+	pl.take_damage(500.0, pl.global_position + Vector3(0, 1.0, 0), null)
+	for f in 90:
+		await get_tree().physics_frame
+	await shot("m07_deploy")
+	var held := -1
+	for i in m.zones.size():
+		if m.can_spawn_at(i, 0):
+			held = i
+	m.choice = "zone%d" % held if held >= 0 else "air"
+	while pl.dead:
+		await get_tree().physics_frame
+	print("MATCH came back (%s) at %s, para %d, %.0f m from the middle, lives %d" % [m.choice, pl.global_position, pl.para, Vector2(pl.global_position.x - m.mid.x, pl.global_position.z - m.mid.z).length(), pl.lives])
+	m.finish()
+	await _wait(1.0)
+	await shot("m_results")
+
+## where the frame time goes with 99 soldiers fighting around the player (run it headless: no drawing)
+func _perf_test(w: World) -> void:
+	var pl: Player = main.player
+	var m: Match = main.match_
+	if w.raid:
+		w.raid.enabled = false
+	while m.bots.size() < 99:
+		await get_tree().process_frame
+	var za: Vector3 = m.zone_pos(0)
+	for b in m.bots:
+		var off := (m.side_dir[b.team] as Vector3) * randf_range(25.0, 140.0) + Vector3(randf_range(-60, 60), 0, randf_range(-60, 60))
+		var q := m.free_spot(za + off, 12.0)
+		if q.x < 1e9:
+			b.spawn_at(q, atan2(-(za - q).x, -(za - q).z))
+	var pp := m.free_spot(za + (m.side_dir[0] as Vector3) * 70.0, 10.0)
+	await _place(pp, 0.0, 0.0)
+	pl.health = 100000.0
+	for mode in ["normal", "lod3", "lod2", "lod1", "lod0", "no_ai", "normal"]:
+		for b in m.bots:
+			b.lod_force = int(String(mode).substr(3)) if String(mode).begins_with("lod") else -1
+			b.set_physics_process(mode != "no_ai")
+		for f in 30:
+			await get_tree().process_frame
+		var tp := 0.0
+		var tf := 0.0
+		var n := 0
+		var t0 := Time.get_ticks_usec()
+		for f in 90:
+			await get_tree().process_frame
+			tp += Performance.get_monitor(Performance.TIME_PROCESS)
+			tf += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
+			n += 1
+		var lods := [0, 0, 0, 0]
+		for b in m.bots:
+			lods[b.body.lod] += 1
+		print("PERF %-7s process %.2f ms  physics %.2f ms  frame %.2f ms  lods %s alive %d" % [mode, tp / n * 1000.0, tf / n * 1000.0, (Time.get_ticks_usec() - t0) / 1000.0 / n, lods, m.bots.filter(func(b): return not b.dead).size()])
+
+## the screens of a match: waiting for the next life (where to come back) and the results
+func _ui_test(w: World) -> void:
+	var pl: Player = main.player
+	var m: Match = main.match_
+	if w.raid:
+		w.raid.enabled = false
+	var p0: Vector3 = m.deploy[0][0]
+	await _place(m.free_spot(p0, 6.0), 0.0, -0.05)
+	pl.tpp = false
+	await _wait(1.0)
+	await shot("u00_ground")
+	pl.take_damage(500.0, pl.global_position + Vector3(0, 1.0, 0), null)
+	await _wait(2.0)
+	print("UI dead: lives %d left %.1f s choice %s" % [pl.lives, pl.respawn_left(), m.choice])
+	await shot("u01_deploy")
+	m.finish()
+	await _wait(1.0)
+	await shot("u02_results")
+

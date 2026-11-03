@@ -1,0 +1,223 @@
+{
+"oak_0": {
+"species": "oak",
+"height": 17,
+"trunkR": 0.464,
+"crownR": 7.61,
+"bark": "oak",
+"leaf": "oak",
+"tris": [
+5877,
+1126
+],
+"bush": false
+},
+"oak_1": {
+"species": "oak",
+"height": 17,
+"trunkR": 0.463,
+"crownR": 6.86,
+"bark": "oak",
+"leaf": "oak",
+"tris": [
+5866,
+1132
+],
+"bush": false
+},
+"oak_m_0": {
+"species": "oak_m",
+"height": 12,
+"trunkR": 0.226,
+"crownR": 4.13,
+"bark": "oak",
+"leaf": "oak",
+"tris": [
+3924,
+924
+],
+"bush": false
+},
+"ash_0": {
+"species": "ash",
+"height": 18,
+"trunkR": 0.537,
+"crownR": 8.27,
+"bark": "ash",
+"leaf": "ash",
+"tris": [
+5976,
+1006
+],
+"bush": false
+},
+"ash_1": {
+"species": "ash",
+"height": 18,
+"trunkR": 0.53,
+"crownR": 6.78,
+"bark": "ash",
+"leaf": "ash",
+"tris": [
+5922,
+1005
+],
+"bush": false
+},
+"birch_0": {
+"species": "birch",
+"height": 15,
+"trunkR": 0.122,
+"crownR": 2.99,
+"bark": "birch",
+"leaf": "aspen",
+"tris": [
+3286,
+336
+],
+"bush": false
+},
+"birch_1": {
+"species": "birch",
+"height": 15,
+"trunkR": 0.124,
+"crownR": 2.86,
+"bark": "birch",
+"leaf": "aspen",
+"tris": [
+3282,
+336
+],
+"bush": false
+},
+"pine_0": {
+"species": "pine",
+"height": 21,
+"trunkR": 0.381,
+"crownR": 6.71,
+"bark": "pine",
+"leaf": "pine",
+"tris": [
+4323,
+1501
+],
+"bush": false
+},
+"pine_1": {
+"species": "pine",
+"height": 21,
+"trunkR": 0.38,
+"crownR": 6.96,
+"bark": "pine",
+"leaf": "pine",
+"tris": [
+4302,
+1504
+],
+"bush": false
+},
+"spruce_0": {
+"species": "spruce",
+"height": 19,
+"trunkR": 0.385,
+"crownR": 4.31,
+"bark": "pine",
+"leaf": "pine",
+"tris": [
+6004,
+2098
+],
+"bush": false
+},
+"spruce_1": {
+"species": "spruce",
+"height": 19,
+"trunkR": 0.386,
+"crownR": 4.57,
+"bark": "pine",
+"leaf": "pine",
+"tris": [
+5999,
+2101
+],
+"bush": false
+},
+"cypress_0": {
+"species": "cypress",
+"height": 14,
+"trunkR": 0.285,
+"crownR": 1.27,
+"bark": "cedar",
+"leaf": "pine",
+"tris": [
+6375,
+2160
+],
+"bush": false
+},
+"willow_0": {
+"species": "willow",
+"height": 12,
+"trunkR": 0.548,
+"crownR": 9.33,
+"bark": "moss",
+"leaf": "ash",
+"tris": [
+6021,
+1016
+],
+"bush": false
+},
+"dead_0": {
+"species": "dead",
+"height": 11,
+"trunkR": 0.216,
+"crownR": 3.98,
+"bark": "dead",
+"leaf": "oak",
+"tris": [
+1405,
+294
+],
+"bush": false
+},
+"bush_0": {
+"species": "bush",
+"height": 2.4,
+"trunkR": 0.048,
+"crownR": 1.56,
+"bark": "ash",
+"leaf": "oak",
+"tris": [
+4051,
+727
+],
+"bush": true
+},
+"bush2_0": {
+"species": "bush2",
+"height": 2,
+"trunkR": 0.034,
+"crownR": 0.96,
+"bark": "ash",
+"leaf": "ash",
+"tris": [
+1371,
+160
+],
+"bush": true
+},
+"bush3_0": {
+"species": "bush3",
+"height": 2.6,
+"trunkR": 0.071,
+"crownR": 2.3,
+"bark": "ash",
+"leaf": "aspen",
+"tris": [
+3898,
+380
+],
+"bush": true
+}
+}

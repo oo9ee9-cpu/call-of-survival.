@@ -33,13 +33,27 @@ for root, dirs, files in os.walk(P + '/textures'):
     for f in files:
         if f.endswith('.import'): continue
         rel = os.path.relpath(os.path.join(root, f), P).replace(os.sep, '/')
-        if rel.startswith('textures/terrain/terrain_'): continue
-        if '/splat_' in rel or rel.endswith('fx/noise.png'): write_tex(rel, 0, True)
+        if rel.startswith('textures/terrain/terrain_') or rel.startswith('textures/v8/terrain_'): continue
+        if '/splat_' in rel: write_tex(rel, 0, True, extra={'process/fix_alpha_border': 'false'})
+        elif rel.endswith('fx/noise.png'): write_tex(rel, 0, True)
         elif rel.endswith('_nrh.png'): write_tex(rel, 2, True, 2)
         elif rel.endswith('weapons/ak_1.jpg'): write_tex(rel, 2, True, 1)
         else: write_tex(rel, 2, True)
 write_array('textures/terrain/terrain_albedo.jpg', 8)
 write_array('textures/terrain/terrain_nrh.png', 8)
+if os.path.exists(P + '/textures/v8/terrain_albedo.jpg'):
+    write_array('textures/v8/terrain_albedo.jpg', 8)
+    write_array('textures/v8/terrain_nrh.png', 8)
+for sub in ('b', 'v8'):
+    d = P + '/models/' + sub
+    if not os.path.isdir(d): continue
+    for f in os.listdir(d):
+        imp = d + '/' + f + '.import'
+        if not f.endswith('.glb') or not os.path.exists(imp): continue
+        txt = open(imp).read()
+        txt = re.sub(r'meshes/generate_lods=\w+', 'meshes/generate_lods=false', txt)
+        txt = re.sub(r'meshes/light_baking=\d', 'meshes/light_baking=0', txt)
+        open(imp, 'w').write(txt)
 for f in os.listdir(P + '/models'):
     if not f.endswith('.glb'): continue
     imp = P + '/models/' + f + '.import'

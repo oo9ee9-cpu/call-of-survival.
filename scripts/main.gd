@@ -5,6 +5,7 @@ var world: World
 var player: Player
 var menu_cam: Camera3D
 var hud: Hud
+var match_: Match
 var touch: TouchControls
 var menus: Menus
 var post: ColorRect
@@ -30,6 +31,11 @@ func _ready() -> void:
 	await get_tree().process_frame
 	world = World.new()
 	world.name = "World"
+	world.map_id = String(Settings.get_v("map"))
+	var args := OS.get_cmdline_user_args()
+	var mi := args.find("--map")
+	if mi >= 0 and mi + 1 < args.size():
+		world.map_id = args[mi + 1]
 	world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(world)
 	world.progress.connect(_on_progress)
@@ -41,10 +47,17 @@ func _ready() -> void:
 	var sp := world.spawn_point()
 	player.spawn(sp[0], sp[1])
 	player.message.connect(_on_message)
-	world.battle.shake.connect(func(a): player.add_shake(a))
+	if world.battle:
+		world.battle.shake.connect(func(a): player.add_shake(a))
+	if world.boom:
+		world.boom.shake.connect(func(a): player.add_shake(a))
+	if world.raid:
+		world.raid.warned.connect(func(t: String): hud.show_message(t))
+
 	menu_cam = Camera3D.new()
 	menu_cam.fov = 78.0
-	menu_cam.far = 2600.0
+	menu_cam.far = 2600.0 if world.map_id == "front" else 6500.0
+	player.cam.far = menu_cam.far
 	world.add_child(menu_cam)
 	_build_layers()
 	Settings.changed.connect(_on_setting)
@@ -70,7 +83,7 @@ func _build_loading() -> void:
 	v.size = Vector2(660, 220)
 	v.add_theme_constant_override("separation", 14)
 	loading.add_child(v)
-	v.add_child(UiTheme.label("الجبهة", 64, true))
+	v.add_child(UiTheme.label("الوادي" if String(Settings.get_v("map")) == "valley" else "الجبهة", 64, true))
 	load_text = UiTheme.label("…", 20, false, UiTheme.DIM)
 	v.add_child(load_text)
 	load_bar = ProgressBar.new()
@@ -103,6 +116,7 @@ func _build_layers() -> void:
 	add_child(hl)
 	hud = Hud.new()
 	hud.player = player
+	player.hit_marker.connect(hud.on_hit)
 	hl.add_child(hud)
 	var tl := CanvasLayer.new()
 	tl.layer = 2
@@ -120,6 +134,13 @@ func _build_layers() -> void:
 	menus.start_pressed.connect(_start)
 	menus.resume_pressed.connect(_resume)
 	menus.main_menu_pressed.connect(_to_menu)
+	menus.layout_editor.connect(func():
+		menus.visible = false
+		touch.start_editor())
+	touch.editor_closed.connect(func():
+		touch.visible = state == "play" and (Settings.mobile or DisplayServer.is_touchscreen_available())
+		menus.visible = true
+		menus.show_settings("pause" if state == "pause" else "main"))
 	ml.add_child(menus)
 
 func _on_setting(_k: String) -> void:
@@ -149,8 +170,23 @@ func _to_menu() -> void:
 
 func _start() -> void:
 	state = "play"
-	var sp := world.spawn_point()
-	player.spawn(sp[0], sp[1])
+	if world.map_id == "valley" and String(Settings.get_v("mode")) == "domination" and match_ == null:
+		match_ = Match.new()
+		match_.name = "Match"
+		world.add_child(match_)
+		match_.setup(world, player)
+		match_.note.connect(func(t: String): hud.show_message(t))
+		match_.ended.connect(_on_match_end)
+		player.died.connect(_on_player_died)
+		player.respawned.connect(_on_player_respawned)
+		hud.match_ = match_
+		# the match starts with a jump over the team's side of the city
+		var first: Array = match_.player_spawn("air")
+		player.spawn(first[0], first[1])
+		player.air_start()
+	else:
+		var sp := world.spawn_point()
+		player.spawn(sp[0], sp[1])
 	player.visible = true
 	player.active = true
 	player.cam.current = true
@@ -161,7 +197,12 @@ func _start() -> void:
 	if not touch.visible:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	Sfx.play("rec_beep", -4.0, 0.0, "UI")
-	hud.show_message("بدأ التسجيل — اخرج من الملجأ إلى الخندق")
+	if match_:
+		hud.show_message("سيطر على المناطق الخمس في المدينة المدمرة — اهبط بالمظلة في جهة فريقك")
+	elif world.map_id == "valley":
+		hud.show_message("بدأ التسجيل — الوادي: سيطر على المناطق الخمس في المدينة المدمرة")
+	else:
+		hud.show_message("بدأ التسجيل — اخرج من الملجأ إلى الخندق")
 
 func _pause() -> void:
 	if state != "play":
@@ -238,11 +279,35 @@ func _menu_camera(delta: float) -> void:
 	var a := Vector3(path[i][0], path[i][1], path[i][2])
 	var b := Vector3(path[i + 1][0], path[i + 1][1], path[i + 1][2])
 	var p := a.lerp(b, smoothstep(0.0, 1.0, f))
-	p.y = world.base_height(p.x, p.z) + 0.55 + sin(menu_t * 9.0) * 0.03
 	var dir := (b - a)
 	dir.y = 0.0
 	var forward := dir.normalized() if fmod(menu_t, 2.0) < 1.0 else -dir.normalized()
-	var look := p + forward * 8.0 + Vector3(0, -0.6, 0) + Vector3(-forward.z, 0, forward.x) * sin(menu_t * 3.0) * 2.5
+	var look: Vector3
+	if world.map_id == "front":
+		# walking the trench
+		p.y = world.base_height(p.x, p.z) + 0.55 + sin(menu_t * 9.0) * 0.03
+		look = p + forward * 8.0 + Vector3(0, -0.6, 0) + Vector3(-forward.z, 0, forward.x) * sin(menu_t * 3.0) * 2.5
+	else:
+		# a slow drone pass over the valley (the path is already above the ground)
+		p.y = maxf(p.y, world.height(p.x, p.z) + 8.0) + sin(menu_t * 2.0) * 0.4
+		look = p + forward * 70.0 + Vector3(0, -12.0, 0) + Vector3(-forward.z, 0, forward.x) * sin(menu_t * 1.5) * 20.0
 	menu_cam.global_position = menu_cam.global_position.lerp(p, clampf(delta * 2.0, 0.0, 1.0)) if menu_cam.global_position.length() > 1.0 else p
 	var t := menu_cam.global_transform.looking_at(look, Vector3.UP)
 	menu_cam.global_transform = menu_cam.global_transform.interpolate_with(t, clampf(delta * 1.5, 0.0, 1.0))
+
+
+func _on_player_died(a: Node) -> void:
+	match_.on_player_death(a)
+	touch.reset()
+	if player.lives >= 0 and not touch.visible:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # to pick where to come back
+
+func _on_player_respawned() -> void:
+	if state == "play" and not touch.visible:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+## the match is over: the results over the game, then back to the menu with a new match
+func _on_match_end(r: Dictionary) -> void:
+	hud.show_results(r)
+	player.active = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

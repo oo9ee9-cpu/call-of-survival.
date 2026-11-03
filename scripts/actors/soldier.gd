@@ -3,6 +3,9 @@ extends Node3D
 ## A full soldier body for third person, for team mates and for bots: the rigged model, its walk / run /
 ## idle clips matched to the real speed, the rig that aims and holds the rifle, a muzzle flash, outfits.
 ## The controller (player or bot) only sets the fields below every frame.
+## Level of detail: up close the rig aims and holds the rifle every frame; further away the soldier plays clips that
+## already have the rifle in its hands (the rig's arms and spine sampled once over each clip, aimed and at low ready)
+## and the gun follows the right hand; further still the clip is advanced ten times a second; far away nothing is drawn.
 
 const MODEL := "res://models/chars/soldier.glb"
 ## weapon kinds -> model, stock / grip points in the holder frame (metres, holder looks down -Z), muzzle
@@ -29,7 +32,7 @@ var left_hand := 1.0
 var recoil_kick := 0.0
 var airborne := false
 var dead := false
-var lod := 0                     # 0 full (rig), 1 clip only, 2 hidden
+var lod := 0                     # 0 full (rig), 1 clips with the rifle in hand, 2 the same at 10 Hz, 3 hidden
 var team_color := Color(0.35, 0.4, 0.3)
 
 # ---- built here
@@ -50,8 +53,15 @@ var meshes: Array[MeshInstance3D] = []
 var _clip := ""
 var _dead_t := 0.0
 var _outfit_mat: Array[ShaderMaterial] = []
+var _rh := -1                    # right hand bone
+var _anim_acc := 0.0
 
 static var _flash_mat: StandardMaterial3D
+## the clips with the rifle in hand: source clip, new clip, low ready (0 aimed, 1 muzzle down across the chest)
+const HELD := [["Idle", "IdleA", 0.0], ["Walk", "WalkA", 0.0], ["Run", "RunA", 0.0], ["Idle", "IdleL", 0.7], ["Walk", "WalkL", 0.7], ["Run", "RunL", 0.85]]
+const HELD_BONES := ["Spine", "Spine1", "Spine2", "Neck", "Head", "RightArm", "RightForeArm", "RightHand", "LeftArm", "LeftForeArm", "LeftHand"]
+static var held_baked := false
+static var gun_off := {}         # gun kind -> the gun in the right hand's frame (skeleton space), from the rig
 
 func _ready() -> void:
 	model = (load(MODEL) as PackedScene).instantiate() as Node3D
@@ -93,8 +103,92 @@ func _ready() -> void:
 	flash.visible = false
 	muzzle.add_child(flash)
 	set_weapon("ak")
+	_rh = int(rig.B.get("RightHand", -1))
 	ap.play("Idle")
 	_clip = "Idle"
+	if not held_baked:
+		_bake_held()
+
+## sample the rig over the clips once (the first soldier made does it for all: the clips are shared)
+func _bake_held() -> void:
+	held_baked = true
+	if not rig.ready_ok or _rh < 0:
+		return
+	var t0 := Time.get_ticks_msec()
+	var keep := [low_ready, aim_yaw, aim_pitch, body_yaw, hold, crouch, prone_drop, recoil_kick, aim_weight, gun_kind]
+	var wy := global_transform.basis.get_euler().y
+	aim_yaw = wy
+	body_yaw = wy
+	aim_pitch = 0.0
+	hold = 1.0
+	crouch = 0.0
+	prone_drop = 0.0
+	recoil_kick = 0.0
+	aim_weight = 1.0
+	var lib := ap.get_animation_library("")
+	var sk_inv := skel.global_transform.affine_inverse()
+	# where each gun sits in the right hand
+	ap.play("Idle")
+	low_ready = 0.0
+	var kinds: Array = ["ak"]
+	for k in Guns.DATA:
+		if not kinds.has(k):
+			kinds.append(k)
+	for kind in kinds:
+		set_weapon(String(kind))
+		if gun_model == null:
+			continue
+		ap.seek(0.0, true)
+		rig._process_modification_with_delta(0.0)
+		gun_off[kind] = rig._global(_rh).affine_inverse() * (sk_inv * gun_holder.global_transform)
+	set_weapon("ak")
+	for spec in HELD:
+		var src := ap.get_animation(String(spec[0]))
+		if src == null or lib == null:
+			continue
+		low_ready = float(spec[2])
+		var a := src.duplicate(true) as Animation
+		var tracks := {}
+		for bn in HELD_BONES:
+			var bi: int = rig.B[bn]
+			var tail := ":" + skel.get_bone_name(bi)
+			for t in a.get_track_count():
+				if a.track_get_type(t) == Animation.TYPE_ROTATION_3D and str(a.track_get_path(t)).ends_with(tail):
+					while a.track_get_key_count(t) > 0:
+						a.track_remove_key(t, 0)
+					tracks[bi] = t
+					break
+		ap.play(String(spec[0]))
+		var n := maxi(int(ceil(src.length * 20.0)), 2)
+		for k in n + 1:
+			var tt := minf(src.length * k / n, src.length)
+			ap.seek(tt, true)
+			rig._process_modification_with_delta(0.0)
+			for bi in tracks:
+				a.rotation_track_insert_key(tracks[bi], tt, skel.get_bone_pose_rotation(bi))
+		lib.add_animation(String(spec[1]), a)
+	low_ready = keep[0]
+	aim_yaw = keep[1]
+	aim_pitch = keep[2]
+	body_yaw = keep[3]
+	hold = keep[4]
+	crouch = keep[5]
+	prone_drop = keep[6]
+	recoil_kick = keep[7]
+	aim_weight = keep[8]
+	set_weapon(String(keep[9]))
+	ap.play("Idle")
+	ap.seek(0.0, true)
+	print("SOLDIER held clips baked in %d ms (%d guns)" % [Time.get_ticks_msec() - t0, gun_off.size()])
+
+## back on its feet (a new life)
+func revive() -> void:
+	dead = false
+	_dead_t = 0.0
+	model.rotation = Vector3.ZERO
+	model.position = Vector3.ZERO
+	hold = 1.0 if gun_kind != "" else 0.0
+	ap.speed_scale = 1.0
 
 ## the clips walk on the spot except for the hips' sway; drop any forward drift so the body stays on its capsule
 func _strip_root_motion(a: Animation) -> void:
@@ -117,11 +211,11 @@ func set_weapon(kind: String) -> void:
 	if gun_model:
 		gun_model.queue_free()
 		gun_model = null
-	if kind == "" or not GUNS.has(kind):
+	var g := _gun_def(kind)
+	if kind == "" or g.is_empty():
 		gun_holder.visible = false
 		hold = 0.0
 		return
-	var g: Dictionary = GUNS[kind]
 	gun_model = (load(g["model"]) as PackedScene).instantiate() as Node3D
 	if g["flip"]:
 		gun_model.rotation.y = PI
@@ -134,6 +228,17 @@ func set_weapon(kind: String) -> void:
 	muzzle.position = g["muzzle"]
 	left_hand = g["two_hands"]
 	hold = 1.0
+
+## how a gun is held: the AK from GUNS, the others from their points (Guns / data/guns.json)
+func _gun_def(kind: String) -> Dictionary:
+	if GUNS.has(kind):
+		return GUNS[kind]
+	if not Guns.DATA.has(kind):
+		return {}
+	var p := Guns.points(kind)
+	var pistol := int(Guns.DATA[kind]["slot"]) == 2
+	return {"model": Guns.DATA[kind]["model"], "flip": true, "stock": p["stock"], "grip_r": p["grip_r"],
+		"grip_l": p["grip_r"] + Vector3(-0.03, -0.01, -0.05) if pistol else p["grip_l"], "muzzle": p["muzzle"], "scale": 1.0, "two_hands": 1.0}
 
 ## a muzzle flash for one frame or two (bots and third person)
 func shot_flash() -> void:
@@ -165,10 +270,12 @@ func set_lod(l: int) -> void:
 	if l == lod:
 		return
 	lod = l
-	visible = l < 2
+	visible = l < 3
 	rig.active = l == 0
-	ap.active = l < 2
-	gun_holder.visible = l < 2 and gun_kind != ""
+	ap.active = l < 3
+	ap.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL if l == 2 else AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE
+	_anim_acc = 0.0
+	gun_holder.visible = l < 3 and gun_kind != "" and not dead
 
 func _process(delta: float) -> void:
 	if flash_t > 0.0:
@@ -176,8 +283,11 @@ func _process(delta: float) -> void:
 		if flash_t <= 0.0:
 			flash.visible = false
 	recoil_kick = move_toward(recoil_kick, 0.0, delta * 0.6)
-	if lod >= 2:
+	if lod >= 3:
 		return
+	var show_gun := gun_kind != "" and not dead
+	if gun_holder.visible != show_gun:
+		gun_holder.visible = show_gun
 	if dead:
 		_dead_t += delta
 		var k := smoothstep(0.0, 0.7, _dead_t)
@@ -185,6 +295,7 @@ func _process(delta: float) -> void:
 		model.position = Vector3(0, 0.12 * k, -0.85 * k)
 		hold = 0.0
 		ap.speed_scale = maxf(0.0, 1.0 - k * 2.0)
+		_advance(delta)
 		return
 	rotation.y = body_yaw
 	# pick the clip and its speed from the real ground speed
@@ -204,10 +315,29 @@ func _process(delta: float) -> void:
 	if crouch > 0.5 and want == "Run":
 		want = "Walk"
 		sc = clampf(speed / (WALK_SPEED * 1.15), 0.6, 1.8)
+	if lod >= 1 and held_baked and gun_kind != "":
+		# the rig is off: the clip itself holds the rifle
+		var held := want + ("A" if low_ready < 0.35 else "L")
+		if ap.has_animation(held):
+			want = held
 	if want != _clip:
 		ap.play(want, 0.22)
 		_clip = want
 	ap.speed_scale = sc
+	_advance(delta)
+	if lod >= 1 and gun_holder.visible and _rh >= 0:
+		var off: Transform3D = gun_off.get(gun_kind, Transform3D())
+		var g := skel.global_transform * skel.get_bone_global_pose(_rh) * off
+		gun_holder.global_transform = Transform3D(g.basis.orthonormalized(), g.origin)
+
+## far away the clip moves on ten times a second
+func _advance(delta: float) -> void:
+	if lod != 2:
+		return
+	_anim_acc += delta
+	if _anim_acc >= 0.1:
+		ap.advance(_anim_acc)
+		_anim_acc = 0.0
 
 ## turn the body: towards the movement when walking (within reach of the twisting spine), to the aim when still
 func face(delta: float, aiming: bool) -> void:

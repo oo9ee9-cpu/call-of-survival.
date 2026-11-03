@@ -1,11 +1,18 @@
 class_name World
 extends Node3D
-## Loads the baked map and builds everything in it. Also answers questions about the ground (height, surface, rays).
+## Loads a baked map ("front": the 3 x 3 km trench test, "valley": the 8 x 8 km map) and builds everything in it.
+## Also answers questions about the ground (height, surface, rays).
 
 signal progress(frac: float, text: String)
 
-const WAR_N := 2049
-const BASE_N := 1537
+var map_id := "front"
+# the two height grids: base (whole map) and war (a finer patch)
+var base_x0 := -1536.0
+var base_sp := 2.0
+var base_n := 1537
+var war_x0 := -256.0
+var war_sp := 0.25
+var war_n := 2049
 
 var lay: Dictionary
 var base_img: Image
@@ -16,22 +23,38 @@ var base_tex: ImageTexture
 var war_tex: ImageTexture
 var terrain: Terrain
 var veg: Veg
-var props: Props
+var props           # Props (front) or Valley (valley): surfaces, doors, water, interactables
+var valley: Valley
 var env: Env
 var battle: Battle
 var fx: Fx
+var boom: Boom
+var projectiles: Projectiles
+var raid: AirRaid
 var mats := {}
 var tex := {}
 var _mesh_cache := {}
 var ready_built := false
 var focus := Vector3.ZERO      # where the active camera is
+var phys_focus := Vector3.ZERO # where the player (or the player's vehicle) is: the ground gets its colliders there
+var phys_set := false
 
 func build() -> void:
 	_p(0.02, "تحميل بيانات الخريطة…")
 	await get_tree().process_frame
-	lay = (load("res://data/world.res") as Resource).get_meta("layout")
-	base_img = load("res://data/base_h.res") as Image
-	war_img = load("res://data/war_h.res") as Image
+	var dir := "res://data/" if map_id == "front" else "res://data/valley/"
+	lay = (load(dir + "world.res") as Resource).get_meta("layout")
+	base_img = load(dir + "base_h.res") as Image
+	war_img = load(dir + "war_h.res") as Image
+	if map_id == "valley":
+		var half := float(lay["half"])
+		base_n = int(lay["n"])
+		base_x0 = -half
+		base_sp = 2.0 * half / (base_n - 1)
+		var wh := float(lay["war_half"])
+		war_n = int(lay["war_n"])
+		war_x0 = -wh
+		war_sp = 2.0 * wh / (war_n - 1)
 	base_f = base_img.get_data().to_float32_array()
 	war_f = war_img.get_data().to_float32_array()
 	base_tex = ImageTexture.create_from_image(base_img)
@@ -46,33 +69,58 @@ func build() -> void:
 	terrain.name = "Terrain"
 	add_child(terrain)
 	var q := int(Settings.get_v("quality"))
-	terrain.setup(self, base_img, war_img, [40, 48, 64, 64][q], [9, 9, 9, 10][q])
+	q = mini(q, 3)
+	terrain.setup(self, base_img, war_img, [40, 48, 64, 64][q], [9, 9, 9, 10][q] + (1 if map_id == "valley" else 0))
 	env = Env.new()
 	env.name = "Env"
 	add_child(env)
 	env.setup(self)
-	_p(0.3, "زراعة الغابة المحروقة…")
-	await get_tree().process_frame
-	veg = Veg.new()
-	veg.name = "Veg"
-	add_child(veg)
-	veg.setup(self)
-	_p(0.5, "حفر الخنادق وبناء الملاجئ…")
-	await get_tree().process_frame
-	props = Props.new()
-	props.name = "Props"
-	add_child(props)
-	await props.setup(self)
+	if map_id == "valley":
+		_p(0.3, "بناء المدن والمطار والبحيرات…")
+		await get_tree().process_frame
+		valley = Valley.new()
+		valley.name = "Valley"
+		add_child(valley)
+		props = valley
+		await valley.setup(self)
+	else:
+		_p(0.3, "زراعة الغابة المحروقة…")
+		await get_tree().process_frame
+		veg = Veg.new()
+		veg.name = "Veg"
+		add_child(veg)
+		veg.setup(self)
+		_p(0.5, "حفر الخنادق وبناء الملاجئ…")
+		await get_tree().process_frame
+		props = Props.new()
+		props.name = "Props"
+		add_child(props)
+		await props.setup(self)
 	_p(0.85, "المؤثرات والأصوات…")
 	await get_tree().process_frame
 	fx = Fx.new()
 	fx.name = "Fx"
 	add_child(fx)
 	fx.setup(self)
-	battle = Battle.new()
-	battle.name = "Battle"
-	add_child(battle)
-	battle.setup(self)
+	boom = Boom.new()
+	boom.name = "Boom"
+	add_child(boom)
+	boom.setup(self)
+	projectiles = Projectiles.new()
+	projectiles.name = "Projectiles"
+	add_child(projectiles)
+	projectiles.setup(self)
+	if map_id == "valley":
+		raid = AirRaid.new()
+		raid.name = "AirRaid"
+		add_child(raid)
+		raid.setup(self)
+		raid.enabled = bool(Settings.get_v("raids"))
+	if map_id == "front":
+		battle = Battle.new()
+		battle.name = "Battle"
+		add_child(battle)
+		battle.setup(self)
 	apply_settings()
 	Settings.changed.connect(_on_setting)
 	_p(0.95, "اللمسات الأخيرة…")
@@ -80,7 +128,10 @@ func build() -> void:
 	focus = spawn_point()[0]
 	terrain.update_view(focus)
 	terrain.update_collision(focus, 1.0, true)
-	veg.update(focus, 1.0, true)
+	if veg:
+		veg.update(focus, 1.0, true)
+	if valley:
+		valley.update(focus, 1.0, true)
 	ready_built = true
 	_p(1.0, "")
 
@@ -95,9 +146,15 @@ func _process(delta: float) -> void:
 		focus = cam.global_position
 	RenderingServer.global_shader_parameter_set("view_pos", focus)
 	terrain.update_view(focus)
-	terrain.update_collision(focus, delta)
-	veg.update(focus, delta)
+	terrain.update_collision(phys_focus if phys_set else focus, delta)
+	if veg:
+		veg.update(focus, delta)
 	props.update(focus, delta)
+
+## an explosion: fire, smoke, the bang and the blast (see Boom)
+func explode(p: Vector3, size := 1.0, src: Node = null) -> void:
+	if boom:
+		boom.explode(p, size, src)
 
 func spawn_point() -> Array:
 	var s: Array = lay["spawn"]
@@ -105,14 +162,18 @@ func spawn_point() -> Array:
 
 # ------------------------------------------------------------------ settings
 func _on_setting(_k: String) -> void:
+	if raid:
+		raid.enabled = bool(Settings.get_v("raids"))
 	apply_settings()
 
 func apply_settings() -> void:
-	var q := int(Settings.get_v("quality"))
+	var q := mini(int(Settings.get_v("quality")), 3)    # the extreme preset shares the ultra tables
 	var vd := int(Settings.get_v("view_distance"))
 	var sh := int(Settings.get_v("shadows"))
-	terrain.set_quality([40, 48, 64, 64][q], [9, 9, 9, 10][q] + (1 if vd == 2 and q < 3 else 0), sh >= 2 and q >= 2)
-	veg.set_quality(q, int(Settings.get_v("vegetation")), vd)
+	var extra_lv := 1 if map_id == "valley" else 0      # 8 km: one more ring of the clipmap to reach the far side
+	terrain.set_quality([40, 48, 64, 64][q], [9, 9, 9, 10][q] + extra_lv + (1 if vd == 2 and q < 3 else 0), sh >= 2 and q >= 2)
+	if veg:
+		veg.set_quality(q, int(Settings.get_v("vegetation")), vd)
 	props.set_quality(q, vd)
 	env.apply_settings()
 	var vp := get_viewport()
@@ -143,15 +204,18 @@ func _bil(a: PackedFloat32Array, n: int, fx: float, fz: float) -> float:
 	return lerpf(lerpf(a[i], a[i + 1], tx), lerpf(a[i + n], a[i + n + 1], tx), tz)
 
 func height(x: float, z: float) -> float:
-	if x >= -256.0 and x <= 256.0 and z >= -256.0 and z <= 256.0:
-		return _bil(war_f, WAR_N, (x + 256.0) * 4.0, (z + 256.0) * 4.0)
-	return _bil(base_f, BASE_N, (x + 1536.0) * 0.5, (z + 1536.0) * 0.5)
+	var wx := (x - war_x0) / war_sp
+	var wz := (z - war_x0) / war_sp
+	if wx >= 0.0 and wz >= 0.0 and wx <= war_n - 1.0 and wz <= war_n - 1.0:
+		return _bil(war_f, war_n, wx, wz)
+	return _bil(base_f, base_n, (x - base_x0) / base_sp, (z - base_x0) / base_sp)
 
 func base_height(x: float, z: float) -> float:
-	return _bil(base_f, BASE_N, (x + 1536.0) * 0.5, (z + 1536.0) * 0.5)
+	return _bil(base_f, base_n, (x - base_x0) / base_sp, (z - base_x0) / base_sp)
 
 func dig_depth(x: float, z: float) -> float:
-	if absf(x) > 256.0 or absf(z) > 256.0:
+	var lim := -war_x0
+	if absf(x) > lim or absf(z) > lim:
 		return 0.0
 	return maxf(base_height(x, z) - height(x, z), 0.0)
 
@@ -166,7 +230,7 @@ func ray_ground(from: Vector3, dir: Vector3, max_d: float) -> Dictionary:
 	var prev := 0.0
 	while t < max_d:
 		var p := from + dir * t
-		if absf(p.x) > 1540.0 or absf(p.z) > 1540.0:
+		if absf(p.x) > -base_x0 + 4.0 or absf(p.z) > -base_x0 + 4.0:
 			return {}
 		if p.y < height(p.x, p.z):
 			var lo := prev
@@ -189,6 +253,8 @@ func ray_ground(from: Vector3, dir: Vector3, max_d: float) -> Dictionary:
 func surface_at(p: Vector3) -> String:
 	if props and props.water_at(p):
 		return "water"
+	if map_id == "valley":
+		return "mud" if dig_depth(p.x, p.z) > 0.6 else "grass"
 	var dg := dig_depth(p.x, p.z)
 	if dg > 0.9:
 		return "mud"
@@ -207,10 +273,11 @@ func _t(path: String) -> Texture2D:
 	return tex[path]
 
 func _load_textures() -> void:
-	tex["t_alb"] = load("res://textures/terrain/terrain_albedo.jpg")
-	tex["t_nrh"] = load("res://textures/terrain/terrain_nrh.png")
+	var td := "res://textures/terrain/" if map_id == "front" else "res://textures/v8/"
+	tex["t_alb"] = load(td + "terrain_albedo.jpg")
+	tex["t_nrh"] = load(td + "terrain_nrh.png")
 	for s in ["splat_base_a", "splat_base_b", "splat_war_a", "splat_war_b"]:
-		tex[s] = load("res://textures/terrain/%s.png" % s)
+		tex[s] = load(td + "%s.png" % s)
 	tex["splat_wb"] = tex["splat_war_b"]
 	tex["splat_wb_img"] = (tex["splat_war_b"] as Texture2D).get_image()
 	if tex["splat_wb_img"] and (tex["splat_wb_img"] as Image).is_compressed():
@@ -228,6 +295,9 @@ func apply_ground_params(m: ShaderMaterial) -> void:
 	m.set_shader_parameter("splat_wa", tex["splat_war_a"])
 	m.set_shader_parameter("splat_wb", tex["splat_war_b"])
 	m.set_shader_parameter("noise_tex", tex["noise"])
+	m.set_shader_parameter("base_rect", Vector4(base_x0, base_x0, 1.0 / base_sp, base_n - 1.0))
+	m.set_shader_parameter("war_rect", Vector4(war_x0, war_x0, 1.0 / war_sp, war_n - 1.0))
+	m.set_shader_parameter("splat_rects", Vector4(base_x0, (base_n - 1) * base_sp, war_x0, (war_n - 1) * war_sp))
 
 func _prop_mat(alb: String, nrh: String, tint := Color(1, 1, 1), metallic := 0.0, rough_mul := 1.0) -> ShaderMaterial:
 	var m := ShaderMaterial.new()

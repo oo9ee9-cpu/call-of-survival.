@@ -9,6 +9,7 @@ var sun: DirectionalLight3D
 var sky_mat: ShaderMaterial
 var rain_p: GPUParticles3D
 var inside := 0.0
+var base_fog := 0.0                 # the weather's fog density at ground level
 var cur := {}
 var wet := 0.0
 var wet_target := 0.0
@@ -116,7 +117,7 @@ func _build_rain() -> void:
 func apply_settings() -> void:
 	var t: Dictionary = TIMES[clampi(int(Settings.get_v("time")), 0, 3)].duplicate()
 	var wx := int(Settings.get_v("weather"))
-	var q := int(Settings.get_v("quality"))
+	var q := mini(int(Settings.get_v("quality")), 3)
 	var vd := int(Settings.get_v("view_distance"))
 	var fog_mul: float = [1.35, 1.0, 0.72][vd]
 	var cover := 0.84
@@ -154,7 +155,8 @@ func apply_settings() -> void:
 	sky_mat.set_shader_parameter("cover", cover)
 	sky_mat.set_shader_parameter("sun_glow", 0.25 if wx == 0 else 0.1)
 	e.fog_light_color = t["fog"]
-	e.fog_density = float(t["fog_d"]) * fog_mul
+	base_fog = float(t["fog_d"]) * fog_mul
+	e.fog_density = base_fog
 	e.ambient_light_energy = t["amb"]
 	e.glow_intensity = t["glow"] * 3.0
 	e.glow_enabled = q >= 1
@@ -201,6 +203,11 @@ func _process(delta: float) -> void:
 	if t.is_empty():
 		return
 	e.ambient_light_energy = lerpf(float(t["amb"]), 0.18, inside)
+	# high over the ground (a parachute jump, an aircraft) most of the haze lies under you, not all round: thinner fog
+	if cam and base_fog > 0.0:
+		var cp := cam.global_position
+		var hk := smoothstep(40.0, 320.0, cp.y - world.height(cp.x, cp.z))
+		e.fog_density = base_fog * lerpf(1.0, 0.38, hk)
 	Sfx.set_inside(inside)
 	wet = move_toward(wet, wet_target, delta * 0.05)
 	RenderingServer.global_shader_parameter_set("wetness", wet)
