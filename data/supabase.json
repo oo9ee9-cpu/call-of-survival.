@@ -1,4 +1,5 @@
 {
  "url": "https://ficxjjiilvvklpkuojbd.supabase.co",
- "anon_key": ""
+ "anon_key": "sb_publishable_2A5gqdoKRzExTurAuo5OgA_PuPUbh1l",
+ "note": "The project's publishable key: public by design (Supabase: \"can be safely shared publicly\"); the tables are protected by the row-level security in supabase/schema.sql. Never put a secret key (sb_secret_ / service_role) here."
 }

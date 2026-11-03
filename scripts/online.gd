@@ -53,10 +53,15 @@ func _load_config() -> void:
 		if FileAccess.file_exists(path):
 			var j = JSON.parse_string(FileAccess.get_file_as_string(path))
 			if j is Dictionary:
+				var k := String((j as Dictionary).get("anon_key", "")).strip_edges()
+				if k.begins_with("sb_secret_") and path.begins_with("user://"):
+					# a secret key pasted by mistake (older versions took it): never use it, forget it
+					DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+					continue
 				if String((j as Dictionary).get("url", "")) != "":
 					URL = String(j["url"]).trim_suffix("/")
-				if String((j as Dictionary).get("anon_key", "")) != "":
-					ANON = String(j["anon_key"]).strip_edges()
+				if key_looks_right(k):
+					ANON = k
 
 ## the key pasted in the sign-in screen (kept on the phone)
 func set_key(key: String, url := "") -> void:
