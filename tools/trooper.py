@@ -6,6 +6,9 @@
   helmet with headset, two plate carriers: by "Exactly" on Sketchfab (CC-BY 4.0), on the head / chest bones.
 The body's UV channels are replaced by its rest position (UV = x, y; UV2 = z) so the game's shader can print any camouflage
 on it without seams, and COLOR_0 marks the parts: r boots, g gloves, b bare skin, a trousers.
+Cut down for the game (a phone draws dozens of them): with TROOPER_LODS=<lods.json> (tools/lod_dump.gd run on the full
+model) every part takes the simplified triangle list nearest to its share in LOD_TARGET (~28k triangles in all, from
+~116k), and drops the vertices it no longer uses. TROOPER_OUT=<file.glb> writes somewhere other than the project.
 usage: python3 trooper.py <project_dir> <Xbot.glb> <LeePerrySmith_dir> [preview_params.json]"""
 import json
 import math
@@ -28,6 +31,36 @@ P_ = {  # fitting numbers (metres, the model's rest space: Y up, facing +Z, T-po
 if len(sys.argv) > 4:
     P_.update(json.load(open(sys.argv[4])))
 rng = np.random.default_rng(11)
+LODS = json.load(open(os.environ['TROOPER_LODS'])) if os.environ.get('TROOPER_LODS') else None
+LOD_TARGET = {'Body': 6800, 'Pads': 2600, 'Head': 4000, 'Helmet': 9300, 'Vest': 3700, 'Vest2': 1700}
+LOD_TARGET.update(json.loads(os.environ.get('TROOPER_TARGET', '{}')))
+
+
+def simplify(name, part):
+    """the part with the simplified triangles Godot made for it (matched by position and uv), unused vertices dropped"""
+    key = [k for k in LODS if k.endswith('_' + name + '#0')]
+    if not key:
+        return part
+    e = LODS[key[0]]
+    gv = np.asarray(e['v'], np.float32).reshape(-1, 5)
+    lods = e['lods']
+    pick = min(lods, key=lambda a: abs(len(a) // 3 - LOD_TARGET.get(name, len(a) // 3)))
+    idx = np.asarray(pick, np.int64).reshape(-1, 3)[:, [0, 2, 1]].reshape(-1)   # Godot winds the other way round
+    P = part['P'].astype(np.float32)
+    if len(gv) == len(P) and np.abs(gv[:, :3] - P).max() < 1e-5:
+        remap = np.arange(len(P))
+    else:
+        from scipy.spatial import cKDTree
+        key5 = np.concatenate([P, part['UV0'].astype(np.float32)], 1)
+        _, remap = cKDTree(key5).query(gv)
+    idx = remap[idx]
+    used, inv = np.unique(idx, return_inverse=True)
+    out = {}
+    for k, v in part.items():
+        out[k] = v if k == 'I' else v[used]
+    out['I'] = inv.astype(np.uint32)
+    print('  %-7s %6d -> %6d triangles, %6d -> %6d vertices' % (name, len(part['I']) // 3, len(out['I']) // 3, len(P), len(used)))
+    return out
 
 
 def bell(x, c, w):
@@ -254,6 +287,8 @@ def main():
         return len(out['materials']) - 1
 
     def add_mesh(name, part, mat):
+        if LODS is not None:
+            part = simplify(name, part)
         attrs = {'POSITION': b.accessor(part['P'], 'VEC3', 34962, minmax=True),
                  'NORMAL': b.accessor(part['N'].astype(np.float32), 'VEC3', 34962),
                  'TEXCOORD_0': b.accessor(part['UV0'], 'VEC2', 34962)}
@@ -320,7 +355,7 @@ def main():
     # a root that turns the soldier to look down -Z, as the game's models do
     out['nodes'].append({'name': 'Trooper', 'rotation': [0.0, 1.0, 0.0, 0.0], 'children': [arm_i]})
     out['scenes'][0]['nodes'] = [len(out['nodes']) - 1]
-    dst = PROJ + '/models/chars/trooper.glb'
+    dst = os.environ.get('TROOPER_OUT') or PROJ + '/models/chars/trooper.glb'
     b.save(dst)
     print('trooper', dst, os.path.getsize(dst) // 1024, 'KB', 'head top %.3f' % top)
 

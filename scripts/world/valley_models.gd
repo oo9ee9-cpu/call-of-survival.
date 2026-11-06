@@ -11,6 +11,10 @@ const KIND_MODEL := {"jet": "j36", "jet2": "b2", "heli": "mi171", "transport": "
 	"jeep": "uaz", "apc": "fennek", "tank": "tank", "truck": "tam150", "car": "ar55", "car2": "uaz"}
 const CARRIERS := ["cvn80", "cdg", "cvn65", "cvn80", "cdg", "cvn65"]
 const DRAFT := 0.38                 # waterline as a share of the keel-to-deck height (a Nimitz: 11 m of 30 m)
+# colliders of the game's own props that tools/model_cols.py does not measure
+const EXTRA_COLS := {"car_wreck": {"boxes": [[0.0, 0.85, -0.16, 1.9, 1.6, 4.1]]}}
+# how far each street prop draws
+const PROP_VIS := {"car_wreck": 200.0, "jersey": 200.0, "container": 320.0}
 # palms along the bay and around the coast village
 const PALMS := [[-2980.0, -760.0], [-3040.0, -520.0], [-3010.0, -300.0], [-2930.0, -140.0], [-3060.0, 60.0],
 	[-3120.0, 380.0], [-3090.0, 640.0], [-2640.0, -560.0], [-2580.0, -420.0], [-2420.0, -610.0], [-2380.0, -380.0], [-2700.0, -300.0]]
@@ -29,6 +33,9 @@ var vehicles: Array[Vehicle] = []        # everything you can drive or fly
 func setup(w: World) -> void:
 	world = w
 	cols = JSON.parse_string(FileAccess.get_file_as_string("res://data/valley/model_cols.json"))
+	for k in EXTRA_COLS:
+		if not cols.has(k):
+			cols[k] = EXTRA_COLS[k]
 	info = JSON.parse_string(FileAccess.get_file_as_string("res://data/valley/user_models.json"))
 	var lay := w.lay
 	var lakes: Array = lay["lakes"]
@@ -54,6 +61,7 @@ func setup(w: World) -> void:
 	_bases(lay)
 	_computers(lay)
 	_palms()
+	_street_props(lay)
 
 func _exit_tree() -> void:
 	for b in bodies:
@@ -66,8 +74,11 @@ func _exit_tree() -> void:
 # ------------------------------------------------------------------ placing
 func _scene(nm: String) -> PackedScene:
 	if not scenes.has(nm):
-		# the owner's models in models/u, the game's own small props in models/
-		var p := "res://models/u/%s.glb" % nm
+		# the owner's models in models/u (a lighter copy, nm_lo, where tools/decimate.gd made one: the palms, the
+		# laptops, a carrier, the Pantsir), the game's own small props in models/
+		var p := "res://models/u/%s_lo.glb" % nm
+		if not ResourceLoader.exists(p):
+			p = "res://models/u/%s.glb" % nm
 		if not ResourceLoader.exists(p):
 			p = "res://models/%s.glb" % nm
 		scenes[nm] = load(p) if ResourceLoader.exists(p) else null
@@ -238,13 +249,32 @@ func _vehicles(lay: Dictionary) -> void:
 			place(nm, _ground_xf(nm, float(a[1]), float(a[3]), float(a[4]), 0.0))
 
 # ------------------------------------------------------------------ landmarks, bases, capture zones, palms
+## the streets of the city and the towns: burnt-out cars by the kerb, concrete chicanes on the way into the squares,
+## containers on empty lots
+func _street_props(lay: Dictionary) -> void:
+	for a in lay.get("street_props", []):
+		var nm := String(a[0])
+		var x := float(a[1])
+		var z := float(a[3])
+		var n := place(nm, Transform3D(Basis(Vector3.UP, float(a[4])), Vector3(x, world.height(x, z) - 0.02, z)), true, PROP_VIS.get(nm, 300.0))
+		if n:
+			_lod(n, 0.6)
+
+func _lod(n: Node, bias: float) -> void:
+	if n is GeometryInstance3D:
+		(n as GeometryInstance3D).lod_bias = bias
+	for c in n.get_children():
+		_lod(c, bias)
+
 func _landmarks(lay: Dictionary) -> void:
 	for l in lay["landmarks"]:
 		var a: Array = l
 		var nm := String(a[0])
 		if not ResourceLoader.exists("res://models/u/%s.glb" % nm):
 			continue
-		place(nm, _ground_xf(nm, float(a[1]), float(a[3]), float(a[4]), -0.05))
+		var n := place(nm, _ground_xf(nm, float(a[1]), float(a[3]), float(a[4]), -0.05))
+		if n and nm.begins_with("res_"):
+			_lod(n, 0.4)       # 120k-triangle apartment blocks: their coarser levels sooner
 
 func _bases(lay: Dictionary) -> void:
 	for b in lay["bases"]:

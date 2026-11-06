@@ -125,6 +125,17 @@ func _run() -> void:
 		print("AUTOTEST DONE")
 		Sfx.quit_game()
 		return
+	if w.map_id == "valley" and only == "banner":
+		await _banner_shot(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only.begins_with("prims"):
+		await _banner_shot(w)
+		await _prims_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
 	if w.map_id == "valley" and only == "war":
 		Engine.max_physics_steps_per_frame = 8
 		await _war_test(w)
@@ -742,6 +753,95 @@ func _perf_test(w: World) -> void:
 			lods[b.body.lod] += 1
 		print("PERF %-7s process %.2f ms  physics %.2f ms  frame %.2f ms  lods %s alive %d" % [mode, tp / n * 1000.0, tf / n * 1000.0, (Time.get_ticks_usec() - t0) / 1000.0 / n, lods, m.bots.filter(func(b): return not b.dead).size()])
 
+## what each part of the scene draws (primitives in the frame with that part hidden), from the banner's street
+func _prims_test(w: World) -> void:
+	var v := w.valley
+	var groups := {
+		"buildings": [], "trees": [], "impostors": [], "grass": [], "other_valley": [],
+	}
+	for t in v.b_mm:
+		for mmi in v.b_mm[t]:
+			if mmi:
+				groups["buildings"].append(mmi)
+	for t in v.t_mm:
+		for mmi in v.t_mm[t]:
+			if mmi:
+				groups["trees"].append(mmi)
+	for mmi in v.imp_mmi:
+		groups["impostors"].append(mmi)
+	for mmi in v.cover:
+		groups["grass"].append(mmi)
+	var known := {}
+	for g in groups:
+		for n in groups[g]:
+			known[n] = true
+	for c in v.get_children():
+		if not known.has(c) and c is Node3D:
+			groups["other_valley"].append(c)
+	for c in w.get_children():
+		if c != v and c is Node3D:
+			groups[String(c.name)] = [c]
+	if v.models:
+		for rec in v.models.placed:
+			var key := "m_" + String(rec["name"])
+			if not groups.has(key):
+				groups[key] = []
+			if rec["node"]:
+				groups[key].append(rec["node"])
+		var road_nodes := []
+		for c in v.get_children():
+			if c is MeshInstance3D and (c as MeshInstance3D).visibility_range_end == 3200.0:
+				road_nodes.append(c)
+		groups["roads"] = road_nodes
+	groups["bots"] = []
+	if main.match_:
+		for b in main.match_.bots:
+			groups["bots"].append(b)
+	groups["player"] = [main.player]
+	await _wait(0.5)
+	var base := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
+	print("PRIMS all %d" % base)
+	for g in groups:
+		var was := {}
+		for n in groups[g]:
+			was[n] = (n as Node3D).visible
+			(n as Node3D).visible = false
+		for f in 3:
+			await get_tree().process_frame
+		var p := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
+		var dc := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+		print("PRIMS %-14s %8d  (draws without: %d, nodes %d)" % [g, base - p, dc, groups[g].size()])
+		for n in groups[g]:
+			(n as Node3D).visible = was[n]
+		for f in 2:
+			await get_tree().process_frame
+	if only != "prims1":
+		return
+	# the biggest single nodes: the valley's other children and the player's parts
+	var singles: Array = groups["other_valley"].duplicate()
+	var stack: Array = [main.player]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			if c is VisualInstance3D:
+				singles.append(c)
+			stack.append(c)
+	var res := []
+	for n in singles:
+		if not (n as Node3D).visible:
+			continue
+		(n as Node3D).visible = false
+		for f in 2:
+			await get_tree().process_frame
+		var p2 := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
+		(n as Node3D).visible = true
+		for f in 2:
+			await get_tree().process_frame
+		res.append([base - p2, String(n.get_path()).right(60)])
+	res.sort_custom(func(a, b): return a[0] > b[0])
+	for r in res.slice(0, 14):
+		print("PRIMS1 %8d  %s" % [r[0], r[1]])
+
 ## the screens of a match: waiting for the next life (where to come back) and the results
 func _ui_test(w: World) -> void:
 	var pl: Player = main.player
@@ -1078,3 +1178,35 @@ func _war_test(w: World) -> void:
 	print("WAR flares ", w.air_defence.flares.size(), " jets left ", war.jets.size(), " missiles ", w.air_defence.missiles.size())
 	cam.current = false
 	pl.cam.current = true
+
+
+## the lobby's login-reward picture: a soldier from behind in the ruined city (no HUD)
+func _banner_shot(w: World) -> void:
+	main._start()
+	await _wait(1.0)
+	if main.flight and not main.flight.done:
+		main.flight.jump()
+		await _wait(0.3)
+	main.hud.visible = false
+	main.touch.visible = false
+	# a street of the city's core, looking along it (the camera's forward is -Z), on a sunny day
+	Settings.set_v("time", 1)
+	Settings.set_v("weather", 0)
+	w.env.apply_settings()
+	var p := Vector3(46.8, 0, -54.7)
+	p.y = w.height(p.x, p.z)
+	_place(p, atan2(-0.759, -0.651), 0.06)
+	Settings.set_v("view_mode", 1)
+	await _wait(2.5)
+	await shot("banner_raw")
+	if only == "banner":
+		var t0 = Settings.get_v("time")
+		var w0 = Settings.get_v("weather")
+		Settings.set_v("time", 2)
+		Settings.set_v("weather", 0)
+		w.env.apply_settings()
+		await _wait(1.5)
+		await shot("banner_dusk")
+		# (the settings are saved: put them back, or every later run starts at dusk)
+		Settings.set_v("time", t0)
+		Settings.set_v("weather", w0)

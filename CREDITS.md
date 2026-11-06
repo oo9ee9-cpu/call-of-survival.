@@ -7,6 +7,7 @@
 | Soldier (`models/chars/soldier.glb`, idle / walk / run) | "Vanguard" by Mixamo (Adobe), as shipped with the three.js examples (Soldier.glb) | Mixamo licence (free use in games) |
 | UAZ jeep (`models/vehicles/uaz.glb`) | "UAZ 469 1973 (Classic)" by **zhe_kan** — https://sketchfab.com/3d-models/uaz-469-1973-classic-027fa204ce25452fac61a93ccfb8f1f8 | CC-BY 4.0 |
 | Burnt jeep (`models/uaz_wreck.glb`, `textures/props/uaz_*_burnt.jpg`) | "UAZ 469 1973 (Classic)" by **zhe_kan** — https://sketchfab.com/3d-models/uaz-469-1973-classic-027fa204ce25452fac61a93ccfb8f1f8 (geometry reduced in the original game, re-textured as a burnt wreck, glass/lamps/two wheels removed) | CC-BY 4.0 |
+| Burnt cars in the streets (`models/car_wreck.glb`) | the burnt jeep above, its geometry reduced again (tools/decimate.gd) | CC-BY 4.0 |
 | Ground texture layers (`textures/terrain/terrain_*`) | Re-toned from the Call of Survival texture set, itself built from ambientCG (CC0), Babylon.js Assets (CC-BY 4.0) and ez-tree by Daniel Greenheck (MIT) | CC0 / CC-BY 4.0 / MIT |
 | Bark (`textures/veg/bark_pine*`, `wood_bare*`) | ambientCG (Bark001, Bark003) | CC0 |
 | Valley ground, bark, leaves, grass and ivy sprites (`textures/v8/`) | The Call of Survival browser game's texture sets: ambientCG (CC0), Babylon.js Assets (CC-BY 4.0), ez-tree by Daniel Greenheck (MIT) | CC0 / CC-BY 4.0 / MIT |
@@ -59,6 +60,8 @@ credited as their files say.
 | `watchtower` | Argentine_ Watchtower | soysascha | CC-BY-4.0 | https://sketchfab.com/3d-models/argentine--watchtower-6daeb55e18194ed691eb6eb3bcb603a4 |
 
 CC-BY-NC 4.0 models may not be used in a game that is sold.
+`models/u/*_lo.glb` (palm, laptop, cvn65, pantsir) are lighter copies of the same models made by tools/decimate.gd: same
+authors, same licences.
 <!-- models:end -->
 
 ## Made for this test slice

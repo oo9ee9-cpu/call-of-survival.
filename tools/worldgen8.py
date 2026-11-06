@@ -175,7 +175,7 @@ TOWNS = [  # name, x, z, radius, buildings target, style  (clustered like the ow
     ('الساحل الغربي', -2650, 1500, 340, 42, 'town'), ('جزيرة الجنوب', -60, 2860, 420, 56, 'town'),
     ('قرية الشمال الغربي', -2750, -2100, 180, 15, 'village'), ('قرية الساحل الشرقي', 2650, -1520, 170, 13, 'village'),
     ('قرية الخليج', -2050, 2050, 170, 14, 'village'), ('قرية الحقول', 1300, 420, 170, 13, 'village'),
-    ('قرية الجزيرة الشرقية', 1650, 3250, 160, 12, 'village'),
+    ('قرية الجزيرة الشرقية', 2330, 3280, 170, 13, 'village'),
 ]
 BASES = [(0, -650.0, 1650.0, math.pi), (1, 500.0, -950.0, 0.0)]    # team, x, z, yaw (fronts face the centre)
 AIRPORTS = [dict(name='المطار الكبير', x=-2250.0, z=-1180.0, len=2400.0, wid=45.0, hangars=10),
@@ -187,6 +187,9 @@ RIVERS = [  # the course, its width (m)
                                            (550, 790), (1150, 640), (1700, 700), (2300, 600), (2900, 470), (3600, 400)]),
     dict(name='رافد الجنوب', w=26.0, pts=[(-1600, 600), (-1300, 640), (-1050, 690), (-800, 640)]),
 ]
+# denser: tighter streets, more houses, less ground between them (towns, not houses scattered over the fields)
+TOWNS = [(nm, cx, cz, r if st != 'town' else int(r * 0.84), n if st == 'village' else (int(n * 1.35) if st == 'town' else 380), st)
+         for (nm, cx, cz, r, n, st) in TOWNS]
 for (nm, cx, cz, r, n, st) in TOWNS:
     if not on_land(cx, cz, 50):
         print('  !! town in the sea:', nm, cx, cz)
@@ -371,6 +374,17 @@ HOUSE_TYPES = {
 BUILDINGS = []          # [type, x, y, z, yaw, tint]
 occupied = []           # (x, z, radius)
 STREETS = []
+SIDEWALKS = []          # raised concrete in front of the houses of towns and the city
+STREET_PROPS = []       # [model, x, y, z, yaw]: burnt-out cars, concrete chicanes, containers
+LANDMARKS = []          # [model, x, y, z, yaw, scale]
+BLOCKERS = []           # (x, z, r): big things the town streets stop at
+# the city's apartment blocks, placed first: the houses keep off them and the streets stop at them
+for i, model in enumerate(['cathedral', 'res_contemporary', 'res_multistory', 'res_facade']):
+    a = i * 1.57 + 0.6
+    x, z = math.cos(a) * 210, math.sin(a) * 210
+    LANDMARKS.append([model, round(x, 2), round(hat(x, z), 2), round(z, 2), round(math.atan2(-x, -z), 3), 1.0])
+    occupied.append((x, z, 30))
+    BLOCKERS.append((x, z, 30.0))
 
 
 def free(x, z, r):
@@ -415,61 +429,222 @@ def pick(style, r2):
     return opts[0][0]
 
 
+def lot_density(style, d, x, z):
+    """how much a lot wants a house: a full core, thinning to the edge; the city also packs round its five squares"""
+    if style == 'village':
+        return 1.0 - 0.6 * d
+    core = 0.2 if style == 'city' else 0.42
+    fall = 1.5 if style == 'city' else 0.95
+    p = 1.0 if d < core else max(0.03, 1.0 - (d - core) / (1.0 - core) * fall)
+    if style == 'city':
+        for (px, pz) in CAPTURE:
+            dc = math.hypot(x - px, z - pz)
+            if dc < 170:
+                p = max(p, 1.1 - dc / 170 * 0.6)
+    return p
+
+
+def runs(vals, gap):
+    """sorted values split where they jump by more than `gap`"""
+    vals = sorted(vals)
+    out = [[vals[0], vals[0]]]
+    for v in vals[1:]:
+        if v - out[-1][1] > gap:
+            out.append([v, v])
+        else:
+            out[-1][1] = v
+    return out
+
+
 for ti, (nm, cx, cz, r, target, style) in enumerate(TOWNS):
+    # Rows of houses along parallel streets (every `block` m in a rotated frame), broken by cross streets every `cross`
+    # m. Every lot along every street is a candidate; the town keeps the `target` lots that want a house most (a dense
+    # core, thinning out to scattered houses at the edge), and streets are laid only where houses stand.
     r2 = np.random.RandomState(300 + ti)
     rot = r2.uniform(0, math.pi / 2)
     ca, sa = math.cos(rot), math.sin(rot)
-    block = 46.0 if style != 'village' else 60.0
-    # street grid: lines every `block` metres in a rotated frame
-    n = int(r / block)
-    for k in range(-n, n + 1):
-        for axis in (0, 1):
-            pts = []
-            for s in np.linspace(-r * 0.95, r * 0.95, 24):
-                u, v = (s, k * block) if axis == 0 else (k * block, s)
-                x = cx + u * ca - v * sa
-                z = cz + u * sa + v * ca
-                if math.hypot(x - cx, z - cz) < r * 0.95:
-                    pts.append((x, z))
-            if len(pts) >= 3 and (style != 'village' or k == 0):
-                STREETS.append(dict(w=7.0 if style == 'city' else 6.0, kind='asphalt' if style != 'village' else 'dirt', pts=pts))
-    placed = 0
-    tries = 0
-    while placed < target and tries < target * 40:
-        tries += 1
-        # a lot facing a street: snap to the nearest street line in the rotated frame
-        u = r2.uniform(-r, r)
-        v = r2.uniform(-r, r)
-        if u * u + v * v > (r * 0.92) ** 2:
+    village = style == 'village'
+    block = 36.0 if not village else 60.0
+    cross = 112.0 if style == 'city' else 124.0
+    sw = 7.0 if style == 'city' else 6.0
+    kind = 'asphalt' if not village else 'dirt'
+
+    def to_w(u, v):
+        return cx + u * ca - v * sa, cz + u * sa + v * ca
+
+    rl = r * 1.2 if style == 'city' else r       # the city's districts reach past its rim, round the outer squares
+    n = int(rl / block)
+    lines = [0] if village else list(range(-n, n + 1))
+    cand = []
+    for k in lines:
+        v0 = k * block
+        if abs(v0) > rl * 0.9:
             continue
-        kk = round(v / block)
-        side = 1 if v > kk * block else -1
-        typ = pick(style, r2)
-        dims = PREF[typ]
-        setback = 4.5 + dims['d'] / 2
-        if style == 'village':
-            kk = 0
-            side = 1 if v > 0 else -1
-        v = kk * block + side * setback
-        if style != 'village' and abs(v - kk * block) > block / 2 - 2:
-            continue
-        x = cx + u * ca - v * sa
-        z = cz + u * sa + v * ca
-        rad = math.hypot(dims['w'], dims['d']) * 0.5 + 1.5
-        if not free(x, z, rad) or in_lake(x, z) or near_road(x, z, rad * 0.7):
-            continue
-        # face the street: front (+Z local) points back towards the street line
-        yaw = -rot + (math.pi if side > 0 else 0.0)   # Godot yaw: front (+Z) towards the street
-        y = hat(x, z)
-        BUILDINGS.append([typ, round(x, 2), round(y, 2), round(z, 2), round(yaw, 4), int(r2.randint(0, 8))])
-        occupied.append((x, z, rad))
-        placed += 1
-    print(' ', nm, placed, 'buildings')
+        half = math.sqrt(max((rl * 0.92) ** 2 - v0 ** 2, 0.0))
+        for side in (-1, 1):
+            u = -half + r2.uniform(0, 10)
+            while u < half:
+                typ = pick(style, r2)
+                dims = PREF[typ]
+                w, dd = dims['w'], dims['d']
+                if not village:
+                    m_ = sw / 2 + 1.5
+                    j = math.floor(u / cross)
+                    hit = None
+                    for uj in (j * cross, (j + 1) * cross):
+                        if u < uj + m_ and u + w > uj - m_:
+                            hit = uj + m_
+                    if hit is not None:
+                        u = hit + r2.uniform(0, 3)
+                        continue
+                uc = u + w / 2
+                if uc + w / 2 > half:
+                    break
+                setback = (5.0 if not village else r2.uniform(6, 14)) + dd / 2
+                v = v0 + side * setback
+                x, z = to_w(uc, v)
+                u += w + (r2.uniform(2.5, 6.5) if not village else r2.uniform(8, 22))
+                if any(math.hypot(x - px, z - pz) < 32 for (px, pz) in CAPTURE):
+                    continue                      # the squares round the computers stay open
+                rad = math.hypot(w, dd) * 0.5
+                if not free(x, z, rad) or in_lake(x, z) or near_road(x, z, rad * 0.7):
+                    continue
+                dens = lot_density(style, math.hypot(uc, v) / r, x, z)
+                yaw = -rot + (math.pi if side > 0 else 0.0)   # Godot yaw: the front (+Z) faces the street
+                cand.append((dens + r2.uniform(0, 0.3), k, uc, typ, x, z, yaw, rad, side, w))
+    cand.sort(key=lambda c: -c[0])
+    keep = cand[:target]
+    fronts = {}
+    for (_, k, uc, typ, x, z, yaw, rad, side, w) in keep:
+        BUILDINGS.append([typ, round(x, 2), round(hat(x, z), 2), round(z, 2), round(yaw, 4), int(r2.randint(0, 8))])
+        fronts.setdefault((k, side), []).append((uc - w / 2 - 1.5, uc + w / 2 + 1.5))
+    if not village:
+        # pavements in front of the houses, from the kerb to the front walls (one strip along a row of neighbours)
+        for (k, side), iv in fronts.items():
+            iv.sort()
+            merged = [list(iv[0])]
+            for a_, b_ in iv[1:]:
+                if a_ <= merged[-1][1] + 4.0:
+                    merged[-1][1] = max(merged[-1][1], b_)
+                else:
+                    merged.append([a_, b_])
+            vv = k * block + side * (sw / 2 + (5.0 - sw / 2) / 2)
+            for a_, b_ in merged:
+                SIDEWALKS.append(dict(w=5.0 - sw / 2, pts=[to_w(a_, vv), to_w(b_, vv)]))
+    for (_, k, uc, typ, x, z, yaw, rad, side, w) in keep:
+        occupied.append((x, z, rad + 1.0))
+    # streets: along each line, the stretches that have houses; the town's two main axes right across
+    def to_f(x, z):
+        return (x - cx) * ca + (z - cz) * sa, -(x - cx) * sa + (z - cz) * ca
+
+    blk = [(*to_f(bx, bz), br) for (bx, bz, br) in BLOCKERS if math.hypot(bx - cx, bz - cz) < rl + br]
+
+    def cut(segs, fixed, along_u):
+        # a street stops short of the big buildings in its way
+        for (bu, bv, br) in blk:
+            off = (fixed - bv) if along_u else (fixed - bu)
+            if abs(off) >= br:
+                continue
+            c_ = bu if along_u else bv
+            h_ = math.sqrt(br * br - off * off)
+            out = []
+            for a, b in segs:
+                if b <= c_ - h_ or a >= c_ + h_:
+                    out.append([a, b])
+                    continue
+                if c_ - h_ - a > 6:
+                    out.append([a, c_ - h_])
+                if b - (c_ + h_) > 6:
+                    out.append([c_ + h_, b])
+            segs = out
+        return segs
+
+    covered = {}
+    for k in lines:
+        us = [c[2] for c in keep if c[1] == k]
+        half = math.sqrt(max((rl * 0.95) ** 2 - (k * block) ** 2, 0.0))
+        segs = [[max(a - 14, -half), min(b + 14, half)] for a, b in runs(us, 95.0)] if us else []
+        if k == 0:
+            segs = [[-half, half]]
+        segs = cut(segs, k * block, True)
+        covered[k] = segs
+        for a, b in segs:
+            m_ = max(2, int((b - a) / 6.0) + 1)
+            STREETS.append(dict(w=sw, kind=kind, pts=[to_w(s, k * block) for s in np.linspace(a, b, m_)]))
+    if not village:
+        jn = int(rl / cross)
+        for j in range(-jn, jn + 1):
+            uj = j * cross
+            ks = [k for k in lines if any(a <= uj <= b for a, b in covered[k])]
+            pairs = [k for k in ks if k + 1 in ks]
+            if j == 0:
+                half = math.sqrt(max((rl * 0.95) ** 2 - uj ** 2, 0.0))
+                spans = [[-half, half]]
+            else:
+                spans = [[a * block, (b + 1) * block] for a, b in runs(pairs, 1)] if pairs else []
+            spans = cut(spans, uj, False)
+            for a, b in spans:
+                m_ = max(2, int((b - a) / 6.0) + 1)
+                STREETS.append(dict(w=sw, kind=kind, pts=[to_w(uj, s) for s in np.linspace(a, b, m_)]))
+    if not village:
+        # burnt-out cars by the kerb, along the streets that have houses
+        spots = []
+        for k in lines:
+            for a_, b_ in covered.get(k, []):
+                u = a_ + r2.uniform(10, 40)
+                while u < b_ - 10:
+                    side = 1 if r2.rand() < 0.5 else -1
+                    x, z = to_w(u, k * block + side * (sw / 2 - 1.15))
+                    if abs(u - round(u / cross) * cross) > sw / 2 + 5 and not near_road(x, z, 3.0) and \
+                            all(math.hypot(x - px, z - pz) > 38 for px, pz in CAPTURE) and \
+                            all(math.hypot(x - bx, z - bz) > br + 4 for bx, bz, br in BLOCKERS):
+                        spots.append((x, z))
+                    u += r2.uniform(35, 90)
+        r2.shuffle(spots)
+        for (x, z) in spots[:(28 if style == 'city' else 4)]:
+            yaw = math.atan2(ca, sa) + (0.0 if r2.rand() < 0.5 else math.pi) + r2.normal(0, 0.08)
+            STREET_PROPS.append(['car_wreck', round(x, 2), round(hat(x, z), 2), round(z, 2), round(yaw, 3)])
+    if style == 'city':
+        # concrete chicanes on the streets into each square, 70-85 m out
+        for (px, pz) in CAPTURE:
+            pu, pv = to_f(px, pz)
+            opts = []
+            for k in lines:
+                dv = k * block - pv
+                if abs(dv) > 60:
+                    continue
+                for a_, b_ in covered.get(k, []):
+                    for sgn in (-1, 1):
+                        for dist in (70.0, 85.0):
+                            u = pu + sgn * math.sqrt(max(dist * dist - dv * dv, 0.0))
+                            x, z = to_w(u, k * block)
+                            if a_ + 8 < u < b_ - 8 and abs(u - round(u / cross) * cross) > sw / 2 + 6 and not near_road(x, z, 4.0):
+                                opts.append((k, u))
+            r2.shuffle(opts)
+            for (k, u) in opts[:2]:
+                for (du, dv) in ((0.0, -1.9), (4.5, 1.9)):
+                    x, z = to_w(u + du, k * block + dv)
+                    STREET_PROPS.append(['jersey', round(x, 2), round(hat(x, z), 2), round(z, 2), round(math.atan2(-ca, -sa), 3)])
+        # containers on some of the empty lots of the quarters
+        empty = [c for c in cand[target:] if c[0] > 0.8]
+        r2.shuffle(empty)
+        nc = 0
+        for c in empty:
+            x, z = c[4], c[5]
+            if all(math.hypot(x - p[1], z - p[3]) > 12 for p in STREET_PROPS) and \
+                    all(math.hypot(x - px, z - pz) > 40 for px, pz in CAPTURE):
+                yaw = math.atan2(ca, sa) + (0.0 if r2.rand() < 0.5 else math.pi)
+                STREET_PROPS.append(['container', round(x, 2), round(hat(x, z), 2), round(z, 2), round(yaw, 3)])
+                occupied.append((x, z, 4.0))
+                nc += 1
+                if nc >= 14:
+                    break
+    print(' ', nm, len(keep), 'buildings of', len(cand), 'lots')
 
 # farms in the open
 r2 = np.random.RandomState(77)
 farms = 0
-while farms < 26:
+while farms < 14:
     x, z = r2.uniform(-3600, 3600), r2.uniform(-2200, 3700)
     if in_lake(x, z, 80) or not free(x, z, 60) or near_road(x, z, 20) or np.hypot(x, z) < 900:
         continue
@@ -569,7 +744,7 @@ def bridge_parts(dense, hs, bridge, w):
                 box(m, 'road_concrete', (dense[i][0] + nx * (w * 0.5 + 0.2), hs[i] + 0.55, dense[i][1] + nz * (w * 0.5 + 0.2)), 0.2, 0.45, 6.2, yaw)
 
 
-def strip(pts, w, mat, lift=0.12, step=6.0, prof=None):
+def strip(pts, w, mat, lift=0.12, step=6.0, prof=None, kerb=False):
     pts = np.asarray(pts, np.float64)
     dense = []
     for i in range(len(pts) - 1):
@@ -609,6 +784,15 @@ def strip(pts, w, mat, lift=0.12, step=6.0, prof=None):
         P = [P[0], P[1], P[3], P[2]]
         UV = [UV[0], UV[1], UV[3], UV[2]]
         m.add(mat, P, [(0, 1, 0)] * 4, UV, [(0, 2, 1), (0, 3, 2)])
+        if kerb:
+            # the two sides, down into the ground (a raised pavement must not float)
+            for (ia, ib, sgn) in ((0, 3, -1), (1, 2, 1)):
+                A, B = P[ia], P[ib]
+                C = (B[0], B[1] - lift - 0.25, B[2])
+                D = (A[0], A[1] - lift - 0.25, A[2])
+                nn_ = (float(nrm[i][0]) * sgn, 0.0, float(nrm[i][1]) * sgn)
+                tri = [(0, 2, 1), (0, 3, 2)] if sgn < 0 else [(0, 1, 2), (0, 2, 3)]
+                m.add(mat, [A, B, C, D], [nn_] * 4, [(0, 0), (seg / 8.0, 0), (seg / 8.0, 0.05), (0, 0.05)], tri)
         acc += seg
 
 
@@ -618,6 +802,8 @@ for dense_, rd in road_dense:
         bridge_parts(dense_, rd['hs'], rd['bridge'], rd['w'])
 for rd in STREETS:
     strip(rd['pts'], rd['w'], 'road_' + rd['kind'])
+for sw_ in SIDEWALKS:
+    strip(sw_['pts'], sw_['w'], 'road_concrete', lift=0.24, kerb=True)
 # runway with centre-line and threshold markings, taxiway, apron
 rw_y = ap_level
 def rect(cx, cz, hw, hd, mat, lift, y=None):
@@ -695,12 +881,6 @@ for lk in lake_info:
     BOATS.append(['boat', round(x, 2), lk['level'], round(z, 2), round(a + 1.57, 3)])
 for k, pz in enumerate(PORT['piers']):
     BOATS.append(['boat', round(PORT['x'] - 150 - k * 30, 2), SEA_LEVEL, round(PORT['z'] + pz + 50, 2), round(math.pi * 0.5, 3)])
-LANDMARKS = []  # [model, x, y, z, yaw, scale]
-for i, model in enumerate(['cathedral', 'res_contemporary', 'res_multistory', 'res_facade']):
-    a = i * 1.57 + 0.6
-    x, z = math.cos(a) * 210, math.sin(a) * 210
-    LANDMARKS.append([model, round(x, 2), round(hat(x, z), 2), round(z, 2), round(math.atan2(-x, -z), 3), 1.0])
-    occupied.append((x, z, 35))
 for model, x0, z0, yaw in (('fortress', -1400.0, -2350.0, 0.6), ('warehouse', -2950.0, -1550.0, 0.2), ('inn', 2400.0, 2300.0, 1.0)):
     fx, fz = land_spot(x0, z0, 80.0)
     LANDMARKS.append([model, round(fx, 2), round(hat(fx, fz), 2), round(fz, 2), yaw, 1.0])
@@ -739,7 +919,7 @@ cand = r2.uniform(-HALF + 20, HALF - 20, (520000, 2))
 fi = np.clip(((cand[:, 1] + HALF) / SP).astype(int), 0, N - 1)
 fj = np.clip(((cand[:, 0] + HALF) / SP).astype(int), 0, N - 1)
 f = forest[fi, fj]
-dens = sstep(0.5, 0.62, f) * 0.9 + 0.04
+dens = (sstep(0.5, 0.62, f) * 0.9 + 0.04) * 0.65     # (a third fewer than at first: the owner's ask, and the phones')
 keep = r2.rand(len(cand)) < dens
 keep &= slope[fi, fj] < 0.9
 keep &= H[fi, fj] > 1.5
@@ -850,6 +1030,11 @@ for (px, pz) in CAPTURE:
     d = np.hypot(GX - px, GZ - pz)
     Wl[..., 3] += sstep(30, 18, d) * 3.0
     Wl[..., 7] += sstep(22, 12, d) * 2.0
+# (the city patch paints its own streets, sharp: it starts from the splat without the coarse road paint)
+Wl_nr = Wl.astype(np.float32)
+Wl_nr[..., 7] -= road_px * 4.0
+Wl_nr = np.maximum(Wl_nr, 0)
+Wl_nr /= Wl_nr.sum(-1, keepdims=True) + 1e-6
 Wl = np.maximum(Wl, 0)
 Wl /= Wl.sum(-1, keepdims=True) + 1e-6
 A = (Wl[..., 0:4] * 255 + 0.5).astype(np.uint8)
@@ -866,6 +1051,35 @@ WX, WZ = np.meshgrid(wx, wx)
 from scipy.interpolate import RectBivariateSpline
 spl = RectBivariateSpline(xs, xs, H.T, kx=3, ky=3)
 W = spl.ev(WX.ravel(), WZ.ravel()).reshape(WN, WN)
+# the streets and roads through the patch, sharp (1 m): how far each pixel lies beyond the edge of the nearest one
+WS = 1024
+cx_ = np.linspace(-WH, WH, WS)
+CX, CZ = np.meshgrid(cx_, cx_)
+_sp, _hw = [], []
+for line, half_w in [(dn, rd['w'] / 2) for dn, rd in road_dense] + [(np.asarray(st['pts']), st['w'] / 2) for st in STREETS]:
+    line = np.asarray(line, np.float64)
+    if not ((np.abs(line[:, 0]) < WH + 60) & (np.abs(line[:, 1]) < WH + 60)).any():
+        continue
+    for i in range(len(line) - 1):
+        a, b = line[i], line[i + 1]
+        n_ = max(1, int(np.hypot(*(b - a)) / 1.2))
+        t = np.linspace(0, 1, n_, endpoint=False)[:, None]
+        _sp.append(a + (b - a) * t)
+        _hw.append(np.full(n_, half_w))
+_sp = np.concatenate(_sp)
+_hw = np.concatenate(_hw)
+from scipy.spatial import cKDTree as _KD2
+_tree = _KD2(_sp)
+_dq, _iq = _tree.query(np.stack([CX.ravel(), CZ.ravel()], 1), distance_upper_bound=40.0)
+_far = ~np.isfinite(_dq)
+road_e = np.where(_far, 99.0, _dq - _hw[np.where(_far, 0, _iq)]).reshape(WS, WS)
+
+
+def road_edge_at(x, z):
+    d, i = _tree.query((x, z))
+    return d - _hw[i]
+
+
 r3 = np.random.RandomState(55)
 CRATERS = []
 for k in range(140):
@@ -875,6 +1089,8 @@ for k in range(140):
     if any(math.hypot(cx - o[0], cz - o[1]) < o[2] + 4 for o in occupied):
         continue
     rr = r3.uniform(1.8, 5.5)
+    if road_edge_at(cx, cz) < rr * 1.7 + 1.0:
+        continue                                  # the road meshes are flat: a crater under one would be a hole
     d = np.hypot(WX - cx, WZ - cz) / rr
     m = d < 1.6
     W[m] += np.where(d[m] < 1.0, -rr * 0.35 * (1 - d[m] ** 2), rr * 0.12 * np.clip(1.6 - d[m], 0, 0.6) * np.clip(d[m] - 1.0, 0, 1) * 4)
@@ -883,23 +1099,49 @@ for k in range(140):
 edge = np.minimum(np.minimum(WX + WH, WH - WX), np.minimum(WZ + WH, WH - WZ))
 kk = sstep(0, 24, edge)
 W = spl.ev(WX.ravel(), WZ.ravel()).reshape(WN, WN) * (1 - kk) + W * kk
-Wa = np.zeros((1024, 1024, 4))
-Wb = np.zeros((1024, 1024, 4))
-base_a = np.asarray(Image.fromarray(A, 'RGBA').resize((1024, 1024), Image.BILINEAR)).astype(np.float64) / 255  # not used: recompute locally
-cx_ = np.linspace(-WH, WH, 1024)
-CX, CZ = np.meshgrid(cx_, cx_)
-cr = np.zeros((1024, 1024))
+# The patch's splat: the island's own under it (so the seams match), then the city: the ground dry and patchy (worn soil
+# and grit, the grass in tufts), gravel under every street and road (nothing grows through), worn verges, trodden yards
+# round the houses, churned soil and mud at the craters.
+fi = (CZ + HALF) / (2 * HALF) * (S2 - 1)
+fj = (CX + HALF) / (2 * HALF) * (S2 - 1)
+Wp = np.stack([ndimage.map_coordinates(Wl_nr[..., c], [fi, fj], order=1) for c in range(8)], -1).astype(np.float64)
+city_r = TOWNS[0][3]
+in_city = sstep(city_r * 1.05, city_r * 0.7, np.hypot(CX, CZ))
+for (px, pz) in CAPTURE[1:]:
+    in_city = np.maximum(in_city, sstep(200, 120, np.hypot(CX - px, CZ - pz)))
+in_city *= sstep(0, 60, np.minimum(np.minimum(CX + WH, WH - CX), np.minimum(CZ + WH, WH - CZ)))   # no seam at the rim
+rn = ndimage.gaussian_filter(np.random.RandomState(57).rand(WS, WS), 5)
+rn = (rn - rn.min()) / (rn.max() - rn.min() + 1e-9)
+Wp[..., 0] *= 1 - 0.55 * in_city
+Wp[..., 1] *= 1 - 0.75 * in_city
+Wp[..., 3] += in_city * (0.35 + 0.5 * sstep(0.45, 0.7, rn))
+Wp[..., 7] *= 1.0 - 0.7 * in_city
+Wp[..., 7] += in_city * 0.16 * sstep(0.6, 0.85, rn)
+Wp[..., 7] += sstep(1.2, -0.6, road_e) * 3.0
+Wp[..., 3] += sstep(5.0, 0.5, road_e) * 0.9
+yard = np.zeros((WS, WS))
+for b in BUILDINGS:
+    if abs(b[1]) < WH + 30 and abs(b[3]) < WH + 30:
+        dims = PREF.get(b[0], {'w': 10, 'd': 10})
+        rad = math.hypot(dims['w'], dims['d']) * 0.5
+        j0, i0 = int((b[1] + WH) / (2 * WH) * (WS - 1)), int((b[3] + WH) / (2 * WH) * (WS - 1))
+        R = int(rad + 7)
+        ia, ib, ja, jb = max(i0 - R, 0), min(i0 + R + 1, WS), max(j0 - R, 0), min(j0 + R + 1, WS)
+        if ia >= ib or ja >= jb:
+            continue
+        dd = np.hypot(CX[ia:ib, ja:jb] - b[1], CZ[ia:ib, ja:jb] - b[3])
+        yard[ia:ib, ja:jb] = np.maximum(yard[ia:ib, ja:jb], sstep(rad + 6, rad + 1, dd))
+Wp[..., 3] += yard * 0.9
+Wp[..., 7] += yard * 0.2
+cr = np.zeros((WS, WS))
 for (cx, cz, rr) in CRATERS:
     cr = np.maximum(cr, sstep(rr * 1.7, rr * 0.6, np.hypot(CX - cx, CZ - cz)))
-churn = np.clip(cr + 0.35 * ndimage.gaussian_filter(np.random.RandomState(56).rand(1024, 1024), 6) * 2, 0, 1)
-Wa[..., 0] = 0.6 * (1 - churn)
-Wa[..., 1] = 0.2 * (1 - churn)
-Wa[..., 3] = 0.6 * churn + 0.3
-Wb[..., 0] = cr * 1.2
-Wb[..., 3] = 0.25
-tot = Wa.sum(-1, keepdims=True) + Wb.sum(-1, keepdims=True) + 1e-6
-Image.fromarray((Wa / tot * 255 + 0.5).astype(np.uint8), 'RGBA').save(OUT + '/splat_war_a.png')
-Image.fromarray((Wb / tot * 255 + 0.5).astype(np.uint8), 'RGBA').save(OUT + '/splat_war_b.png')
+Wp[..., 3] += cr * 0.8
+Wp[..., 4] += cr * 1.4
+Wp = np.maximum(Wp, 0)
+Wp /= Wp.sum(-1, keepdims=True) + 1e-6
+Image.fromarray((Wp[..., 0:4] * 255 + 0.5).astype(np.uint8), 'RGBA').save(OUT + '/splat_war_a.png')
+Image.fromarray((Wp[..., 4:8] * 255 + 0.5).astype(np.uint8), 'RGBA').save(OUT + '/splat_war_b.png')
 
 # ---------------------------------------------------------------- write
 H.astype('<f4').tofile(OUT + '/base_h.f32')
@@ -920,7 +1162,7 @@ for k in range(6):
 lay = dict(
     map='valley', half=HALF, n=N, sea_level=SEA_LEVEL, war_half=WH, war_n=WN,
     lakes=lake_info, towns=[dict(name=t[0], x=t[1], z=t[2], r=t[3]) for t in TOWNS],
-    buildings=BUILDINGS, vehicles=VEH, aircraft=AIR, boats=BOATS, landmarks=LANDMARKS, wrecks=WRECKS,
+    buildings=BUILDINGS, vehicles=VEH, aircraft=AIR, boats=BOATS, landmarks=LANDMARKS, wrecks=WRECKS, street_props=STREET_PROPS,
     capture=[dict(name=CAP_NAMES[i], x=p[0], z=p[1], y=round(hat(*p), 2)) for i, p in enumerate(CAPTURE)],
     bases=[dict(team=b[0], x=b[1], z=b[2], yaw=b[3]) for b in BASES], spawns=spawns,
     airport=dict(AIRPORT, y=round(ap_level, 2)), airports=[dict(a, y=round(a['y'], 2)) for a in AIRPORTS],
@@ -932,4 +1174,4 @@ lay = dict(
     spawn=[BASES[0][1], round(hat(BASES[0][1], BASES[0][2]) + 0.1, 2), BASES[0][2], 0.0],
 )
 json.dump(lay, open(OUT + '/layout.json', 'w'), separators=(',', ':'), ensure_ascii=False)
-print('done', 'buildings', len(BUILDINGS), 'vehicles', len(VEH), 'aircraft', len(AIR), 'wrecks', len(WRECKS))
+print('done', 'buildings', len(BUILDINGS), 'vehicles', len(VEH), 'aircraft', len(AIR), 'wrecks', len(WRECKS), 'street props', len(STREET_PROPS))

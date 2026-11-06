@@ -26,7 +26,8 @@ varying vec3 v_wp;
 
 void vertex() {
 	float d = distance(MODEL_MATRIX[3].xyz, view_pos);
-	if (d > cut_far || d < cut_near) {
+	// INSTANCE_CUSTOM.a 0: a shell standing in for a house past the interior cap: no near cut
+	if (d > cut_far || (d < cut_near && INSTANCE_CUSTOM.a > 0.5)) {
 		VERTEX = vec3(0.0);
 	}
 	v_h = VERTEX.y;

@@ -30,7 +30,7 @@ const BMAT := {
 	"paint": ["res://textures/b/paint.jpg", "res://textures/b/paint_nrh.png", {"metallic": 0.3, "grime": 0.4}],
 	"screen": ["res://textures/b/screen.png", "", {"emission": Color(0.25, 1.0, 0.45), "emission_energy": 1.6, "grime": 0.0, "wet_affect": 0.0}],
 	"glass": ["res://textures/b/paint.jpg", "", {"tint": Color(0.18, 0.24, 0.27), "rough_add": -0.8, "metallic": 0.6, "grime": 0.0}],
-	"road_asphalt": ["res://textures/b/asphalt.jpg", "res://textures/b/asphalt_nrh.png", {"grime": 0.0}],
+	"road_asphalt": ["res://textures/b/asphalt.jpg", "res://textures/b/asphalt_nrh.png", {"grime": 0.0, "tint": Color(2.0, 2.0, 1.97)}],
 	"road_runway": ["res://textures/b/asphalt.jpg", "res://textures/b/asphalt_nrh.png", {"grime": 0.0, "tint": Color(0.82, 0.82, 0.84)}],
 	"road_dirt": ["res://textures/b/concrete.jpg", "res://textures/b/concrete_nrh.png", {"grime": 0.0, "tint": Color(0.55, 0.45, 0.33), "rough_add": 0.1}],
 	"road_concrete": ["res://textures/b/concrete.jpg", "res://textures/b/concrete_nrh.png", {"grime": 0.0}],
@@ -49,6 +49,8 @@ var lay: Dictionary
 var pref: Dictionary
 var tinfo: Dictionary
 var ring_b: Array[float] = [150.0, 1300.0]           # buildings: hi -> mid -> far
+var hi_cap := 44                    # most houses drawn with their interiors at once (the nearest); the rest of the inner
+									# ring draws its shells (dense streets would otherwise draw hundreds of interiors)
 var ring_t: Array[float] = [140.0, 320.0, 2600.0]    # trees: lod0 -> lod1 -> impostor cards -> none
 var shadow_r := 45.0                # trees cast shadows (with their lod1 shape) this close
 var bmesh := {}                     # type -> [hi, mid, far]
@@ -59,7 +61,9 @@ var bxf: Array[Transform3D] = []    # per building
 var btype: PackedStringArray = []
 var btint: PackedInt32Array = []
 var bchunk_hi := {}                 # Vector2i -> PackedInt32Array of building indices (colliders, doors, inside test)
-var b_mm := {}                      # type -> [MultiMeshInstance3D hi, mid, far]
+var b_mm := {}                      # type -> [MultiMeshInstance3D hi, mid, far, shadow]
+										# (shadow: the shells of the houses close by, drawn only into the sun's shadow
+										#  maps - the interiors cast none, so the dense streets cost a fraction)
 var t_mm := {}                      # variant -> [MultiMeshInstance3D lod0, lod1, shadow]
 var imp_mmi: Array[MultiMeshInstance3D] = []
 var imp_mat: ShaderMaterial
@@ -164,8 +168,13 @@ func _free_body(b: RID) -> void:
 func _apply_quality() -> void:
 	var q := int(Settings.get_v("view_distance"))
 	var sh := int(Settings.get_v("shadows"))
-	ring_b = [[110.0, 150.0, 190.0][q], [900.0, 1300.0, 2200.0][q]]
-	ring_t = [[100.0, 140.0, 190.0][q], [230.0, 320.0, 440.0][q], [1800.0, 2600.0, 3800.0][q]]
+	# (past the middle ring the houses are boxes with roofs: from 450 m a house is a few pixels high and mostly hidden
+	#  behind nearer ones in the dense city, where the shells out there cost more than everything else on screen)
+	ring_b = [[100.0, 140.0, 180.0][q], [350.0, 450.0, 900.0][q]]
+	hi_cap = [24, 36, 60][q]
+	# trees: full shape close by, the simple one to the middle distance, cards beyond (in a forest the first two rings
+	# were two million triangles at the middle setting)
+	ring_t = [[70.0, 95.0, 150.0][q], [190.0, 250.0, 400.0][q], [1800.0, 2400.0, 3600.0][q]]
 	shadow_r = [0.0, 45.0, 90.0][clampi(sh, 0, 2)] * (1.25 if int(Settings.get_v("quality")) >= 3 else 1.0)
 	_qkey = "%d|%d|%d" % [q, sh, int(Settings.get_v("quality"))]
 
@@ -328,9 +337,9 @@ func _buildings_static() -> void:
 		la.append(i)
 		all[t] = la
 	for t in bmesh:
-		var l: Array = [null, null, null]
-		for ring in 3:
-			var mesh: Mesh = bmesh[t][ring]
+		var l: Array = [null, null, null, null]
+		for ring in 4:
+			var mesh: Mesh = bmesh[t][ring if ring < 3 else 1]
 			if mesh == null:
 				continue
 			var mm := MultiMesh.new()
@@ -339,7 +348,7 @@ func _buildings_static() -> void:
 			mm.mesh = mesh
 			var mmi := MultiMeshInstance3D.new()
 			mmi.multimesh = mm
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if ring == 3 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			mmi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 			mmi.visible = false
 			add_child(mmi)
@@ -357,7 +366,7 @@ func _buildings_static() -> void:
 	ivy_mmi.visible = false
 	add_child(ivy_mmi)
 
-func _fill_buildings(mmi: MultiMeshInstance3D, ids: Array) -> void:
+func _fill_buildings(mmi: MultiMeshInstance3D, ids: Array, near_shell := {}) -> void:
 	var n := ids.size()
 	var buf := PackedFloat32Array()
 	buf.resize(n * 16)
@@ -381,7 +390,7 @@ func _fill_buildings(mmi: MultiMeshInstance3D, ids: Array) -> void:
 		buf[o + 12] = c.r
 		buf[o + 13] = c.g
 		buf[o + 14] = c.b
-		buf[o + 15] = 1.0
+		buf[o + 15] = 0.0 if near_shell.has(i) else 1.0     # 0: a shell close by (past the cap): no near cut
 	var mm := mmi.multimesh
 	mm.instance_count = n
 	if n > 0:
@@ -396,25 +405,53 @@ func _rebuild_buildings(p: Vector3) -> void:
 	var hi := {}
 	var mid := {}
 	var hi_ids: Array[int] = []
+	var inner: Array[Vector2] = []
 	for i in bxf.size():
 		var d := bxf[i].origin.distance_to(p)
 		if d < hi_r:
-			var l: Array = hi.get(btype[i], [])
-			l.append(i)
-			hi[btype[i]] = l
-			hi_ids.append(i)
+			inner.append(Vector2(d, i))
 		if d > mid_in and d < mid_r:
 			var l2: Array = mid.get(btype[i], [])
 			l2.append(i)
 			mid[btype[i]] = l2
-	var sh := int(Settings.get_v("shadows")) > 0
+	# the nearest `hi_cap` get their interiors; the others this close draw their shells whatever the distance
+	inner.sort()
+	var near_shell := {}
+	for j in inner.size():
+		var i := int(inner[j].y)
+		if j < hi_cap:
+			var l: Array = hi.get(btype[i], [])
+			l.append(i)
+			hi[btype[i]] = l
+			hi_ids.append(i)
+		else:
+			near_shell[i] = true
+			if inner[j].x <= mid_in:
+				var l3: Array = mid.get(btype[i], [])
+				l3.append(i)
+				mid[btype[i]] = l3
+	var sh := int(Settings.get_v("shadows"))
+	# the houses that can throw a shadow into the sun's shadow range (its far end plus the length of a house's shadow)
+	var cast := {}
+	var all_cast := {}
+	if sh > 0:
+		var cast_r: float = [0.0, 45.0, 90.0][clampi(sh, 0, 2)] + 45.0
+		for v2 in inner:
+			if v2.x > cast_r:
+				break
+			var i := int(v2.y)
+			var l4: Array = cast.get(btype[i], [])
+			l4.append(i)
+			cast[btype[i]] = l4
+			all_cast[i] = true
 	for t in b_mm:
 		var l: Array = b_mm[t]
 		if l[0] != null:
 			_fill_buildings(l[0], hi.get(t, []))
-			(l[0] as MultiMeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if sh else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if l[1] != null:
-			_fill_buildings(l[1], mid.get(t, []))
+			_fill_buildings(l[1], mid.get(t, []), near_shell)
+		if l[3] != null:
+			_fill_buildings(l[3], cast.get(t, []), all_cast)
 	var sig := hash(hi_ids)
 	if sig != _ivy_sig:
 		_ivy_sig = sig

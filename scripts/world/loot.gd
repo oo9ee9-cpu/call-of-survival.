@@ -217,4 +217,14 @@ func _make(it: Dictionary) -> Node3D:
 			var wood := _mat("crate", Color(0.36, 0.28, 0.17), 0.0, 0.85)
 			_box(root, Vector3(0.9, 0.5, 0.6), Vector3(0, 0.25, 0), wood)
 			_box(root, Vector3(0.92, 0.06, 0.62), Vector3(0, 0.5, 0), _mat("crate_lid", Color(0.26, 0.2, 0.12)))
+	# things on the floor: no shadows, and the models' coarser levels of detail (a helmet on the floor is 1-2k
+	# triangles, not the 19k of the one on a soldier's head; a street of houses holds dozens of them)
+	_light(root, 0.12 if String(it["type"]) in ["helmet", "vest"] else 0.3)
 	return root
+
+func _light(n: Node, bias: float) -> void:
+	if n is GeometryInstance3D:
+		(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(n as GeometryInstance3D).lod_bias = bias
+	for c in n.get_children():
+		_light(c, bias)
