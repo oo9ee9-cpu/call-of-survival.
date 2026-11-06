@@ -69,6 +69,13 @@ func setup(w: World, p: Player, as_guest := false) -> void:
 	for i in n:
 		_to_spawn.append(1)
 	_to_spawn.shuffle()
+	# the machines with their crews: tanks out of the bases, air strikes now and then (the island only)
+	if world.lay.get("island", false):
+		var war := WarAI.new()
+		war.name = "WarAI"
+		world.add_child(war)
+		world.war = war
+		war.setup(world, self)
 
 func _spawn_some() -> void:
 	for k in 4:
@@ -221,6 +228,28 @@ func zone_pos(i: int) -> Vector3:
 	return zones[i]["pos"] if i >= 0 and i < zones.size() else Vector3.ZERO
 
 ## the zone a soldier of this team should head for: the nearest one the team does not hold, now and then any
+## sandbags round a zone's computer, put up by the side that holds it (a few walls a zone)
+var barricades := {}                   # zone -> how many walls
+func build_barricade(zi: int, at: Vector3, facing: float) -> bool:
+	if zi < 0 or zi >= zones.size() or world.valley == null or world.valley.models == null:
+		return false
+	if int(barricades.get(zi, 0)) >= 4:
+		return false
+	barricades[zi] = int(barricades.get(zi, 0)) + 1
+	var b := Basis(Vector3.UP, facing)
+	for k in 3:
+		var p := at + b * Vector3(-1.4 + k * 1.4, 0, 0)
+		world.valley.models.place("sandbag", world.valley.models._ground_xf("sandbag", p.x, p.z, facing))
+	return true
+
+## where a guard of zone `zi` stands: one of eight places round its computer, facing out
+func guard_spot(zi: int, slot: int) -> Vector3:
+	var c: Vector3 = zones[zi]["computer"]
+	var a := slot * TAU / 8.0
+	var p := c + Vector3(cos(a), 0, sin(a)) * (7.0 + (slot % 2) * 3.0)
+	p.y = world.height(p.x, p.z)
+	return p
+
 func pick_zone(team: int, from: Vector3) -> int:
 	var best := -1
 	var bd := INF

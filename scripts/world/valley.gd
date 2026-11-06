@@ -74,6 +74,8 @@ var loot: Loot
 var doors := {}                     # "b:d" -> {"node": Node3D, "open": bool, "angle": float, "hinge": Vector3}
 var door_open := {}                 # "b:d" -> bool (kept when the node is freed)
 var lakes: Array = []
+var river_pts: Array = []           # [x, z, level, half width] along every river
+var _river_cells := {}              # Vector2i (64 m) -> indices into river_pts
 var cover: Array[MultiMeshInstance3D] = []
 var cover_mats: Array[ShaderMaterial] = []
 var _t := 0.0
@@ -90,9 +92,12 @@ const GRID_CELL := 2.0
 var grid_n := 0
 var roof := PackedByteArray()
 
+const TREE_KEEP := 0.65              # a third of the forest thinned out (lighter on phones)
+
 func setup(w: World) -> void:
 	world = w
 	lay = w.lay
+	_thin_trees(TREE_KEEP)
 	pref = JSON.parse_string(FileAccess.get_file_as_string("res://data/valley/prefabs.json"))
 	tinfo = JSON.parse_string(FileAccess.get_file_as_string("res://data/valley/trees.json"))
 	_apply_quality()
@@ -116,6 +121,31 @@ func setup(w: World) -> void:
 	models.name = "Models"
 	add_child(models)
 	await models.setup(world)
+
+## keep this share of the trees (the same ones every time: decided by each tree's place)
+func _thin_trees(keep: float) -> void:
+	if bool(lay.get("_thinned", false)):
+		return
+	lay["_thinned"] = true
+	var veg: Dictionary = lay["veg"]
+	var before := 0
+	var after := 0
+	for v in veg.keys():
+		var arr: PackedFloat32Array = veg[v]
+		var out := PackedFloat32Array()
+		out.resize(arr.size())
+		var n := 0
+		for o in range(0, arr.size(), 5):
+			var h := fposmod(sin(arr[o] * 12.9898 + arr[o + 2] * 78.233) * 43758.5453, 1.0)
+			if h < keep:
+				for c in 5:
+					out[n + c] = arr[o + c]
+				n += 5
+		out.resize(n)
+		before += arr.size() / 5
+		after += n / 5
+		veg[v] = out
+	print("VALLEY trees %d -> %d" % [before, after])
 
 func _exit_tree() -> void:
 	for i in bodies:
@@ -674,10 +704,102 @@ func _water() -> void:
 	for lk in lay["lakes"]:
 		lakes.append([float(lk["x"]), float(lk["z"]), float(lk["r"]), float(lk["level"])])
 		_water_mesh(float(lk["x"]), float(lk["z"]), float(lk["r"]) * 1.45, float(lk["level"]), lm)
-	# the sea bay: a big sheet along the west edge
 	var sea: float = lay.get("sea_level", 0.0)
-	lakes.append([-4600.0, 0.0, -1.0, sea])
-	_water_mesh(-4100.0, 0.0, 1900.0, sea, lm, true)
+	if not lay.get("island", false):
+		# the old valley: the sea bay, a big sheet along the west edge
+		lakes.append([-4600.0, 0.0, -1.0, sea])
+		_water_mesh(-4100.0, 0.0, 1900.0, sea, lm, true)
+		return
+	# the island: the sea all round it (tiles of the sheet only where the ground is under it) and the open sea to the
+	# horizon outside the map, then the rivers
+	lakes.append([0.0, 0.0, -2.0, sea])
+	var half: float = float(lay.get("half", 4096.0))
+	var tiles := 6
+	var tr := half / tiles
+	for j in tiles:
+		for i in tiles:
+			_water_mesh(-half + tr * (2 * i + 1), -half + tr * (2 * j + 1), tr, sea, lm)
+	_open_sea(half, sea, lm)
+	for rv in lay.get("rivers", []):
+		_river_mesh(rv, lm)
+
+## the sea outside the map: four broad sheets out to 40 km
+func _open_sea(half: float, level: float, m: Material) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var far := 40000.0
+	var rects := [[-far, -far, far, -half], [-far, half, far, far], [-far, -half, -half, half], [half, -half, far, half]]
+	for r in rects:
+		var a := Vector3(r[0], level, r[1])
+		var b := Vector3(r[2], level, r[1])
+		var c := Vector3(r[2], level, r[3])
+		var d := Vector3(r[0], level, r[3])
+		for v in [a, b, c, a, c, d]:
+			st.set_color(Color(1.0, 0, 0))
+			st.set_normal(Vector3.UP)
+			st.set_uv(Vector2(v.x, v.z) * 0.05)
+			st.add_vertex(v)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
+## a river's water: a ribbon along its course at its own level, a little wider than the channel
+func _river_mesh(rv: Dictionary, m: Material) -> void:
+	var pts: Array = rv["pts"]
+	var hw := float(rv["w"]) * 0.5 + 5.0
+	if pts.size() < 2:
+		return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var prev_l := Vector3.ZERO
+	var prev_r := Vector3.ZERO
+	for i in pts.size():
+		var p: Array = pts[i]
+		var a: Array = pts[maxi(i - 1, 0)]
+		var b: Array = pts[mini(i + 1, pts.size() - 1)]
+		var dir := Vector2(float(b[0]) - float(a[0]), float(b[1]) - float(a[1])).normalized()
+		var side := Vector2(-dir.y, dir.x) * hw
+		var lv := float(p[2])
+		var l := Vector3(float(p[0]) + side.x, lv, float(p[1]) + side.y)
+		var r := Vector3(float(p[0]) - side.x, lv, float(p[1]) - side.y)
+		river_pts.append([float(p[0]), float(p[1]), lv, hw])
+		var cell := Vector2i(int(floor(float(p[0]) / 64.0)), int(floor(float(p[1]) / 64.0)))
+		for oy in [-1, 0, 1]:
+			for ox in [-1, 0, 1]:
+				var k := cell + Vector2i(ox, oy)
+				if not _river_cells.has(k):
+					_river_cells[k] = []
+				(_river_cells[k] as Array).append(river_pts.size() - 1)
+		if i > 0:
+			for v in [prev_l, r, l, prev_l, prev_r, r]:
+				st.set_color(Color(0.22, 0, 0))
+				st.set_normal(Vector3.UP)
+				st.set_uv(Vector2(v.x, v.z) * 0.05)
+				st.add_vertex(v)
+		prev_l = l
+		prev_r = r
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
+## the river's water level at a point, or -INF
+func _river_level(x: float, z: float) -> float:
+	var cell := Vector2i(int(floor(x / 64.0)), int(floor(z / 64.0)))
+	if not _river_cells.has(cell):
+		return -INF
+	var best := 1e9
+	var lv := -INF
+	for i in _river_cells[cell]:
+		var rp: Array = river_pts[i]
+		var d := Vector2(x - float(rp[0]), z - float(rp[1])).length()
+		if d < float(rp[3]) and d < best:
+			best = d
+			lv = float(rp[2])
+	return lv
 
 func _water_mesh(cx: float, cz: float, r: float, level: float, m: Material, square := false) -> void:
 	var n := 64
@@ -700,7 +822,7 @@ func _water_mesh(cx: float, cz: float, r: float, level: float, m: Material, squa
 					any_wet = true
 			if not any_wet:
 				continue
-			for k in [0, 2, 1, 0, 3, 2]:
+			for k in [0, 1, 2, 0, 2, 3]:      # clockwise seen from above (the front face)
 				var e: Array = verts[quad[k]]
 				st.set_color(Color(float(e[1]) / 20.0, 0, 0))
 				st.set_normal(Vector3.UP)
@@ -716,7 +838,14 @@ func _water_mesh(cx: float, cz: float, r: float, level: float, m: Material, squa
 	add_child(mi)
 
 func water_at(p: Vector3) -> bool:
+	var rl := _river_level(p.x, p.z) if not river_pts.is_empty() else -INF
+	if rl > -INF and p.y < rl + 0.05 and world.height(p.x, p.z) < rl:
+		return true
 	for lk in lakes:
+		if float(lk[2]) < -1.5:
+			if p.y < float(lk[3]) + 0.05 and world.height(p.x, p.z) < float(lk[3]):
+				return true
+			continue
 		if float(lk[2]) < 0.0:
 			if p.x < -2600.0 and p.y < float(lk[3]) + 0.05 and world.height(p.x, p.z) < float(lk[3]):
 				return true
@@ -727,8 +856,12 @@ func water_at(p: Vector3) -> bool:
 
 ## water surface height at a point, or -INF
 func water_level(x: float, z: float) -> float:
+	if not river_pts.is_empty():
+		var rl := _river_level(x, z)
+		if rl > -INF and world.height(x, z) < rl:
+			return rl
 	for lk in lakes:
-		var inside := (float(lk[2]) < 0.0 and x < -2600.0) or (float(lk[2]) > 0.0 and Vector2(x - float(lk[0]), z - float(lk[1])).length() < float(lk[2]) * 1.5)
+		var inside := float(lk[2]) < -1.5 or (float(lk[2]) < 0.0 and x < -2600.0) or (float(lk[2]) > 0.0 and Vector2(x - float(lk[0]), z - float(lk[1])).length() < float(lk[2]) * 1.5)
 		if inside and world.height(x, z) < float(lk[3]):
 			return float(lk[3])
 	return -INF
@@ -736,8 +869,8 @@ func water_level(x: float, z: float) -> float:
 # ------------------------------------------------------------------ grass
 func _cover() -> void:
 	var specs := [
-		{"tex": "res://textures/v8/g_grass.png", "spacing": 0.5, "size": 0.62, "hs": 0.42, "w": Vector4(1.2, 1.4, 0.15, 0.05), "tint": Color(0.82, 0.92, 0.72)},
-		{"tex": "res://textures/v8/g_grass_tall.png", "spacing": 1.6, "size": 0.9, "hs": 0.75, "w": Vector4(0.15, 1.1, 0.05, 0.0), "tint": Color(0.85, 0.92, 0.75)},
+		{"tex": "res://textures/v8/g_grass.png", "spacing": 0.5, "size": 0.62, "hs": 0.42, "w": Vector4(1.2, 1.4, 0.15, 0.05), "tint": Color(0.9, 0.9, 0.68)},
+		{"tex": "res://textures/v8/g_grass_tall.png", "spacing": 1.6, "size": 0.9, "hs": 0.75, "w": Vector4(0.15, 1.1, 0.05, 0.0), "tint": Color(0.98, 0.9, 0.62)},
 		{"tex": "res://textures/v8/g_flowers.png", "spacing": 1.9, "size": 0.7, "hs": 0.7, "w": Vector4(0.5, 0.9, 0.0, 0.0), "tint": Color(1, 1, 1)},
 		{"tex": "res://textures/v8/g_fern.png", "spacing": 1.4, "size": 0.95, "hs": 0.8, "w": Vector4(0.0, 0.2, 1.4, 0.0), "tint": Color(0.85, 0.92, 0.8)},
 	]

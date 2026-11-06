@@ -1,7 +1,9 @@
 class_name Hud
 extends Control
-## In-game overlay: the bodycam's own burn-in (REC, clock, unit), ammo, a small dot, prompts and messages; the weapon
-## slots with the health bar under them, armour and medicine; the reticle of a sight when aimed; a hit marker.
+## In-game overlay, laid out like the reference: top left «Alive / Killed» and the squad with their health; top middle
+## the compass, the zones with their letters, the scores and the clock; top right the minimap (a tap opens the full
+## map) with the raid warning under it; bottom middle the ammunition, the weapon slots with the health bar under them,
+## armour and medicine; prompts and messages; the reticle of a sight when aimed; a hit marker.
 
 var player: Player
 var match_: Match
@@ -19,13 +21,18 @@ var deploy_label: Label
 var deploy_btns := {}            # key -> Button
 var blink := 0.0
 var unit_id := ""
+var minimap: MapView
+var full_map: MapView
+var backpack: Backpack
+var touch_ref: TouchControls
 
 func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UiTheme.fonts()
-	unit_id = "BC-07  #%04d" % (randi() % 9000 + 1000)
+	unit_id = ""
 	var box := VBoxContainer.new()
+	box.visible = false                 # (the old bodycam burn-in, kept off)
 	box.layout_direction = Control.LAYOUT_DIRECTION_LTR
 	box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	box.position = Vector2(-420, 22)
@@ -62,6 +69,37 @@ func _init() -> void:
 	fps.position = Vector2(96, 26)
 	add_child(fps)
 
+## the minimap, the full map and the backpack, once the world and the player exist
+func attach(w: World) -> void:
+	if minimap:
+		return
+	minimap = MapView.new()
+	minimap.setup(w, player, false)
+	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	minimap.offset_left = -188
+	minimap.offset_right = -8
+	minimap.offset_top = 8
+	minimap.offset_bottom = 188
+	add_child(minimap)
+	full_map = MapView.new()
+	full_map.setup(w, player, true)
+	full_map.set_anchors_preset(Control.PRESET_FULL_RECT)
+	full_map.visible = false
+	add_child(full_map)
+	minimap.open_full.connect(open_map)
+	backpack = Backpack.new()
+	add_child(backpack)
+
+func open_map() -> void:
+	if full_map == null or full_map.visible:
+		return
+	full_map.match_ = match_
+	full_map.marker = minimap.marker
+	full_map.open()
+
+func map_open() -> bool:
+	return (full_map != null and full_map.visible) or (backpack != null and backpack.visible)
+
 func _mono(size: int) -> Label:
 	var l := Label.new()
 	l.add_theme_font_override("font", UiTheme.font_mono)
@@ -79,15 +117,31 @@ func show_message(t: String) -> void:
 
 func _process(delta: float) -> void:
 	blink += delta
-	var dt := Time.get_datetime_dict_from_system()
-	rec_label.text = "%s REC   %04d-%02d-%02d  %02d:%02d:%02d" % ["●" if fmod(blink, 1.2) < 0.75 else " ", dt["year"], dt["month"], dt["day"], dt["hour"], dt["minute"], dt["second"]]
-	rec_label.add_theme_color_override("font_color", Color(0.97, 0.95, 0.92, 0.95))
-	cam_label.text = "%s   ▮▮▮▯" % unit_id
+	if minimap:
+		minimap.match_ = match_
+		if full_map.visible:
+			minimap.marker = full_map.marker
+		# the transport's route on both maps while it flies
+		var fl = player.transport if player and player.in_transport else null
+		var on: bool = fl != null and is_instance_valid(fl) and fl is TransportFlight
+		minimap.route_on = on
+		full_map.route_on = on
+		if on:
+			var tf := fl as TransportFlight
+			for m in [minimap, full_map]:
+				(m as MapView).route_from = tf.from
+				(m as MapView).route_to = tf.to
+		minimap.visible = results == null and not (player and player.dead and match_ == null) and not map_open()
+		if touch_ref:
+			touch_ref.map_rect = minimap.get_global_rect()
 	if player:
 		var w := player.weapon
 		var mode := "AUTO" if w.auto else "SEMI"
 		var rl := "  RELOAD" if w.reload_t >= 0.0 else ""
-		if player.vehicle:
+		if player.in_transport:
+			var fl = player.transport
+			ammo_label.text = "اضغط «قفز» للقفز — %d م حتى نهاية المسار" % int(fl.left_m()) if fl and is_instance_valid(fl) else ""
+		elif player.vehicle:
 			ammo_label.text = player.vehicle.hud_text()
 		elif player.para > 0:
 			ammo_label.text = "%d m" % int(player.global_position.y - player.world.height(player.global_position.x, player.global_position.z))
@@ -119,9 +173,15 @@ func on_hit() -> void:
 func _draw() -> void:
 	if player == null:
 		return
+	if map_open():
+		return
 	_status()
+	_compass()
 	if match_:
 		_match_bar()
+		_top_left()
+	_raid_warning()
+	_missile_warning()
 	if player.vehicle != null and not (player.vehicle is Aircraft):
 		return
 	var c := size * 0.5
@@ -192,7 +252,7 @@ func _reticle(c: Vector2, kind: String, a: float) -> void:
 
 ## bottom middle: the three weapon slots with their ammunition, and under them the health bar with armour and medicine
 func _status() -> void:
-	if player.vehicle != null or player.dead or results != null:
+	if player.vehicle != null or player.dead or results != null or player.in_transport:
 		return
 	var font := UiTheme.font_bold
 	var mono := UiTheme.font_mono
@@ -234,7 +294,7 @@ func _match_bar() -> void:
 	var font := UiTheme.font_bold
 	var n := match_.zones.size()
 	var cx := size.x * 0.5
-	var y := 34.0
+	var y := 62.0
 	var ours := Color(0.35, 0.65, 1.0)
 	var theirs := Color(1.0, 0.35, 0.3)
 	draw_string(font, Vector2(cx - 220, y + 8), "%d" % match_.score[0], HORIZONTAL_ALIGNMENT_RIGHT, 60, 26, ours)
@@ -254,7 +314,7 @@ func _match_bar() -> void:
 	var left := maxf(Match.TIME - match_.t, 0.0)
 	draw_string(UiTheme.font_mono, Vector2(cx - 40, y + 44), "%02d:%02d" % [int(left) / 60, int(left) % 60], HORIZONTAL_ALIGNMENT_CENTER, 80, 18, Color(1, 1, 1, 0.85))
 	# kill feed
-	var fy := 150.0
+	var fy := 236.0
 	for f in match_.feed:
 		draw_string(font, Vector2(24, fy), String(f["text"]), HORIZONTAL_ALIGNMENT_LEFT, 420, 17, Color(1, 1, 1, clampf(float(f["t"]), 0.0, 1.0)))
 		fy += 24.0
@@ -395,3 +455,113 @@ func show_results(r: Dictionary) -> void:
 	b.add_theme_stylebox_override("pressed", UiTheme.box(Color(0.78, 0.66, 0.42, 0.95), Color(0.95, 0.85, 0.6, 1.0), 1, 8, 12.0))
 	b.pressed.connect(func(): get_tree().reload_current_scene())
 	v.add_child(b)
+
+
+## top middle: the compass strip, the bearing under the middle
+func _compass() -> void:
+	if player.in_transport or results != null:
+		return
+	var cx := size.x * 0.5
+	var w := 420.0
+	var y := 18.0
+	var deg := fposmod(-rad_to_deg(player.yaw), 360.0)          # 0 north, 90 east
+	var font := UiTheme.font_bold
+	draw_rect(Rect2(cx - w * 0.5, y - 12.0, w, 26.0), Color(0, 0, 0, 0.28))
+	var names := {0: "N", 45: "NE", 90: "E", 135: "SE", 180: "S", 225: "SW", 270: "W", 315: "NW"}
+	var px := w / 120.0                                            # 120 degrees across
+	for a in range(-60, 61, 5):
+		var b := int(round(deg / 5.0)) * 5 + a
+		var x := cx + (float(b) - deg) * px
+		if x < cx - w * 0.5 + 6 or x > cx + w * 0.5 - 6:
+			continue
+		var bb := posmod(b, 360)
+		if names.has(bb):
+			var t: String = names[bb]
+			draw_string(font, Vector2(x - 14, y + 7), t, HORIZONTAL_ALIGNMENT_CENTER, 28, 15, Color(1, 0.4, 0.3) if bb == 0 else Color(1, 1, 1, 0.95))
+		elif bb % 15 == 0:
+			draw_string(font, Vector2(x - 14, y + 6), str(bb), HORIZONTAL_ALIGNMENT_CENTER, 28, 11, Color(1, 1, 1, 0.7))
+		else:
+			draw_line(Vector2(x, y - 4), Vector2(x, y + 2), Color(1, 1, 1, 0.45), 1.0)
+	# the marker's bearing as a yellow tick
+	if minimap and minimap.marker != Vector2.INF:
+		var to := minimap.marker - Vector2(player.global_position.x, player.global_position.z)
+		var md := fposmod(rad_to_deg(atan2(to.x, -to.y)), 360.0)
+		var dd := wrapf(md - deg, -180.0, 180.0)
+		if absf(dd) < 60.0:
+			var x := cx + dd * px
+			draw_colored_polygon(PackedVector2Array([Vector2(x, y + 14), Vector2(x - 6, y + 22), Vector2(x + 6, y + 22)]), Color(1, 0.85, 0.15))
+	draw_colored_polygon(PackedVector2Array([Vector2(cx, y + 15), Vector2(cx - 5, y + 23), Vector2(cx + 5, y + 23)]), Color(1, 1, 1))
+	draw_string(font, Vector2(cx - 30, y + 38), "%03d" % int(deg), HORIZONTAL_ALIGNMENT_CENTER, 60, 13, Color(1, 1, 1, 0.8))
+
+## top left: how many are alive, how many he killed; his squad (him and the three nearest team mates) with health
+func _top_left() -> void:
+	if results != null:
+		return
+	var font := UiTheme.font_bold
+	var alive := 0 if player.dead else 1
+	for b in match_.bots:
+		if not b.dead and not b.retired:
+			alive += 1
+	if match_.coop:
+		for r in match_.coop.remotes.values():
+			if not (r as RemoteSoldier).dead:
+				alive += 1
+	var x := 18.0
+	var y := 14.0
+	for e in [["Alive", alive], ["Killed", player.kills]]:
+		var t := "%s  %d" % [e[0], int(e[1])]
+		var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x + 20.0
+		draw_rect(Rect2(x, y, w, 28), Color(0, 0, 0, 0.45))
+		draw_string(font, Vector2(x + 10, y + 21), String(e[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(1, 1, 1, 0.75))
+		var nw := font.get_string_size(String(e[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
+		draw_string(font, Vector2(x + 10 + nw + 8, y + 21), str(int(e[1])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color(1, 1, 1))
+		x += w + 6.0
+	# the squad
+	var mates: Array = []
+	for b in match_.bots:
+		if b.dead or b.retired or b.team != player.team:
+			continue
+		mates.append(b)
+	mates.sort_custom(func(a, b): return (a as Node3D).global_position.distance_squared_to(player.global_position) < (b as Node3D).global_position.distance_squared_to(player.global_position))
+	var rows: Array = [[Profile.load_profile().get("name", "أنت"), player.health / 100.0]]
+	for i in mini(3, mates.size()):
+		var b: Bot = mates[i]
+		rows.append([b.bot_name, b.health / 100.0])
+	var cols := [Color(1.0, 0.85, 0.2), Color(1.0, 0.55, 0.15), Color(0.35, 0.65, 1.0), Color(0.4, 0.9, 0.45)]
+	y = 54.0
+	for i in rows.size():
+		var r: Array = rows[i]
+		var c: Color = cols[i]
+		draw_rect(Rect2(18, y, 22, 22), c)
+		draw_string(font, Vector2(18, y + 17), str(i + 1), HORIZONTAL_ALIGNMENT_CENTER, 22, 15, Color(0, 0, 0))
+		draw_string_outline(font, Vector2(48, y + 15), String(r[0]), HORIZONTAL_ALIGNMENT_LEFT, 150, 15, 3, Color(0, 0, 0, 0.6))
+		draw_string(font, Vector2(48, y + 15), String(r[0]), HORIZONTAL_ALIGNMENT_LEFT, 150, 15, Color(1, 1, 1, 0.92))
+		var h := clampf(float(r[1]), 0.0, 1.0)
+		draw_rect(Rect2(48, y + 19, 120, 4), Color(0, 0, 0, 0.5))
+		draw_rect(Rect2(48, y + 19, 120 * h, 4), Color(1, 1, 1, 0.9) if h > 0.3 else Color(1, 0.3, 0.25))
+		y += 34.0
+
+## a missile after the aircraft he flies: a red bar across the top with what to do
+func _missile_warning() -> void:
+	var w := player.world
+	if w == null or w.air_defence == null or w.air_defence.warn_player <= 0.0:
+		return
+	var on := fmod(blink, 0.5) < 0.3
+	var r := Rect2(size.x * 0.5 - 300, 96, 600, 40)
+	draw_rect(r, Color(0.7, 0.04, 0.02, 0.85 if on else 0.55))
+	draw_rect(r, Color(1, 0.8, 0.75), false, 2.0)
+	draw_string(UiTheme.font_bold, r.position + Vector2(0, 28), "⚠ صاروخ أرض-جو يلاحقك! انعطف بحدة وأطلق المشاعل (R / زر المشاعل)", HORIZONTAL_ALIGNMENT_CENTER, 600, 19, Color(1, 1, 1))
+
+## under the minimap: the raid's warning while it lasts
+func _raid_warning() -> void:
+	var w := player.world
+	if w == null or w.raid == null or not w.raid.active() or minimap == null:
+		return
+	var p := Vector2(player.global_position.x, player.global_position.z)
+	var d := p.distance_to(Vector2(w.raid.zone.x, w.raid.zone.z)) - w.raid.radius
+	var x := size.x - 188.0
+	var y := 196.0
+	var on := fmod(blink, 1.0) < 0.6
+	draw_rect(Rect2(x, y, 180, 26), Color(0.55, 0.05, 0.03, 0.7 if on else 0.45))
+	var t := "⚠ قصف — داخل المنطقة!" if d <= 0.0 else "⚠ قصف على بعد %d م" % int(d)
+	draw_string(UiTheme.font_bold, Vector2(x + 8, y + 19), t, HORIZONTAL_ALIGNMENT_LEFT, 170, 15, Color(1, 1, 1))

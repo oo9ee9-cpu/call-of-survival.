@@ -13,6 +13,8 @@ const STAND_H := 1.75
 const CROUCH_H := 1.15
 const CAM_STAND := 1.36
 const CAM_CROUCH := 0.92
+const CAM_PRONE := 0.36
+const PRONE_H := 0.62
 const STEP := 0.42
 
 var world: World
@@ -23,6 +25,9 @@ var last_look := Vector2.ZERO
 var move_in := Vector2.ZERO          # from the touch stick (x right, y forward)
 var touch_sprint := false
 var crouching := false
+var proning := false                # lying down: slow, low, small to hit
+var ui_block := false               # the full map or the backpack is open: the soldier stands still
+const BAG_MAX := 8                  # spare attachments in the backpack
 var sprinting := false
 var aiming := false
 var mantle_t := -1.0
@@ -71,13 +76,15 @@ var touch_fire2 := false
 var para := 0                      # 0 on foot, 1 free fall, 2 under the canopy
 # what the soldier carries: two long guns and a pistol, ammunition by calibre, medicine, armour levels
 var inv := {"guns": [{"id": "ak", "ammo": 30, "sight": ""}, {}, {"id": "pistol", "ammo": 15, "sight": ""}], "cur": 0,
-	"ammo": {"762": 90, "556": 0, "9mm": 30, "338": 0, "12g": 0}, "meds": {"bandage": 2, "kit": 1, "medkit": 0}, "helmet": 0, "vest": 0}
+	"ammo": {"762": 90, "556": 0, "9mm": 30, "338": 0, "12g": 0}, "meds": {"bandage": 2, "kit": 1, "medkit": 0}, "helmet": 0, "vest": 0, "bag": []}
 var heal_t := -1.0
 var heal_kind := ""
 var kills := 0
 var deaths := 0
 var lives := 3
 var respawn_timer: SceneTreeTimer  # the wait for the next life
+var in_transport := false          # riding the transport helicopter into the match (TransportFlight moves him)
+var transport: Node                # that flight
 var chute: Node3D
 var snd_fall: AudioStreamPlayer
 
@@ -185,6 +192,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			exit_vehicle()
 		elif event.is_action_pressed("view_toggle"):
 			vehicle.first_person = not vehicle.first_person
+		elif event.is_action_pressed("reload") and vehicle is Aircraft:
+			drop_flares()
+		return
+	if in_transport:
+		if event.is_action_pressed("jump") or event.is_action_pressed("interact"):
+			jump_or_climb()
 		return
 	if event.is_action_pressed("jump"):
 		if para == 1:
@@ -193,6 +206,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			jump_or_climb()
 	if event.is_action_pressed("crouch"):
 		crouching = not crouching
+		proning = false
+	if event.is_action_pressed("prone"):
+		toggle_prone()
 	if event.is_action_pressed("flashlight"):
 		toggle_flashlight()
 	if event.is_action_pressed("interact"):
@@ -218,6 +234,10 @@ func add_look(v: Vector2) -> void:
 
 func _physics_process(delta: float) -> void:
 	if not active:
+		return
+	if in_transport:
+		world.phys_focus = global_position
+		world.phys_set = true
 		return
 	# look
 	var lim := deg_to_rad(78.0)
@@ -249,14 +269,19 @@ func _physics_process(delta: float) -> void:
 	var mv := Input.get_vector("move_left", "move_right", "move_back", "move_forward")
 	if move_in.length() > 0.05:
 		mv = move_in
+	if ui_block:
+		mv = Vector2.ZERO
 	aiming = weapon.aim_held()
 	var want_sprint := (Input.is_action_pressed("sprint") or touch_sprint) and mv.y > 0.3 and not aiming and stamina > 0.05
-	if want_sprint and crouching:
+	if want_sprint and (crouching or proning):
 		crouching = false
+		proning = false
 	sprinting = want_sprint
 	var speed := 2.75
 	if sprinting:
 		speed = 5.6
+	elif proning:
+		speed = 0.75
 	elif crouching:
 		speed = 1.6
 	if aiming:
@@ -279,10 +304,10 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= 9.8 * delta
 		fall_v = minf(fall_v, velocity.y)
 	# crouch: shrink the capsule (stand up only with headroom)
-	var want_h := CROUCH_H if crouching else STAND_H
-	if not crouching and capsule.height < STAND_H - 0.01:
+	var want_h := PRONE_H if proning else (CROUCH_H if crouching else STAND_H)
+	if not proning and capsule.height < want_h - 0.01:
 		var t := global_transform
-		if test_move(t, Vector3(0, STAND_H - capsule.height, 0)):
+		if test_move(t, Vector3(0, want_h - capsule.height, 0)):
 			want_h = capsule.height
 	capsule.height = move_toward(capsule.height, want_h, delta * 3.0)
 	col.position.y = capsule.height * 0.5
@@ -332,6 +357,10 @@ func _try_step(motion: Vector3) -> void:
 
 ## jump, or climb onto a ledge in front (trench walls, fire steps, sandbags)
 func jump_or_climb() -> void:
+	if in_transport:
+		if transport and is_instance_valid(transport):
+			transport.call("jump")
+		return
 	if mantle_t >= 0.0:
 		return
 	var fwd := Basis(Vector3.UP, yaw) * Vector3(0, 0, -1)
@@ -428,7 +457,7 @@ func _camera(delta: float, turn_rate: float, mv: Vector2, on_floor: bool) -> voi
 	var target_roll := -mv.x * 0.025 * bob_amt - clampf(turn_rate * 0.004, -0.05, 0.05) * bob_amt + sin(step_phase) * 0.012 * k
 	roll = lerpf(roll, target_roll, clampf(delta * 6.0, 0.0, 1.0))
 	land_kick = move_toward(land_kick, 0.0, delta * 0.4)
-	var ch := CAM_CROUCH if crouching else CAM_STAND
+	var ch := CAM_PRONE if proning else (CAM_CROUCH if crouching else CAM_STAND)
 	cam_h = lerpf(cam_h, ch, clampf(delta * 8.0, 0.0, 1.0))
 	shake = maxf(shake - delta * 1.2, 0.0)
 	shake_t += delta * 38.0
@@ -443,7 +472,7 @@ func _camera(delta: float, turn_rate: float, mv: Vector2, on_floor: bool) -> voi
 	tpp_k = move_toward(tpp_k, want, delta * 5.5)
 	var tk := smoothstep(0.0, 1.0, tpp_k)
 	if tk > 0.001:
-		tpp_pivot.position.y = lerpf(tpp_pivot.position.y, 1.12 if crouching else 1.58, clampf(delta * 8.0, 0.0, 1.0))
+		tpp_pivot.position.y = lerpf(tpp_pivot.position.y, 0.6 if proning else (1.12 if crouching else 1.58), clampf(delta * 8.0, 0.0, 1.0))
 		tpp_pivot.rotation = Vector3(pitch + rec.x * 0.7, yaw + rec.y * 0.7, 0.0)
 		var third := Transform3D(tpp_pivot.global_transform.basis, tpp_anchor.global_position + sh * 0.5)
 		cam.global_transform = eye.interpolate_with(third, tk)
@@ -461,6 +490,7 @@ func _update_body(delta: float) -> void:
 	body.speed = hv.length() if mantle_t < 0.0 else 0.0
 	body.move_dir = Vector2(hv.x, hv.z).normalized() if body.speed > 0.05 else Vector2.ZERO
 	body.crouch = move_toward(body.crouch, 1.0 if crouching else 0.0, delta * 4.0)
+	body.prone = move_toward(body.prone, 1.0 if proning else 0.0, delta * 2.5)
 	body.airborne = not is_on_floor() and mantle_t < 0.0
 	var low := 1.0 if ((sprinting and not aiming) or weapon.reload_t >= 0.0 or mantle_t >= 0.0) else 0.0
 	body.low_ready = move_toward(body.low_ready, low, delta * 5.0)
@@ -807,7 +837,7 @@ func _respawn() -> void:
 		return
 	var sp: Array = m.player_spawn() if m else world.spawn_point()
 	inv = {"guns": [{"id": "ak", "ammo": 30, "sight": ""}, {}, {"id": "pistol", "ammo": 15, "sight": ""}], "cur": 0,
-		"ammo": {"762": 90, "556": 0, "9mm": 30, "338": 0, "12g": 0}, "meds": {"bandage": 2, "kit": 1, "medkit": 0}, "helmet": 0, "vest": 0}
+		"ammo": {"762": 90, "556": 0, "9mm": 30, "338": 0, "12g": 0}, "meds": {"bandage": 2, "kit": 1, "medkit": 0}, "helmet": 0, "vest": 0, "bag": []}
 	weapon.equip("ak", 30)
 	body.set_weapon("ak")
 	spawn(sp[0], sp[1])
@@ -868,7 +898,136 @@ func kit() -> Array:
 		out.append({"type": "helmet", "id": "helmet", "n": int(inv["helmet"])})
 	if int(inv["vest"]) > 0:
 		out.append({"type": "vest", "id": "vest", "n": int(inv["vest"])})
+	for g in inv["guns"]:
+		if not (g as Dictionary).is_empty() and String(g.get("sight", "")) != "":
+			out.append({"type": "sight", "id": String(g["sight"]), "n": 1})
+	for b in inv.get("bag", []):
+		out.append((b as Dictionary).duplicate())
 	return out
+
+# ------------------------------------------------------------------ the backpack (tap the bag button)
+## can this sight go on any gun the soldier carries?
+func sight_fits(_sid: String) -> bool:
+	for g in inv["guns"]:
+		if not (g as Dictionary).is_empty() and Guns.points(String(g["id"]))["rail"] != Vector3.INF:
+			return true
+	return false
+
+func _drop(it: Dictionary) -> void:
+	if _loot():
+		var fwd := -global_transform.basis.z
+		_loot().drop_item(it, global_position + fwd * 0.8 + Vector3(randf_range(-0.3, 0.3), 0, randf_range(-0.3, 0.3)))
+	Sfx.play("ammo_pickup", -8.0, 0.15)
+
+func drop_gun(slot: int) -> void:
+	var g: Dictionary = inv["guns"][slot]
+	if g.is_empty():
+		return
+	save_ammo()
+	_drop({"type": "gun", "id": g["id"], "n": int(g["ammo"])})
+	if String(g.get("sight", "")) != "":
+		_drop({"type": "sight", "id": String(g["sight"]), "n": 1})
+	inv["guns"][slot] = {}
+	if slot == int(inv["cur"]):
+		for k in 3:
+			if not (inv["guns"][k] as Dictionary).is_empty():
+				inv["cur"] = -1
+				switch_weapon(k)
+				break
+	message.emit("رميت " + String(Guns.DATA[g["id"]]["title"]))
+
+func drop_ammo(cal: String) -> void:
+	var n := int(inv["ammo"].get(cal, 0))
+	if n <= 0:
+		return
+	inv["ammo"][cal] = 0
+	_drop({"type": "ammo", "id": cal, "n": n})
+
+func drop_med(kind: String) -> void:
+	var n := int(inv["meds"].get(kind, 0))
+	if n <= 0:
+		return
+	inv["meds"][kind] = n - 1
+	_drop({"type": "med", "id": kind, "n": 1})
+
+func drop_armor(kind: String) -> void:
+	var lv := int(inv[kind])
+	if lv <= 0:
+		return
+	inv[kind] = 0
+	_drop({"type": kind, "id": kind, "n": lv})
+
+func drop_bag(i: int) -> void:
+	var bag: Array = inv.get("bag", [])
+	if i < 0 or i >= bag.size():
+		return
+	var it: Dictionary = bag[i]
+	bag.remove_at(i)
+	_drop({"type": it["type"], "id": it["id"], "n": 1})
+
+## a sight from the backpack onto the gun in hand (the one on it goes into the backpack)
+func mount_from_bag(i: int) -> bool:
+	var bag: Array = inv.get("bag", [])
+	var g: Dictionary = inv["guns"][int(inv["cur"])]
+	if i < 0 or i >= bag.size() or g.is_empty() or Guns.points(String(g["id"]))["rail"] == Vector3.INF:
+		return false
+	var it: Dictionary = bag[i]
+	bag.remove_at(i)
+	if String(g.get("sight", "")) != "":
+		bag.append({"type": "sight", "id": String(g["sight"])})
+	g["sight"] = String(it["id"])
+	save_ammo()
+	weapon.equip(String(g["id"]), int(g["ammo"]), String(g["sight"]))
+	message.emit("ركّبت " + String(Guns.SIGHTS[g["sight"]]["title"]))
+	return true
+
+func unmount_sight(slot: int) -> void:
+	var g: Dictionary = inv["guns"][slot]
+	if g.is_empty() or String(g.get("sight", "")) == "":
+		return
+	var bag: Array = inv.get("bag", [])
+	bag.append({"type": "sight", "id": String(g["sight"])})
+	inv["bag"] = bag
+	g["sight"] = ""
+	if slot == int(inv["cur"]):
+		save_ammo()
+		weapon.equip(String(g["id"]), int(g["ammo"]), "")
+
+## «تغيير العدسة»: the next sight from the backpack onto the gun in hand, round to the iron sights and back
+func cycle_sight() -> void:
+	var bag: Array = inv.get("bag", [])
+	for i in bag.size():
+		if String((bag[i] as Dictionary).get("type", "")) == "sight":
+			if mount_from_bag(i):
+				return
+	var g: Dictionary = inv["guns"][int(inv["cur"])]
+	if not g.is_empty() and String(g.get("sight", "")) != "":
+		unmount_sight(int(inv["cur"]))
+		message.emit("التسديد بالفرضة والشعيرة")
+	else:
+		message.emit("لا توجد عدسة في الحقيبة")
+
+## use one kind of medicine from the backpack
+func use_med(kind: String) -> void:
+	if heal_t >= 0.0 or dead or int(inv["meds"].get(kind, 0)) <= 0:
+		return
+	if health >= 99.0:
+		message.emit("صحتك كاملة")
+		return
+	heal_kind = kind
+	heal_t = 0.0
+	message.emit({"bandage": "ضمادة…", "kit": "إسعافات أولية…", "medkit": "حقيبة طبية…"}[kind])
+
+## flares from the aircraft he flies (R / the flare button): a missile on his tail may take them instead
+func drop_flares() -> void:
+	if vehicle is Aircraft and world.air_defence:
+		world.air_defence.drop_flares(vehicle)
+		message.emit("مشاعل!")
+
+func toggle_prone() -> void:
+	proning = not proning
+	if proning:
+		crouching = false
 
 func save_ammo() -> void:
 	var g: Dictionary = inv["guns"][int(inv["cur"])]
@@ -956,14 +1115,25 @@ func give(it: Dictionary) -> bool:
 			inv["ammo"][cal] = int(inv["ammo"].get(cal, 0)) + int(it.get("n", 30))
 			message.emit("ذخيرة %s +%d" % [Guns.CALIBERS.get(cal, cal), int(it.get("n", 30))])
 		"sight":
-			# onto the gun in hand if it has a rail and the sight is better than what it has
+			# onto the gun in hand if it has a rail and nothing better on it; otherwise into the backpack
+			var sid := String(it["id"])
 			var g: Dictionary = inv["guns"][int(inv["cur"])]
-			if g.is_empty() or Guns.points(String(g["id"]))["rail"] == Vector3.INF:
-				return false
-			g["sight"] = String(it["id"])
-			save_ammo()
-			weapon.equip(String(g["id"]), int(g["ammo"]), String(g["sight"]))
-			message.emit("ركّبت " + String(Guns.SIGHTS[it["id"]]["title"]))
+			var bag: Array = inv.get("bag", [])
+			var fits: bool = not g.is_empty() and Guns.points(String(g["id"]))["rail"] != Vector3.INF
+			var cur_sid := String(g.get("sight", "")) if fits else ""
+			if fits and (cur_sid == "" or float(Guns.SIGHTS[sid]["zoom"]) > float(Guns.SIGHTS.get(cur_sid, {"zoom": 0.0})["zoom"])):
+				if cur_sid != "":
+					bag.append({"type": "sight", "id": cur_sid})
+				g["sight"] = sid
+				save_ammo()
+				weapon.equip(String(g["id"]), int(g["ammo"]), sid)
+				message.emit("ركّبت " + String(Guns.SIGHTS[sid]["title"]))
+			else:
+				if bag.size() >= BAG_MAX:
+					return false
+				bag.append({"type": "sight", "id": sid})
+				message.emit("في الحقيبة: " + String(Guns.SIGHTS[sid]["title"]))
+			inv["bag"] = bag
 		"med":
 			var k := String(it["id"])
 			inv["meds"][k] = int(inv["meds"].get(k, 0)) + int(it.get("n", 1))

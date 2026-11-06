@@ -31,6 +31,8 @@ var fx: Fx
 var boom: Boom
 var projectiles: Projectiles
 var raid: AirRaid
+var air_defence: AirDefence
+var war: WarAI
 var mats := {}
 var tex := {}
 var _mesh_cache := {}
@@ -116,6 +118,11 @@ func build() -> void:
 		add_child(raid)
 		raid.setup(self)
 		raid.enabled = bool(Settings.get_v("raids"))
+		if lay.get("island", false):
+			air_defence = AirDefence.new()
+			air_defence.name = "AirDefence"
+			add_child(air_defence)
+			air_defence.setup(self)
 	if map_id == "front":
 		battle = Battle.new()
 		battle.name = "Battle"

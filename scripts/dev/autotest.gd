@@ -91,8 +91,18 @@ func _run() -> void:
 		print("AUTOTEST DONE")
 		Sfx.quit_game()
 		return
-	if only == "ui" or only.begins_with("coop"):
+	if only == "ui" or only.begins_with("coop") or only == "flight":
 		Settings.set_v("team_size", 0)
+	if only == "flight":
+		main.menus.main_panel.call("_start_matchmaking")
+		await _wait(0.5)
+		await shot("f00_matchmaking")
+		while main.state != "play":
+			await get_tree().process_frame
+		await _flight_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
 	main._start()
 	if w.map_id == "valley" and only == "coop_host":
 		await _coop_host_test(w)
@@ -115,8 +125,30 @@ func _run() -> void:
 		print("AUTOTEST DONE")
 		Sfx.quit_game()
 		return
+	if w.map_id == "valley" and only == "war":
+		Engine.max_physics_steps_per_frame = 8
+		await _war_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "hud":
+		await _hud_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "island":
+		await _island_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
 	if w.map_id == "valley" and only == "perf":
 		await _perf_test(w)
+		print("AUTOTEST DONE")
+		Sfx.quit_game()
+		return
+	if w.map_id == "valley" and only == "raid":
+		Engine.max_physics_steps_per_frame = 8
+		await _raid_test(w)
 		print("AUTOTEST DONE")
 		Sfx.quit_game()
 		return
@@ -862,3 +894,187 @@ func _online_test() -> void:
 	print("ONLINE hosting room %s" % on.hosting_room)
 	on.sign_out()
 
+## a raid seen from the open, 350 m from its red zone: the jets coming in with their trails, the bombs, the siren
+func _raid_test(w: World) -> void:
+	var pl: Player = main.player
+	var m: Match = main.match_
+	if m:
+		for b in m.bots:
+			b.retire()
+		m._to_spawn.clear()
+	var p0 := Vector3(250.0, 0.0, 700.0)
+	p0.y = w.height(p0.x, p0.z) + 0.1
+	await _place(p0, 0.0, 0.25)
+	pl.tpp = false
+	var at := p0 + Vector3(0, 0, -380)
+	w.raid.start(at)
+	print("RAID zone %s radius %.0f siren %s jets %d" % [w.raid.zone, w.raid.radius, w.raid.siren != null, w.raid.jets.size()])
+	for k in 6:
+		for f in 60 * 5:
+			await get_tree().physics_frame
+		var j0: Node3D = w.raid.jets[0] if not w.raid.jets.is_empty() else null
+		var jd := j0.global_position.distance_to(pl.global_position) if j0 else -1.0
+		if j0:
+			var to := j0.global_position - pl.cam.global_position
+			pl.yaw = atan2(-to.x, -to.z)
+			pl.yaw_node.rotation.y = pl.yaw
+			pl.pitch = clampf(atan2(to.y, Vector2(to.x, to.z).length()), -0.3, 1.2)
+		print("RAID t=%ds phase %s fired %d bombs_left %d jet %.0f m siren %s paused %s" % [(k + 1) * 5, w.raid.phase, w.raid.fired, w.raid.bombs_left, jd, w.raid.siren != null, w.raid.siren.stream_paused if w.raid.siren else false])
+		await shot("r%02d" % k)
+
+## into the match by the transport helicopter: riding it, looking round, jumping out
+func _flight_test(w: World) -> void:
+	var pl: Player = main.player
+	var fl: TransportFlight = main.flight
+	print("FLIGHT from %s to %s, player in it %s" % [fl.from, fl.to, pl.in_transport])
+	for f in 90:
+		await get_tree().process_frame
+	await shot("f01_transport")
+	pl.look_in = Vector2(1.6, 0.25)
+	for f in 30:
+		await get_tree().process_frame
+	await shot("f02_transport_side")
+	pl.jump_or_climb()
+	for f in 60:
+		await get_tree().physics_frame
+	print("FLIGHT jumped: in transport %s para %d at %s" % [pl.in_transport, pl.para, pl.global_position])
+	await shot("f03_freefall")
+
+
+
+## the island: views from above and on the ground (the port, a river bridge, the strait's bridge, the east airport,
+## the north lake's carrier, the coast)
+func _island_test(w: World) -> void:
+	main._start()
+	await _wait(1.0)
+	if main.flight and not main.flight.done:
+		main.flight.jump()
+		await _wait(0.3)
+	var lay := w.lay
+	var views := [["i01_port", Vector3(-2700, 0, -150), -1.9, -0.35, 60.0], ["i02_river", Vector3(-150, 0, 1000), PI, -0.3, 40.0],
+		["i03_strait_bridge", Vector3(250, 0, 1700), PI, -0.25, 50.0], ["i04_east_airport", Vector3(1700, 0, -700), PI, -0.2, 40.0],
+		["i05_lake_carrier", Vector3(-50, 0, -800), 0.0, -0.18, 30.0], ["i06_coast", Vector3(-3200, 0, 1300), -1.6, -0.15, 30.0],
+		["i07_city_from_air", Vector3(0, 0, 1200), PI, -0.55, 500.0]]
+	for v in views:
+		var p: Vector3 = v[1]
+		p.y = maxf(w.height(p.x, p.z), 0.0) + float(v[4])
+		_place(p, float(v[2]), float(v[3]))
+		main.player.velocity = Vector3.ZERO
+		for f in 50:
+			main.player.global_position = p
+			main.player.velocity = Vector3.ZERO
+			await get_tree().process_frame
+		print("ISLAND %s at %s ground %.1f water %s" % [v[0], p, w.height(p.x, p.z), w.valley.water_level(p.x, p.z) if w.valley else -1.0])
+		await shot(String(v[0]))
+
+
+## the new HUD: the game screen with the minimap, the full map, the backpack (a sight that fits nothing marked),
+## lying down
+func _hud_test(w: World) -> void:
+	main._start()
+	await _wait(1.0)
+	if main.flight and not main.flight.done:
+		main.flight.jump()
+		await _wait(0.3)
+	var p := Vector3(-330, 0, 420)
+	p.y = w.height(p.x, p.z) + 0.2
+	_place(p, 0.6, -0.05)
+	main.player.touch_sprint = false
+	await _wait(2.0)
+	main.touch.visible = true
+	main.touch._layout()
+	await shot("h01_game")
+	main.hud.minimap.marker = Vector2(400, -300)
+	main._open_map()
+	await _wait(0.6)
+	await shot("h02_full_map")
+	main.hud.full_map.zoom = 3.0
+	main.hud.full_map.center = Vector2(0, 0)
+	await _wait(0.4)
+	await shot("h03_full_map_zoom")
+	main.hud.full_map.close()
+	await _wait(0.3)
+	# the backpack: an x4 on the rifle, a red dot and an x8 spare, the rifle thrown away so only the pistol is left
+	var pl: Player = main.player
+	pl.give({"type": "sight", "id": "x4"})
+	pl.give({"type": "sight", "id": "reddot"})
+	pl.give({"type": "sight", "id": "x8"})
+	pl.give({"type": "med", "id": "medkit", "n": 1})
+	pl.give({"type": "ammo", "id": "556", "n": 60})
+	if pl._loot():
+		pl._loot().drop_item({"type": "gun", "id": "ak", "n": 30}, pl.global_position + Vector3(0.8, 0, 0.4))
+		pl._loot().drop_item({"type": "sight", "id": "holo"}, pl.global_position + Vector3(-0.6, 0, 0.6))
+	main._open_bag()
+	await _wait(0.5)
+	await shot("h04_backpack")
+	pl.drop_gun(0)
+	main.hud.backpack._build()
+	await _wait(0.4)
+	await shot("h05_backpack_pistol_only")
+	main.hud.backpack.close()
+	await _wait(0.3)
+	Settings.set_v("view_mode", 1)
+	pl.toggle_prone()
+	await _wait(2.0)
+	await shot("h06_prone")
+	print("HUD prone ", pl.proning, " capsule ", pl.capsule.height, " bag ", pl.inv["bag"])
+
+
+## both sides' machines: the tanks on the move, an air strike met by the enemy's air defence
+func _war_test(w: World) -> void:
+	main._start()
+	await _wait(1.0)
+	if main.flight and not main.flight.done:
+		main.flight.jump()
+		await _wait(0.3)
+	var pl: Player = main.player
+	var cam := Camera3D.new()
+	cam.far = 6000.0
+	w.add_child(cam)
+	var war := w.war
+	print("WAR crews ", war.crews.size() if war else -1, " sites ", w.air_defence.sites.size() if w.air_defence else -1)
+	var t0: Array = []
+	for c in war.crews:
+		t0.append((c["tank"] as Node3D).global_position)
+	Engine.time_scale = 3.0
+	await _wait(20.0)
+	Engine.time_scale = 1.0
+	for i in war.crews.size():
+		var tk: Node3D = war.crews[i]["tank"]
+		print("WAR tank %d team %d moved %.1f m to %s far %s" % [i, int(war.crews[i]["team"]), tk.global_position.distance_to(t0[i]) if i < t0.size() else -1.0, tk.global_position, (tk as Vehicle).ai_far])
+	# look at the first tank from behind and above (the player stands by it so its physics is on)
+	var tk0: Node3D = war.crews[0]["tank"]
+	_place(tk0.global_position + tk0.global_transform.basis.z * -30.0 + Vector3(8, 0, 0), 0.0, 0.0)
+	await _wait(1.5)
+	cam.current = true
+	cam.global_position = tk0.global_position - tk0.global_transform.basis.z * 18.0 + Vector3(4, 7, 0)
+	cam.look_at(tk0.global_position + Vector3(0, 1.5, 0), Vector3.UP)
+	await _wait(0.5)
+	await shot("w01_tank")
+	# an air strike by team 1 on the city: wait for the base's missiles
+	war._sortie(1)
+	var launched := false
+	for k in 160:
+		await get_tree().create_timer(0.25).timeout
+		if not w.air_defence.missiles.is_empty():
+			launched = true
+			break
+	print("WAR jets ", war.jets.size(), " missiles ", w.air_defence.missiles.size(), " launched ", launched)
+	if launched:
+		var m: Dictionary = w.air_defence.missiles[0]
+		for k in 8:
+			await get_tree().process_frame
+		var mp: Vector3 = m["p"]
+		var tg: Node3D = m["target"]
+		if is_instance_valid(tg):
+			cam.global_position = mp + (mp - tg.global_position).normalized() * 60.0 + Vector3(0, 20, 0)
+			cam.look_at(tg.global_position, Vector3.UP)
+		await shot("w02_missile")
+		await _wait(3.0)
+		if is_instance_valid(tg):
+			cam.global_position = tg.global_position + Vector3(0, 60, 220)
+			cam.look_at(tg.global_position, Vector3.UP)
+		await shot("w03_after")
+	print("WAR flares ", w.air_defence.flares.size(), " jets left ", war.jets.size(), " missiles ", w.air_defence.missiles.size())
+	cam.current = false
+	pl.cam.current = true

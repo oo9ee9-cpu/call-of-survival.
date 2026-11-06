@@ -70,11 +70,14 @@ func show_pause() -> void:
 func show_settings(back: String) -> void:
 	_back_to = back
 	_hide_all()
+	if back == "main":
+		main_panel.visible = true          # the lobby's camp stays behind the settings
 	settings_panel.visible = true
 	_refresh()
 
 func show_credits() -> void:
 	_hide_all()
+	main_panel.visible = true
 	credits_panel.visible = true
 
 func _back() -> void:
@@ -234,7 +237,7 @@ func _build_settings() -> void:
 	_row(a, "الأجواء", _slider("vol_amb", 0.0, 1.0, 0.05))
 	var w := _page(tabs, "العالم")
 	_row(w, "الوقت", _opt("time", ["فجر", "نهار غائم", "غروب", "ليل"]))
-	_row(w, "الطقس", _opt("weather", ["غائم", "ضباب", "مطر"]))
+	_row(w, "الطقس", _opt("weather", ["صافٍ مشمس", "ضباب", "مطر", "غائم"]))
 	_row(w, "معركة بعيدة (الجبهة)", _check("battle"))
 	_row(w, "الغارات الجوية (الوادي)", _check("raids"))
 	_row(w, "الجنود في كل فريق (عند بدء المباراة)", _opt("team_size", ["١٠", "٢٠", "٣٠", "٥٠"]))
@@ -296,15 +299,16 @@ const CREDITS := """[b]نداء البقاء[/b] — نسخة تجريبية ع�
 • في الطائرة: «رفع»/«خفض» للمحرك، العصا للمقدمة والميلان، «رمي» الرشاش، «صاروخ» الصواريخ أو القنابل. «قفز» يفتح المظلة.
 
 [b]التحكم بالحاسوب[/b]
-WASD حركة · Shift ركض · C انحناء · Space قفز/تسلّق/مظلة · الفأرة اليسرى رمي · اليمنى تصويب · R تلقيم · F تفاعل/ركوب · V المنظور · L مصباح · B نمط الرمي · Esc قائمة · F3 عداد الإطارات
-الطائرة: Shift/Ctrl المحرك · W/S المقدمة · A/D الميلان · Q/E الدفة · X صاروخ أو قنبلة
+WASD حركة · Shift ركض · C انحناء · Z انبطاح · Space قفز/تسلّق/مظلة · الفأرة اليسرى رمي · اليمنى تصويب · R تلقيم · F تفاعل/ركوب · V المنظور · L مصباح · B نمط الرمي · M الخريطة · Tab الحقيبة · Esc قائمة · F3 عداد الإطارات
+الطائرة: Shift/Ctrl المحرك · W/S المقدمة · A/D الميلان · Q/E الدفة · X صاروخ أو قنبلة · R مشاعل ضد الصواريخ
 
 [b]الحقوق والتراخيص[/b]
 • بندقية AK: نموذج «RAINIER AK - 3D» للفنان skartemka على Sketchfab — رخصة CC-BY-NC 4.0 (غير تجارية).
   https://sketchfab.com/3d-models/rainier-ak-3d-57aef8cdf42046a39f1ad9b428756213
 • الجيب UAZ (والجيب المحترق): «UAZ 469 1973 (Classic)» للفنان zhe_kan على Sketchfab — CC-BY 4.0.
   https://sketchfab.com/3d-models/uaz-469-1973-classic-027fa204ce25452fac61a93ccfb8f1f8
-• الجندي: «Vanguard» من Mixamo (كما في أمثلة three.js).
+• الجندي: جسم «X Bot» وحركاته من Mixamo (Adobe، كما في أمثلة three.js) بعد تعديله ولبس زيّ مموّه؛ الوجه: مسح الرأس «Lee Perry-Smith» من Infinite-Realities — رخصة CC-BY 3.0؛ الخوذة والصدرية: انظر نماذج المالك أدناه.
+• الشعار وبطاقات اللوبي: رُسمت لهذه النسخة (خط DejaVu — رخصة حرة، وVazirmatn — SIL OFL 1.1).
 • أنسجة الأرض والأشجار والأعشاب: من مجموعة أنسجة اللعبة الأصلية — ambientCG (CC0) وBabylon.js Assets (CC-BY 4.0) وأداة ez-tree لـ Daniel Greenheck (MIT).
 • خريطة نتوءات الماء: أمثلة three.js (MIT).
 • الخطوط: Vazirmatn (SIL OFL 1.1) — Saber Rastikerdar وفريق Vazirmatn؛ JetBrains Mono (SIL OFL 1.1) — JetBrains.

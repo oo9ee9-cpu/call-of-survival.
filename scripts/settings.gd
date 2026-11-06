@@ -18,9 +18,9 @@ const DEFAULTS := {
 	"vegetation": 1,       # 0 sparse, 1 normal, 2 dense
 	"fps_limit": 2,        # index in FPS_OPTIONS
 	"vsync": true,
-	"bodycam": 0.6,
+	"bodycam": 0.0,        # the chest-camera look (lens, grain, REC): off, the game looks like a plain camera
 	"motion_blur": false,  # the smear on fast turns (off: it blurred the picture when turning)
-	"fov": 90.0,
+	"fov": 80.0,
 	"view_mode": 1,        # 0 first person, 1 third person
 	"head_bob": 0.6,
 	"crosshair": true,
@@ -40,7 +40,7 @@ const DEFAULTS := {
 	"vol_amb": 0.85,
 	"vol_music": 0.55,
 	"show_fps": false,
-	"weather": 0,          # 0 overcast, 1 fog, 2 rain
+	"weather": 0,          # 0 clear (sunny), 1 fog, 2 rain, 3 overcast
 	"time": 1,             # 0 dawn, 1 day, 2 dusk, 3 night
 	"battle": true,
 	"map": "valley",       # valley (8 x 8 km) | front (3 x 3 km)
@@ -48,11 +48,14 @@ const DEFAULTS := {
 	"region": "me",        # eu | me | na | sa
 	"raids": true,         # air raids on the valley (sirens, jets, missiles)
 	"team_size": 3,        # soldiers per team: 10 | 20 | 30 | 50 (index)
+	"settings_v": 2,       # the version of the saved defaults (newer looks applied once to old saves)
 }
 
 func _ready() -> void:
 	mobile = OS.has_feature("mobile") or OS.get_name() == "Android" or OS.get_name() == "iOS"
 	data = DEFAULTS.duplicate(true)
+	if mobile:
+		data["team_size"] = 2
 	if not mobile:
 		data["quality"] = 2
 		data["render_scale"] = 1.0
@@ -67,6 +70,14 @@ func _ready() -> void:
 		# old saves had the turn smear on by default: switch it off once
 		if not cf.has_section_key("s", "fps_limit"):
 			data["motion_blur"] = false
+		# version 2: the realistic look (sunny, no chest-camera filter, a narrower lens); 30 a side on phones
+		if int(cf.get_value("s", "settings_v", 1)) < 2:
+			data["bodycam"] = 0.0
+			data["fov"] = 80.0
+			data["weather"] = 0
+			data["settings_v"] = 2
+			if mobile:
+				data["team_size"] = 2
 	_setup_input()
 	apply_audio()
 	apply_display()

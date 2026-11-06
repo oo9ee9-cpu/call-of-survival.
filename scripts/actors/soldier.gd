@@ -7,15 +7,17 @@ extends Node3D
 ## already have the rifle in its hands (the rig's arms and spine sampled once over each clip, aimed and at low ready)
 ## and the gun follows the right hand; further still the clip is advanced ten times a second; far away nothing is drawn.
 
-const MODEL := "res://models/chars/soldier.glb"
+const MODEL := "res://models/chars/trooper.glb"
+## faces for the scanned head: from fair to dark
+const SKIN_TONES := [Color(1.0, 1.0, 1.0), Color(0.88, 0.76, 0.66), Color(0.68, 0.53, 0.42), Color(0.46, 0.34, 0.26)]
 ## weapon kinds -> model, stock / grip points in the holder frame (metres, holder looks down -Z), muzzle
 const GUNS := {
 	"ak": {"model": "res://models/ak.glb", "flip": true, "stock": Vector3(0.0, -0.055, 0.34), "grip_r": Vector3(0.012, -0.075, 0.10),
 		"grip_l": Vector3(0.0, -0.035, -0.21), "muzzle": Vector3(0.0, -0.006, -0.56), "scale": 1.0, "two_hands": 1.0},
 }
 ## clip speeds (m/s the feet cover when the clip plays at 1x)
-const WALK_SPEED := 1.45
-const RUN_SPEED := 4.4
+const WALK_SPEED := 1.6
+const RUN_SPEED := 3.3
 
 # ---- driven by the controller
 var aim_yaw := 0.0
@@ -26,6 +28,7 @@ var speed := 0.0                 # horizontal speed, m/s
 var move_dir := Vector2.ZERO     # world-space horizontal velocity direction (x, z)
 var crouch := 0.0                # 0..1
 var prone_drop := 0.0            # extra metres down (prone / seated)
+var prone := 0.0                 # 0..1: lying on the ground, the body turned flat round the hips
 var low_ready := 0.0             # 0 aiming .. 1 rifle down across the chest
 var hold := 1.0                  # hands on the gun
 var left_hand := 1.0
@@ -57,6 +60,11 @@ var _rh := -1                    # right hand bone
 var _anim_acc := 0.0
 
 static var _flash_mat: StandardMaterial3D
+static var _camo_shader: Shader
+static var _uniforms := {}        # outfit colour -> the camouflage material (shared)
+static var _faces := {}           # skin tone -> the head's material (shared)
+var vest_kind := 0
+var skin_tone := 0
 ## the clips with the rifle in hand: source clip, new clip, low ready (0 aimed, 1 muzzle down across the chest)
 const HELD := [["Idle", "IdleA", 0.0], ["Walk", "WalkA", 0.0], ["Run", "RunA", 0.0], ["Idle", "IdleL", 0.7], ["Walk", "WalkL", 0.7], ["Run", "RunL", 0.85]]
 const HELD_BONES := ["Spine", "Spine1", "Spine2", "Neck", "Head", "RightArm", "RightForeArm", "RightHand", "LeftArm", "LeftForeArm", "LeftHand"]
@@ -103,11 +111,38 @@ func _ready() -> void:
 	flash.visible = false
 	muzzle.add_child(flash)
 	set_weapon("ak")
+	_dress()
 	_rh = int(rig.B.get("RightHand", -1))
 	ap.play("Idle")
 	_clip = "Idle"
 	if not held_baked:
 		_bake_held()
+
+## every soldier a little different: one of the two plate carriers, a face of his own, the uniform's camouflage
+func _dress() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = get_instance_id() * 2654435761
+	vest_kind = r.randi() % 2
+	skin_tone = r.randi() % SKIN_TONES.size()
+	for mi in meshes:
+		var nm := String(mi.name)
+		if nm == "Vest":
+			mi.visible = vest_kind == 0
+		elif nm == "Vest2":
+			mi.visible = vest_kind == 1
+		elif nm == "Head":
+			var m: Material = _faces.get(skin_tone)
+			if m == null:
+				var src := mi.get_active_material(0)
+				if src is StandardMaterial3D:
+					var sm := (src as StandardMaterial3D).duplicate() as StandardMaterial3D
+					sm.albedo_color = SKIN_TONES[skin_tone]
+					sm.roughness = 0.62
+					m = sm
+					_faces[skin_tone] = m
+			if m:
+				mi.set_surface_override_material(0, m)
+	set_outfit(team_color)
 
 ## sample the rig over the clips once (the first soldier made does it for all: the clips are shared)
 func _bake_held() -> void:
@@ -191,7 +226,10 @@ func revive() -> void:
 	ap.speed_scale = 1.0
 
 ## the clips walk on the spot except for the hips' sway; drop any forward drift so the body stays on its capsule
+## (the skeleton is Y up and looks along +Z: the hips keep their rest Z in every clip)
 func _strip_root_motion(a: Animation) -> void:
+	var hips := skel.find_bone("mixamorig_Hips")
+	var rest_z := skel.get_bone_rest(hips).origin.z if hips >= 0 else 0.0
 	# the importer turned the finger-tip end nodes into attachments; their node tracks have nothing to drive
 	for t in range(a.get_track_count() - 1, -1, -1):
 		if not str(a.track_get_path(t)).contains(":"):
@@ -199,10 +237,9 @@ func _strip_root_motion(a: Animation) -> void:
 	for t in a.get_track_count():
 		var p := str(a.track_get_path(t))
 		if a.track_get_type(t) == Animation.TYPE_POSITION_3D and p.ends_with("Hips"):
-			var k0: Vector3 = a.position_track_interpolate(t, 0.0)
 			for k in a.track_get_key_count(t):
 				var v: Vector3 = a.track_get_key_value(t, k)
-				a.track_set_key_value(t, k, Vector3(v.x, k0.y, v.z))   # skeleton space is Z-up, Y forward
+				a.track_set_key_value(t, k, Vector3(v.x, v.y, rest_z))
 
 func set_weapon(kind: String) -> void:
 	if kind == gun_kind:
@@ -252,15 +289,27 @@ func shot_flash() -> void:
 func muzzle_position() -> Vector3:
 	return muzzle.global_position
 
-## outfit: tint over the body texture (uniform colours for the store and the two teams)
-func set_outfit(body: Color, visor: Color = Color(0.1, 0.1, 0.1)) -> void:
+## outfit: the uniform's camouflage made from one colour (the store's uniforms, the two teams): the colour itself, a
+## darker greener blot, a lighter yellower one and near-black specks
+func set_outfit(body: Color, _visor: Color = Color(0.1, 0.1, 0.1)) -> void:
+	var key := body.to_html(false)
+	var m: ShaderMaterial = _uniforms.get(key)
+	if m == null:
+		if _camo_shader == null:
+			_camo_shader = load("res://shaders/camo.gdshader")
+		m = ShaderMaterial.new()
+		m.shader = _camo_shader
+		var a := Color.from_hsv(wrapf(body.h + 0.04, 0.0, 1.0), clampf(body.s * 1.1, 0.0, 1.0), body.v * 0.74)
+		var b := Color.from_hsv(wrapf(body.h - 0.02, 0.0, 1.0), body.s * 0.9, minf(body.v * 1.2, 1.0))
+		m.set_shader_parameter("c_base", body)
+		m.set_shader_parameter("c_a", a)
+		m.set_shader_parameter("c_b", b)
+		m.set_shader_parameter("c_dark", Color.from_hsv(body.h, body.s * 0.8, body.v * 0.45))
+		_uniforms[key] = m
 	for mi in meshes:
-		for si in mi.mesh.get_surface_count():
-			var src := mi.get_active_material(si)
-			if src is StandardMaterial3D:
-				var m := (src as StandardMaterial3D).duplicate() as StandardMaterial3D
-				m.albedo_color = visor if mi.name.contains("visor") else body
-				mi.set_surface_override_material(si, m)
+		var nm := String(mi.name)
+		if nm == "Body" or nm == "Pads":
+			mi.set_surface_override_material(0, m)
 
 func set_shadows(on: bool) -> void:
 	for mi in meshes:
@@ -298,6 +347,11 @@ func _process(delta: float) -> void:
 		_advance(delta)
 		return
 	rotation.y = body_yaw
+	if model and not dead:
+		# lying down: the whole body tips forward round the hips and lies flat a hand's breadth over the ground
+		var pr := smoothstep(0.0, 1.0, prone)
+		model.rotation.x = -pr * PI * 0.5
+		model.position = Vector3(0.0, pr * 0.16, pr * 0.95)
 	# pick the clip and its speed from the real ground speed
 	var fwd := Vector2(-sin(body_yaw), -cos(body_yaw))
 	var along := move_dir.dot(fwd) if move_dir.length() > 0.01 else 1.0
@@ -308,7 +362,7 @@ func _process(delta: float) -> void:
 		sc = 0.4
 	elif speed > 3.0:
 		want = "Run"
-		sc = clampf(speed / RUN_SPEED, 0.75, 1.35)
+		sc = clampf(speed / RUN_SPEED, 0.75, 1.8)
 	elif speed > 0.25:
 		want = "Walk"
 		sc = clampf(speed / WALK_SPEED, 0.55, 1.6) * (1.0 if along >= -0.3 else -1.0)

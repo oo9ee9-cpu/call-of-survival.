@@ -1,9 +1,19 @@
 class_name TouchControls
 extends Control
-## Phone controls: a floating stick on the left (push to the edge to sprint), drag anywhere on the right to look,
-## buttons for fire (drag on it to aim while shooting), aim, reload, jump / climb, crouch, interact, light, mode, pause.
+## Phone controls, laid out like the reference: a floating stick on the left (push to the edge to sprint), drag anywhere
+## on the right to look; round icon buttons: fire on both sides (drag on it to aim while shooting), aim, reload, jump /
+## climb, crouch and prone at the bottom right, «تغيير العدسة» and «تغيير السلاح» under the minimap, the backpack at
+## the bottom left, interact, light, fire mode, view, medicine, the menu. In the transport only a big «قفز».
 
 signal pause_pressed
+signal bag_pressed
+signal map_pressed
+var map_rect := Rect2()     # the minimap on the screen: a tap there opens the full map
+
+## the picture for each button (textures/ui/icons); the rest are drawn
+const ICONS := {"fire": "bullet", "fire_l": "bullet", "aim": "scope", "reload": "reload", "jump": "jump", "tjump": "jump",
+	"crouch": "crouch", "prone": "prone", "lens": "scope", "swap": "rifle", "interact": "hand", "light": "lamp", "mode": "mode",
+	"view": "eye", "pause": "gear", "bag": "backpack", "heal": "heal"}
 
 var player: Player
 var stick_id := -1
@@ -23,7 +33,13 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+var _tex := {}             # button -> its icon, loaded once here (not while drawing)
+
 func _ready() -> void:
+	for k in ICONS:
+		var t: Texture2D = Lobby.icon(String(ICONS[k]))
+		if t:
+			_tex[k] = t
 	resized.connect(_layout)
 	_layout()
 
@@ -32,23 +48,29 @@ func _layout() -> void:
 	var W := size.x
 	var H := size.y
 	buttons = {
-		"fire": [Vector2(W - 165 * s, H - 175 * s), 74.0 * s, "رمي"],
-		"aim": [Vector2(W - 330 * s, H - 105 * s), 48.0 * s, "تصويب"],
-		"reload": [Vector2(W - 335 * s, H - 245 * s), 42.0 * s, "تلقيم"],
-		"jump": [Vector2(W - 95 * s, H - 345 * s), 44.0 * s, "قفز"],
-		"crouch": [Vector2(W - 215 * s, H - 360 * s), 40.0 * s, "انحناء"],
+		"fire": [Vector2(W - 130 * s, H - 250 * s), 66.0 * s, ""],
+		"fire_l": [Vector2(118 * s, H - 330 * s), 50.0 * s, ""],
+		"aim": [Vector2(W - 290 * s, H - 130 * s), 46.0 * s, "تصويب"],
+		"reload": [Vector2(W - 320 * s, H - 300 * s), 38.0 * s, "تلقيم"],
+		"jump": [Vector2(W - 215 * s, 330 * s), 38.0 * s, "قفز"],
+		"tjump": [Vector2(150 * s, H - 300 * s), 66.0 * s, "قفز"],
+		"crouch": [Vector2(W - 200 * s, H - 58 * s), 36.0 * s, "انحناء"],
+		"prone": [Vector2(W - 82 * s, H - 58 * s), 36.0 * s, "انبطاح"],
+		"lens": [Vector2(W - 92 * s, 240 * s), 32.0 * s, "تغيير العدسة"],
+		"swap": [Vector2(W - 92 * s, 322 * s), 32.0 * s, "تغيير السلاح"],
 		"interact": [Vector2(W * 0.5 + 170 * s, H - 150 * s), 42.0 * s, "تفاعل"],
-		"light": [Vector2(W - 80 * s, 205 * s), 34.0 * s, "مصباح"],
-		"mode": [Vector2(W - 165 * s, 205 * s), 34.0 * s, "نمط"],
-		"view": [Vector2(W - 250 * s, 205 * s), 34.0 * s, "منظور"],
-		"pause": [Vector2(54 * s, 54 * s), 30.0 * s, "قائمة"],
+		"light": [Vector2(W - 215 * s, 245 * s), 28.0 * s, "مصباح"],
+		"mode": [Vector2(W * 0.5 + 250 * s, H - 75 * s), 32.0 * s, "نمط"],
+		"view": [Vector2(205 * s, 250 * s), 30.0 * s, "منظور"],
+		"pause": [Vector2(W - 228 * s, 34 * s), 24.0 * s, ""],
+		"bag": [Vector2(58 * s, H - 62 * s), 36.0 * s, "الحقيبة"],
 		# in a vehicle: throttle up / down (aircraft), the handbrake (ground vehicles)
 		"t_up": [Vector2(W - 95 * s, H - 345 * s), 46.0 * s, "رفع"],
 		"t_down": [Vector2(W - 95 * s, H - 225 * s), 46.0 * s, "خفض"],
 		"brake": [Vector2(W - 330 * s, H - 105 * s), 52.0 * s, "فرامل"],
 		"fire2": [Vector2(W - 300 * s, H - 330 * s), 44.0 * s, "صاروخ"],
-		"swap": [Vector2(W * 0.5 + 250 * s, H - 75 * s), 36.0 * s, "سلاح"],
-		"heal": [Vector2(W * 0.5 - 250 * s, H - 75 * s), 36.0 * s, "علاج"],
+		"flare": [Vector2(W - 430 * s, H - 220 * s), 40.0 * s, "مشاعل"],
+		"heal": [Vector2(W * 0.5 - 250 * s, H - 75 * s), 34.0 * s, "علاج"],
 	}
 	# the player's own layout: centre as a share of the screen, and a size factor
 	var lay: Dictionary = edit_layout if editing else (Settings.get_v("hud_layout") as Dictionary)
@@ -141,14 +163,18 @@ func _end_editor() -> void:
 
 ## which buttons make sense right now (on foot, driving, flying, under the canopy)
 func _shown(n: String) -> bool:
+	if player.in_transport:
+		return n in ["tjump", "pause"]
+	if n == "tjump":
+		return false
 	var v := player.vehicle
 	if v == null:
 		if player.para > 0:
 			return n in ["jump", "pause", "view"]
-		return not (n in ["t_up", "t_down", "brake", "fire2"])
+		return not (n in ["t_up", "t_down", "brake", "fire2", "flare"])
 	if v is Aircraft:
 		var w: Array = v.spec.get("weapons", [])
-		return n in ["t_up", "t_down", "interact", "pause", "view"] or (n == "fire" and (w.has("gun") or w.has("rocket"))) or (n == "fire2" and (w.has("missile") or w.has("bomb")))
+		return n in ["t_up", "t_down", "interact", "pause", "view", "flare"] or (n == "fire" and (w.has("gun") or w.has("rocket"))) or (n == "fire2" and (w.has("missile") or w.has("bomb")))
 	if v is Tank:
 		return n in ["brake", "interact", "pause", "view", "fire"]
 	return n in ["brake", "interact", "pause", "view"]
@@ -194,13 +220,27 @@ func _hit(p: Vector2) -> String:
 	return ""
 
 func _press(i: int, p: Vector2) -> void:
+	if map_rect.has_point(p) and not player.in_transport:
+		map_pressed.emit()
+		return
 	var b := _hit(p)
 	if b != "":
 		held[b] = i
 		match b:
-			"fire":
+			"fire", "fire_l":
 				player.weapon.touch_fire = true
 				look_ids[i] = true
+			"tjump":
+				if player.transport and is_instance_valid(player.transport):
+					player.transport.jump()
+			"prone":
+				player.toggle_prone()
+			"lens":
+				player.cycle_sight()
+			"flare":
+				player.drop_flares()
+			"bag":
+				bag_pressed.emit()
 			"aim":
 				player.weapon.aim_toggle = not player.weapon.aim_toggle
 			"reload":
@@ -224,6 +264,7 @@ func _press(i: int, p: Vector2) -> void:
 				player.heal()
 			"crouch":
 				player.crouching = not player.crouching
+				player.proning = false
 			"interact":
 				player.interact()
 			"light":
@@ -253,7 +294,7 @@ func _release(i: int) -> void:
 	for n in held.keys():
 		if held[n] == i:
 			held.erase(n)
-			if n == "fire":
+			if n == "fire" or n == "fire_l":
 				player.weapon.touch_fire = false
 			elif n == "t_up":
 				player.touch_up = false
@@ -289,18 +330,27 @@ func _draw() -> void:
 		var b: Array = buttons[n]
 		var c: Vector2 = b[0]
 		var r: float = b[1]
-		var on: bool = held.has(n) or (n == "aim" and player.weapon.aim_toggle) or (n == "light" and player.flashlight.visible) or (n == "crouch" and player.crouching)
+		var on: bool = held.has(n) or (n == "aim" and player.weapon.aim_toggle) or (n == "light" and player.flashlight.visible) or (n == "crouch" and player.crouching) or (n == "prone" and player.proning)
 		if not _shown(n):
 			continue
 		if n == "interact" and player.interact_hint() == "":
 			continue
-		draw_circle(c, r, Color(0.05, 0.05, 0.04, 0.35 * op + (0.25 if on else 0.0)))
-		draw_arc(c, r, 0, TAU, 48, Color(0.95, 0.9, 0.78, (0.55 if not on else 0.95) * op), 2.0 if n != "fire" else 3.0, true)
-		_icon(n, c, r * 0.42, Color(0.98, 0.95, 0.88, 0.9 * op))
-		var fs := int(clampf(r * 0.34, 12.0, 22.0))
+		# a dark glass disc with a thin light ring, the icon in white (brighter while held or on)
+		draw_circle(c, r, Color(0.03, 0.03, 0.03, 0.38 * op + (0.22 if on else 0.0)))
+		draw_arc(c, r, 0, TAU, 48, Color(1, 1, 1, (0.42 if not on else 0.95) * op), 2.0 if not n.begins_with("fire") else 2.6, true)
+		var ic: Texture2D = _tex.get(n)
+		var ink := Color(1, 1, 1, (0.85 if not on else 1.0) * op)
+		if ic:
+			var k := r * (1.05 if n.begins_with("fire") or n == "tjump" else 0.95)
+			draw_texture_rect(ic, Rect2(c - Vector2(k, k) * 0.5, Vector2(k, k)), false, ink)
+		else:
+			_icon(n, c, r * 0.42, ink)
 		var txt: String = b[2]
-		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
-		draw_string(font, c + Vector2(-w * 0.5, r * 0.78), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.75 * op))
+		if txt != "":
+			var fs := int(clampf(r * 0.36, 12.0, 20.0))
+			var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+			draw_string_outline(font, c + Vector2(-w * 0.5, r + fs + 2.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0, 0, 0, 0.6 * op))
+			draw_string(font, c + Vector2(-w * 0.5, r + fs + 2.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.82 * op))
 	if stick_id != -1:
 		var rr := 85.0 * float(Settings.get_v("touch_scale"))
 		draw_circle(stick_origin, rr, Color(0, 0, 0, 0.22 * op))

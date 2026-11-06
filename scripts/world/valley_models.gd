@@ -34,8 +34,17 @@ func setup(w: World) -> void:
 	var lakes: Array = lay["lakes"]
 	for i in lakes.size():
 		var lk: Dictionary = lakes[i]
-		_carrier(CARRIERS[i % CARRIERS.size()], Vector3(float(lk["x"]), float(lk["level"]), float(lk["z"])), 0.7 + i * 1.3)
-	_carrier("cvn65", Vector3(-3780.0, float(lay.get("sea_level", 0.0)), 300.0), PI * 0.5)
+		var cm := String(lk.get("carrier", CARRIERS[i % CARRIERS.size()]))
+		if cm == "" or float(lk["r"]) < 450.0:
+			continue          # a pond: no room for a carrier
+		_carrier(cm, Vector3(float(lk["x"]), float(lk["level"]), float(lk["z"])), float(lk.get("yaw", 0.7 + i * 1.3)))
+	var sea := float(lay.get("sea_level", 0.0))
+	if lay.get("island", false):
+		# at sea: off the port in the west, and off the south-east coast
+		_carrier("cvn65", Vector3(-3850.0, sea, -700.0), 0.0)
+		_carrier("cdg", Vector3(3850.0, sea, 2500.0), 0.3)
+	else:
+		_carrier("cvn65", Vector3(-3780.0, sea, 300.0), PI * 0.5)
 	await get_tree().process_frame
 	_aircraft(lay)
 	_wrecks(lay)
@@ -57,7 +66,11 @@ func _exit_tree() -> void:
 # ------------------------------------------------------------------ placing
 func _scene(nm: String) -> PackedScene:
 	if not scenes.has(nm):
-		scenes[nm] = load("res://models/u/%s.glb" % nm)
+		# the owner's models in models/u, the game's own small props in models/
+		var p := "res://models/u/%s.glb" % nm
+		if not ResourceLoader.exists(p):
+			p = "res://models/%s.glb" % nm
+		scenes[nm] = load(p) if ResourceLoader.exists(p) else null
 	return scenes[nm]
 
 func _size(nm: String) -> float:

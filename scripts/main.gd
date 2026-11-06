@@ -6,6 +6,7 @@ var player: Player
 var menu_cam: Camera3D
 var hud: Hud
 var match_: Match
+var flight: TransportFlight
 var touch: TouchControls
 var menus: Menus
 var post: ColorRect
@@ -127,6 +128,8 @@ func _build_layers() -> void:
 	touch = TouchControls.new()
 	touch.player = player
 	touch.pause_pressed.connect(_pause)
+	touch.bag_pressed.connect(_open_bag)
+	touch.map_pressed.connect(_open_map)
 	tl.add_child(touch)
 	var ml := CanvasLayer.new()
 	ml.layer = 3
@@ -160,6 +163,7 @@ func _on_message(t: String) -> void:
 
 func _to_menu() -> void:
 	state = "menu"
+	get_viewport().disable_3d = true       # the lobby draws its own camp; the valley behind it is not needed
 	get_tree().paused = false
 	player.active = false
 	player.visible = false
@@ -172,6 +176,12 @@ func _to_menu() -> void:
 
 func _start() -> void:
 	state = "play"
+	get_viewport().disable_3d = false
+	if hud.minimap == null:
+		hud.attach(world)
+		hud.touch_ref = touch
+		hud.full_map.closed.connect(func(): _overlay(false))
+		hud.backpack.closed.connect(func(): _overlay(false))
 	var join := Online.pending_room if world.map_id == "valley" else ""
 	Online.pending_room = ""
 	var args := OS.get_cmdline_user_args()
@@ -189,16 +199,28 @@ func _start() -> void:
 		player.died.connect(_on_player_died)
 		player.respawned.connect(_on_player_respawned)
 		hud.match_ = match_
-		# the match starts with a jump over the team's side of the city
-		var first: Array = match_.player_spawn("air")
-		player.spawn(first[0], first[1])
-		player.air_start()
+		# the match starts in the transport helicopter, its route across the team's side of the city
+		var side: Vector3 = match_.side_dir[player.team]
+		var over: Vector3 = match_.mid + side * 260.0
+		var heading := Vector3(-side.z, 0.0, side.x).rotated(Vector3.UP, randf_range(-0.45, 0.45))
+		if randf() < 0.5:
+			heading = -heading
+		player.spawn(over + Vector3(0, 400, 0), atan2(-heading.x, -heading.z))
+		flight = TransportFlight.new()
+		flight.name = "Transport"
+		world.add_child(flight)
+		flight.start(world, player, over, heading)
+		player.transport = flight
 	else:
 		var sp := world.spawn_point()
 		player.spawn(sp[0], sp[1])
-	player.visible = true
 	player.active = true
-	player.cam.current = true
+	if flight and not flight.done:
+		player.visible = false          # in the cabin: the flight's own camera looks down at the helicopter
+		flight.cam.current = true
+	else:
+		player.visible = true
+		player.cam.current = true
 	menus.visible = false
 	hud.visible = true
 	touch.visible = Settings.mobile or DisplayServer.is_touchscreen_available()
@@ -207,7 +229,7 @@ func _start() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	Sfx.play("rec_beep", -4.0, 0.0, "UI")
 	if match_:
-		hud.show_message("سيطر على المناطق الخمس في المدينة المدمرة — اهبط بالمظلة في جهة فريقك")
+		hud.show_message("أنت في طائرة النقل — اضغط «قفز» فوق المكان الذي تريد النزول فيه")
 	elif world.map_id == "valley":
 		hud.show_message("بدأ التسجيل — الوادي: سيطر على المناطق الخمس في المدينة المدمرة")
 	else:
@@ -238,7 +260,47 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT and state == "play":
 		_pause()
 
+## the full map and the backpack: over the game, the controls and the soldier's input set aside while they are open
+func _open_map() -> void:
+	if state != "play" or hud.full_map == null or hud.map_open():
+		return
+	hud.open_map()
+	_overlay(true)
+
+func _open_bag() -> void:
+	if state != "play" or hud.backpack == null or hud.map_open() or player.dead or player.in_transport:
+		return
+	hud.backpack.open(player)
+	_overlay(true)
+
+func _overlay(on: bool) -> void:
+	player.ui_block = on
+	touch.reset()
+	touch.visible = not on and (Settings.mobile or DisplayServer.is_touchscreen_available())
+	if on:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	elif not touch.visible:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
 func _unhandled_input(event: InputEvent) -> void:
+	if state == "play" and hud and hud.full_map and (event.is_action_pressed("map") or event.is_action_pressed("inventory")):
+		var was_open := hud.map_open()
+		if hud.full_map.visible:
+			hud.full_map.close()
+		elif hud.backpack.visible:
+			hud.backpack.close()
+		if not was_open:
+			if event.is_action_pressed("map"):
+				_open_map()
+			else:
+				_open_bag()
+		return
+	if event.is_action_pressed("pause") and hud and hud.map_open():
+		if hud.full_map.visible:
+			hud.full_map.close()
+		else:
+			hud.backpack.close()
+		return
 	if event.is_action_pressed("pause"):
 		if state == "play":
 			_pause()

@@ -47,6 +47,9 @@ func _ready() -> void:
 	if not session.is_empty():
 		_set_status("متصل — " + ("ضيف" if String(session.get("provider", "")) == "anonymous" else String(session.get("provider", ""))))
 		refresh_if_needed()
+	elif configured() and dev_realtime == "" and not OS.get_cmdline_user_args().has("--autotest"):
+		# no sign-in screen: the player becomes a guest with his own ID by himself, quietly, when the network is there
+		get_tree().create_timer(1.5).timeout.connect(func(): sign_in_guest())
 
 func _load_config() -> void:
 	for path in ["res://data/supabase.json", "user://supabase.json"]:

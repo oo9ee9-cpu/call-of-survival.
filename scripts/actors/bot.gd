@@ -50,6 +50,10 @@ var lod_force := -1                    # developer checks: a fixed level of deta
 var puppet := false                    # a bot of the host's game, shown in a guest's game (moved by the host's messages)
 var retired := false                   # stepped out for a friend who joined (host)
 var shots_out := 0                     # shots since the host last told the others
+var role := "squad"                    # "squad" (moves with its group in a wedge), "guard" (stays by a held computer), "builder"
+var squad := 0                         # its group of four in the team
+var guard_slot := 0
+var _built := false
 # puppet: where the host says it is
 var _pp_from := Vector3.ZERO
 var _pp_to := Vector3.ZERO
@@ -65,6 +69,13 @@ func setup(w: World, m: Match, t: int, nm: String) -> void:
 	match_ = m
 	team = t
 	bot_name = nm
+	# who does what: a quarter guard the computers their side holds, a few dig in with sandbags, the rest move
+	# together in groups of four
+	var n := m.bots.size() if m else 0
+	squad = n / 8
+	guard_slot = n % 8
+	var r := (n * 7 + 3) % 12
+	role = "guard" if r < 3 else ("builder" if r == 3 else "squad")
 
 func _ready() -> void:
 	add_to_group("soldiers")
@@ -230,6 +241,16 @@ func _physics_process(delta: float) -> void:
 		if to.length() > 6.0:
 			mv = to.normalized()
 			yaw = lerp_angle(yaw, atan2(-to.x, -to.z), clampf(delta * 3.0, 0.0, 1.0))
+		elif role == "guard" and goal_zone >= 0:
+			# on watch: still, facing out from the computer, now and then down on one knee
+			var outw := global_position - match_.zone_pos(goal_zone)
+			outw.y = 0.0
+			if outw.length() > 0.5:
+				yaw = lerp_angle(yaw, atan2(-outw.x, -outw.z), clampf(delta * 2.0, 0.0, 1.0))
+			kneel_t -= delta
+			if kneel_t <= 0.0:
+				kneel_t = randf_range(5.0, 9.0)
+				_set_crouch(randf() < 0.5)
 		else:
 			mv = Vector3(sin(Time.get_ticks_msec() * 0.0004 + bot_name.length()), 0, cos(Time.get_ticks_msec() * 0.0003)) * 0.3
 			spd = 1.2
@@ -323,7 +344,10 @@ func _puppet_step(delta: float) -> void:
 			_pp_shots -= 1
 			body.shot_flash()
 			if dist < 400.0:
-				Sfx.play_at("enemy_fire" if dist > 90.0 else String(spec.get("sound", "ak_shot")), global_position + Vector3(0, 1.5, 0), -4.0 if dist < 90.0 else 2.0, 12.0, 600.0, 0.0, 0.08)
+				if dist > 90.0:
+					Sfx.far_shot(global_position + Vector3(0, 1.5, 0), bool(spec.get("auto", true)), dist)
+				else:
+					Sfx.play_at(String(spec.get("sound", "ak_shot")), global_position + Vector3(0, 1.5, 0), -4.0, 12.0, 600.0, 0.0, 0.08)
 
 func _set_crouch(on: bool) -> void:
 	if on == crouch:
@@ -442,6 +466,49 @@ func _way_round(d: Vector3) -> Vector3:
 func _think() -> void:
 	if match_ == null:
 		return
+	# guards: by the computer of a zone their side holds, one of eight places round it
+	if role == "guard":
+		var held := -1
+		var bd := INF
+		for i in match_.zones.size():
+			if match_.zone_owner(i) == team:
+				var d := global_position.distance_to(match_.zone_pos(i))
+				if d < bd:
+					bd = d
+					held = i
+		if held >= 0:
+			goal_zone = held
+			goal = match_.guard_spot(held, guard_slot)
+			return
+	# builders: once at a held zone, a sandbag wall facing the enemy's side, then they fight like the rest
+	if role == "builder" and not _built and goal_zone >= 0 and match_.zone_owner(goal_zone) == team:
+		var zp := match_.zone_pos(goal_zone)
+		if global_position.distance_to(zp) < 30.0:
+			var out := match_.side_dir[1 - team] as Vector3
+			var spot := zp + out * 12.0 + Vector3(randf_range(-6, 6), 0, randf_range(-6, 6))
+			spot.y = world.height(spot.x, spot.z)
+			if match_.build_barricade(goal_zone, spot, atan2(out.x, out.z)):
+				_built = true
+				_set_crouch(true)
+				kneel_t = 3.0
+				return
+	# the squad: the first one alive is the leader and picks the zone, the others take their place in a wedge behind
+	if role != "guard":
+		var leader: Bot = null
+		var rank := 0
+		for b in match_.bots:
+			if b.team == team and b.squad == squad and b.role != "guard" and not b.dead and not b.retired:
+				if leader == null:
+					leader = b
+				if b == self:
+					break
+				rank += 1
+		if leader and leader != self and leader.global_position.distance_to(global_position) < 220.0:
+			var wedge := [Vector3(-5, 0, 5), Vector3(5, 0, 5), Vector3(-9, 0, 10), Vector3(9, 0, 10), Vector3(0, 0, 13), Vector3(-13, 0, 15), Vector3(13, 0, 15)]
+			var off: Vector3 = wedge[(rank - 1) % wedge.size()]
+			goal = leader.global_position + Basis(Vector3.UP, leader.yaw) * off
+			goal_zone = leader.goal_zone
+			return
 	if goal_zone < 0 or match_.zone_owner(goal_zone) == team and randf() < 0.3:
 		goal_zone = match_.pick_zone(team, global_position)
 		var z := match_.zone_pos(goal_zone)
@@ -519,7 +586,10 @@ func _shoot(t: Node3D, d: float) -> void:
 		var cam := get_viewport().get_camera_3d()
 		var dc := cam.global_position.distance_to(global_position) if cam else 999.0
 		if dc < 400.0:
-			Sfx.play_at("enemy_fire" if dc > 90.0 else String(spec.get("sound", "ak_shot")), global_position + Vector3(0, 1.5, 0), -4.0 if dc < 90.0 else 2.0, 12.0, 600.0, 0.0, 0.08)
+			if dc > 90.0:
+				Sfx.far_shot(global_position + Vector3(0, 1.5, 0), bool(spec.get("auto", true)), dc)
+			else:
+				Sfx.play_at(String(spec.get("sound", "ak_shot")), global_position + Vector3(0, 1.5, 0), -4.0, 12.0, 600.0, 0.0, 0.08)
 	# hit chance: worse with range, movement and the first moments
 	var p := 0.55 - d / 260.0 - (0.15 if body.speed > 1.0 else 0.0) + clampf(react - 0.5, 0.0, 1.5) * 0.12 + (0.08 if crouch else 0.0)
 	if t is Bot and (t as Bot).crouch:

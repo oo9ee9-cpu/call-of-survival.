@@ -31,6 +31,10 @@ const TIMES := [
 	 "cl": Color(0.05, 0.055, 0.07), "cd": Color(0.015, 0.017, 0.024), "fog": Color(0.03, 0.035, 0.045), "fog_d": 0.0042, "amb": 1.2, "exp": 1.8, "glow": 0.4},
 ]
 
+## a clear summer day: deep blue overhead, scattered white cloud, strong warm sun, air you can see a few km through
+const SUNNY := {"elev": 50.0, "az": 150.0, "sun": Color(1.0, 0.95, 0.86), "sun_e": 1.65, "zen": Color(0.19, 0.37, 0.72), "hor": Color(0.66, 0.76, 0.87),
+	"cl": Color(0.98, 0.98, 0.99), "cd": Color(0.64, 0.68, 0.75), "fog": Color(0.69, 0.77, 0.86), "fog_d": 0.0006, "amb": 1.05, "exp": 1.0, "glow": 0.12}
+
 func setup(w: World) -> void:
 	world = w
 	sky_mat = ShaderMaterial.new()
@@ -115,13 +119,23 @@ func _build_rain() -> void:
 	add_child(rain_p)
 
 func apply_settings() -> void:
-	var t: Dictionary = TIMES[clampi(int(Settings.get_v("time")), 0, 3)].duplicate()
-	var wx := int(Settings.get_v("weather"))
+	var tk := clampi(int(Settings.get_v("time")), 0, 3)
+	var t: Dictionary = TIMES[tk].duplicate()
+	var wx := int(Settings.get_v("weather"))          # 0 clear, 1 fog, 2 rain, 3 overcast
 	var q := mini(int(Settings.get_v("quality")), 3)
 	var vd := int(Settings.get_v("view_distance"))
 	var fog_mul: float = [1.35, 1.0, 0.72][vd]
 	var cover := 0.84
-	if wx == 1:
+	if wx == 0:
+		# clear: the sunny day; dawn and dusk keep their light but lose most of the haze and cloud
+		if tk == 1:
+			t = SUNNY.duplicate()
+		else:
+			fog_mul *= 0.45
+			t["sun_e"] = float(t["sun_e"]) * 1.25
+		cover = 0.42 if tk != 3 else 0.3
+		e.fog_height_density = 0.006
+	elif wx == 1:
 		fog_mul *= 3.2
 		cover = 1.0
 		t["sun_e"] *= 0.55
@@ -134,7 +148,7 @@ func apply_settings() -> void:
 		t["cl"] = (t["cl"] as Color) * 0.75
 		t["cd"] = (t["cd"] as Color) * 0.7
 		e.fog_height_density = 0.05
-	else:
+	elif wx == 3:
 		e.fog_height_density = 0.02
 	cur = t
 	wet_target = 1.0 if wx == 2 else (0.25 if wx == 1 else 0.0)
@@ -153,7 +167,7 @@ func apply_settings() -> void:
 	sky_mat.set_shader_parameter("cloud_light", t["cl"])
 	sky_mat.set_shader_parameter("cloud_dark", t["cd"])
 	sky_mat.set_shader_parameter("cover", cover)
-	sky_mat.set_shader_parameter("sun_glow", 0.25 if wx == 0 else 0.1)
+	sky_mat.set_shader_parameter("sun_glow", 0.45 if wx == 0 else 0.1)
 	e.fog_light_color = t["fog"]
 	base_fog = float(t["fog_d"]) * fog_mul
 	e.fog_density = base_fog
@@ -187,9 +201,10 @@ func _set_loops(wx: int) -> void:
 	if _rain_loop:
 		_rain_loop.volume_db = -5.0 if wx == 2 else -80.0
 	if _wind_loop:
-		_wind_loop.volume_db = -6.0 if wx == 2 else -9.0
+		_wind_loop.volume_db = -8.0 if wx == 2 else -12.0
 	if _battle_loop:
-		_battle_loop.volume_db = -11.0 if Settings.get_v("battle") else -80.0
+		# the far-off war is a faint bed on the front map; on the valley the real fighting is heard instead
+		_battle_loop.volume_db = (-14.0 if world and world.map_id == "front" else -26.0) if Settings.get_v("battle") else -80.0
 
 func _process(delta: float) -> void:
 	if world == null or not world.ready_built:

@@ -1,5 +1,8 @@
 extends Node
 ## Sound: one-shots (2D and 3D, pooled), loops for ambience, sounds delayed by distance, indoor/outdoor mix.
+## Short sounds are WAV (nothing to decode); every loop is watched and paused while it cannot be heard (too quiet or
+## beyond its reach), so the mixer only works on what the player hears: on phones a hundred idle engine loops used
+## to starve the audio thread (drop-outs heard as a constant buzz).
 
 const SOUND_SPEED := 343.0
 var banks := {}          # name -> Array[AudioStream] (variants name_1, name_2 ... or a single file)
@@ -10,6 +13,10 @@ var i2 := 0
 var inside := 0.0
 var _rev: AudioEffectReverb
 var _lp: AudioEffectLowPassFilter
+var loops: Array = []                 # every loop started here (paused while it cannot be heard)
+var _loop_t := 0.0
+var _far_t := 0.0                     # distant gunfire: a budget per tenth of a second
+var _far_n := 0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -18,15 +25,15 @@ func _ready() -> void:
 		var names := {}
 		for f in d.get_files():
 			var fn := f.trim_suffix(".import").trim_suffix(".remap")
-			if not fn.ends_with(".ogg"):
-				continue
-			names[fn.get_basename()] = true
+			if fn.ends_with(".ogg") or fn.ends_with(".wav"):
+				if not names.has(fn.get_basename()) or fn.ends_with(".wav"):
+					names[fn.get_basename()] = fn.get_extension()
 		for n in names:
 			var key: String = n
 			var parts := key.rsplit("_", true, 1)
 			if parts.size() == 2 and parts[1].is_valid_int():
 				key = parts[0]
-			var st := load("res://sounds/%s.ogg" % n) as AudioStream
+			var st := load("res://sounds/%s.%s" % [n, names[n]]) as AudioStream
 			if st:
 				if not banks.has(key):
 					banks[key] = []
@@ -97,35 +104,83 @@ func _play3(st: AudioStream, pos: Vector3, vol_db: float, unit: float, max_dist:
 	p.bus = bus
 	p.play()
 
+func _looping(st: AudioStream) -> void:
+	if st is AudioStreamOggVorbis:
+		(st as AudioStreamOggVorbis).loop = true
+	elif st is AudioStreamWAV:
+		var w := st as AudioStreamWAV
+		if w.loop_mode == AudioStreamWAV.LOOP_DISABLED:
+			w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			w.loop_begin = 0
+			w.loop_end = int(w.get_length() * w.mix_rate)
+
 func loop(name: String, vol_db := 0.0, bus := "Ambience") -> AudioStreamPlayer:
 	var st := pick(name)
 	if st == null:
 		return null
-	if st is AudioStreamOggVorbis:
-		(st as AudioStreamOggVorbis).loop = true
+	_looping(st)
 	var p := AudioStreamPlayer.new()
 	p.stream = st
 	p.bus = bus
 	p.volume_db = vol_db
 	add_child(p)
 	p.play(randf() * maxf(st.get_length() - 0.1, 0.0))
+	loops.append(p)
 	return p
 
 func loop_at(name: String, parent: Node3D, vol_db := 0.0, unit := 2.0, max_dist := 25.0) -> AudioStreamPlayer3D:
 	var st := pick(name)
 	if st == null:
 		return null
-	if st is AudioStreamOggVorbis:
-		(st as AudioStreamOggVorbis).loop = true
+	_looping(st)
 	var p := AudioStreamPlayer3D.new()
 	p.stream = st
 	p.bus = "SFX"
 	p.volume_db = vol_db
 	p.unit_size = unit
 	p.max_distance = max_dist
+	p.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_DISABLED
 	parent.add_child(p)
 	p.play(randf() * maxf(st.get_length() - 0.1, 0.0))
+	loops.append(p)
 	return p
+
+## four times a second: a loop that cannot be heard (turned down, or beyond its reach) stops being mixed
+func _process(delta: float) -> void:
+	_far_t -= delta
+	if _far_t <= 0.0:
+		_far_t = 0.1
+		_far_n = 0
+	_loop_t -= delta
+	if _loop_t > 0.0:
+		return
+	_loop_t = 0.25
+	var cam := get_viewport().get_camera_3d()
+	var lp := cam.global_position if cam else Vector3.ZERO
+	var i := loops.size() - 1
+	while i >= 0:
+		var p = loops[i]
+		if not is_instance_valid(p) or not (p as Node).is_inside_tree():
+			if not is_instance_valid(p):
+				loops.remove_at(i)
+			i -= 1
+			continue
+		var audible: bool = float(p.volume_db) > -50.0
+		if audible and p is AudioStreamPlayer3D:
+			var p3 := p as AudioStreamPlayer3D
+			if p3.max_distance > 0.0 and p3.global_position.distance_to(lp) > p3.max_distance + 10.0:
+				audible = false
+		if bool(p.stream_paused) == audible:
+			p.stream_paused = not audible
+		i -= 1
+
+## gunfire far away: a short shot or burst, and no more than a few at a time (a firefight of fifty soldiers is a
+## crackle in the distance, not fifty recordings on top of each other)
+func far_shot(pos: Vector3, auto: bool, dist: float) -> void:
+	if _far_n >= 3:
+		return
+	_far_n += 1
+	play_at("burst_far" if auto and randf() < 0.5 else "shot_far", pos, lerpf(4.0, -4.0, clampf(dist / 600.0, 0.0, 1.0)), 40.0, 900.0, -1.0, 0.06)
 
 ## 0 = outdoors, 1 = inside a dugout: gunshots ring in the small room, the outside gets muffled
 func set_inside(k: float) -> void:

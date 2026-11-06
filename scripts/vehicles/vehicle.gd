@@ -42,6 +42,7 @@ var dead := false
 var world: World
 # the driver's controls this frame: x steer (-1 left .. 1 right), y throttle (-1 brake/reverse .. 1), z handbrake
 var ctl := Vector3.ZERO
+var ai_far := false                   # an AI crew moves it by hand far from the player (no ground to drive on there)
 var engine_on := false
 var rpm := 0.0                       # 0..1 of the band of the current gear
 var gear := 1
@@ -363,7 +364,7 @@ func _lod(delta: float) -> void:
 	var ref := world.phys_focus if world and world.phys_set else p + Vector3(1e5, 0, 0)
 	var in_war := absf(p.x) < 500.0 and absf(p.z) < 500.0
 	var near := ref.distance_to(p) < (40.0 if in_war else 105.0)
-	var want := not busy and not near and linear_velocity.length() < 3.0
+	var want := ai_far or (not busy and not near and linear_velocity.length() < 3.0)
 	if freeze != want:
 		freeze = want
 		if not want:

@@ -142,7 +142,10 @@ func _process(delta: float) -> void:
 			var dc := cp.distance_to(global_position)
 			if dc < 600.0:
 				var spec: Dictionary = Guns.DATA.get(gun, {})
-				Sfx.play_at("enemy_fire" if dc > 90.0 else String(spec.get("sound", "ak_shot")), global_position + Vector3(0, 1.5, 0), -4.0 if dc < 90.0 else 2.0, 12.0, 700.0, 0.0, 0.08)
+				if dc > 90.0:
+					Sfx.far_shot(global_position + Vector3(0, 1.5, 0), bool(spec.get("auto", true)), dc)
+				else:
+					Sfx.play_at(String(spec.get("sound", "ak_shot")), global_position + Vector3(0, 1.5, 0), -4.0, 12.0, 700.0, 0.0, 0.08)
 	elif dead:
 		_shots = 0
 

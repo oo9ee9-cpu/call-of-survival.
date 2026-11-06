@@ -128,6 +128,20 @@ func nearest(from: Vector3, fwd: Vector3) -> Dictionary:
 	return best
 
 ## one item put down on the ground (a gun swapped for another)
+## everything not taken within `r` metres of `p`, as {"key", "item"} (the backpack's «on the ground»)
+func nearby(p: Vector3, r: float) -> Array:
+	var out := []
+	var k0 := Vector2i(floori(p.x / CH), floori(p.z / CH))
+	for dz in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			for key in by_chunk.get(k0 + Vector2i(dx, dz), []):
+				var it: Dictionary = items[key]
+				if bool(it.get("taken", false)):
+					continue
+				if (it["pos"] as Vector3).distance_to(p) <= r:
+					out.append({"key": key, "item": it})
+	return out
+
 func drop_item(it: Dictionary, p: Vector3) -> void:
 	var key := "d%d" % Time.get_ticks_usec()
 	var item := it.duplicate()
