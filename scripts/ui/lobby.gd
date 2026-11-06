@@ -72,8 +72,7 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------------ small builders
 static func icon(nm: String) -> Texture2D:
-	var p := "res://textures/ui/icons/%s.png" % nm
-	return load(p) if ResourceLoader.exists(p) else null
+	return UiTheme.picture("res://textures/ui/icons/%s.png" % nm)
 
 func _lbl(text: String, size: int, bold := true, col := Color(1, 1, 1)) -> Label:
 	var l := UiTheme.label(text, size, bold, col)

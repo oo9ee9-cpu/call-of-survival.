@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://euknhb0bctt4"
-path="res://.godot/imported/chinook_2.jpg-272b51af1b0fd0c921a6f33a1b588cd0.ctex"
+path.s3tc="res://.godot/imported/chinook_2.jpg-272b51af1b0fd0c921a6f33a1b588cd0.s3tc.ctex"
+path.etc2="res://.godot/imported/chinook_2.jpg-272b51af1b0fd0c921a6f33a1b588cd0.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8a61220cbc104cecc130b67dac8d1090"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/chinook_2.jpg"
-dest_files=["res://.godot/imported/chinook_2.jpg-272b51af1b0fd0c921a6f33a1b588cd0.ctex"]
+dest_files=["res://.godot/imported/chinook_2.jpg-272b51af1b0fd0c921a6f33a1b588cd0.s3tc.ctex", "res://.godot/imported/chinook_2.jpg-272b51af1b0fd0c921a6f33a1b588cd0.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

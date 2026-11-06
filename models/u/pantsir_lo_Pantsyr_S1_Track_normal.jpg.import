@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dyyt772puv2qa"
-path="res://.godot/imported/pantsir_lo_Pantsyr_S1_Track_normal.jpg-1e5e81cd09d9d0f99e2f561ad3ed6447.ctex"
+path.s3tc="res://.godot/imported/pantsir_lo_Pantsyr_S1_Track_normal.jpg-1e5e81cd09d9d0f99e2f561ad3ed6447.s3tc.ctex"
+path.etc2="res://.godot/imported/pantsir_lo_Pantsyr_S1_Track_normal.jpg-1e5e81cd09d9d0f99e2f561ad3ed6447.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9150ff313d3b5e9776f9c4a10d0fbc99"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/pantsir_lo_Pantsyr_S1_Track_normal.jpg"
-dest_files=["res://.godot/imported/pantsir_lo_Pantsyr_S1_Track_normal.jpg-1e5e81cd09d9d0f99e2f561ad3ed6447.ctex"]
+dest_files=["res://.godot/imported/pantsir_lo_Pantsyr_S1_Track_normal.jpg-1e5e81cd09d9d0f99e2f561ad3ed6447.s3tc.ctex", "res://.godot/imported/pantsir_lo_Pantsyr_S1_Track_normal.jpg-1e5e81cd09d9d0f99e2f561ad3ed6447.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

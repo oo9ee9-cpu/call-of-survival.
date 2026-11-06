@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b1le0c43tvhe6"
-path="res://.godot/imported/uaz_Roof_baseColor.jpg-2319b7352a4b9e61a82b655cab043450.ctex"
+path.s3tc="res://.godot/imported/uaz_Roof_baseColor.jpg-2319b7352a4b9e61a82b655cab043450.s3tc.ctex"
+path.etc2="res://.godot/imported/uaz_Roof_baseColor.jpg-2319b7352a4b9e61a82b655cab043450.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e52442482b60eae1d78fd125755fe712"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/vehicles/uaz_Roof_baseColor.jpg"
-dest_files=["res://.godot/imported/uaz_Roof_baseColor.jpg-2319b7352a4b9e61a82b655cab043450.ctex"]
+dest_files=["res://.godot/imported/uaz_Roof_baseColor.jpg-2319b7352a4b9e61a82b655cab043450.s3tc.ctex", "res://.godot/imported/uaz_Roof_baseColor.jpg-2319b7352a4b9e61a82b655cab043450.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

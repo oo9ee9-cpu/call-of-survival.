@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://biyeimxhhda4"
-path="res://.godot/imported/pantsir_6.png-5df1b37fb63985515fcfead70f39a63c.ctex"
+path.s3tc="res://.godot/imported/pantsir_6.png-5df1b37fb63985515fcfead70f39a63c.s3tc.ctex"
+path.etc2="res://.godot/imported/pantsir_6.png-5df1b37fb63985515fcfead70f39a63c.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "5356ae98bb123267ae429a91b0e780c2"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/pantsir_6.png"
-dest_files=["res://.godot/imported/pantsir_6.png-5df1b37fb63985515fcfead70f39a63c.ctex"]
+dest_files=["res://.godot/imported/pantsir_6.png-5df1b37fb63985515fcfead70f39a63c.s3tc.ctex", "res://.godot/imported/pantsir_6.png-5df1b37fb63985515fcfead70f39a63c.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

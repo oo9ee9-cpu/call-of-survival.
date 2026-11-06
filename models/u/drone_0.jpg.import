@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cvqhruoc760xo"
-path="res://.godot/imported/drone_0.jpg-bbf4166d0991bbaa4ee6d164f5b70f70.ctex"
+path.s3tc="res://.godot/imported/drone_0.jpg-bbf4166d0991bbaa4ee6d164f5b70f70.s3tc.ctex"
+path.etc2="res://.godot/imported/drone_0.jpg-bbf4166d0991bbaa4ee6d164f5b70f70.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2c60eeec79969abeb61222e5983caed9"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/drone_0.jpg"
-dest_files=["res://.godot/imported/drone_0.jpg-bbf4166d0991bbaa4ee6d164f5b70f70.ctex"]
+dest_files=["res://.godot/imported/drone_0.jpg-bbf4166d0991bbaa4ee6d164f5b70f70.s3tc.ctex", "res://.godot/imported/drone_0.jpg-bbf4166d0991bbaa4ee6d164f5b70f70.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

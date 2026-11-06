@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dtht1rg1tyegu"
-path="res://.godot/imported/uaz_Paint_body_baseColor.jpg-cc1849487ead8247d8e6017a8145bafc.ctex"
+path.s3tc="res://.godot/imported/uaz_Paint_body_baseColor.jpg-cc1849487ead8247d8e6017a8145bafc.s3tc.ctex"
+path.etc2="res://.godot/imported/uaz_Paint_body_baseColor.jpg-cc1849487ead8247d8e6017a8145bafc.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b86cf7e0b017c5e7e66e460d1c8a9145"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/vehicles/uaz_Paint_body_baseColor.jpg"
-dest_files=["res://.godot/imported/uaz_Paint_body_baseColor.jpg-cc1849487ead8247d8e6017a8145bafc.ctex"]
+dest_files=["res://.godot/imported/uaz_Paint_body_baseColor.jpg-cc1849487ead8247d8e6017a8145bafc.s3tc.ctex", "res://.godot/imported/uaz_Paint_body_baseColor.jpg-cc1849487ead8247d8e6017a8145bafc.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

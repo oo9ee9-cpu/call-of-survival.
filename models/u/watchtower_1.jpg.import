@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c7g46057emoqb"
-path="res://.godot/imported/watchtower_1.jpg-f53c68ebbb7832426195a459ecbed9fd.ctex"
+path.s3tc="res://.godot/imported/watchtower_1.jpg-f53c68ebbb7832426195a459ecbed9fd.s3tc.ctex"
+path.etc2="res://.godot/imported/watchtower_1.jpg-f53c68ebbb7832426195a459ecbed9fd.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6388db9b39478b46c9992cd499ab4420"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/watchtower_1.jpg"
-dest_files=["res://.godot/imported/watchtower_1.jpg-f53c68ebbb7832426195a459ecbed9fd.ctex"]
+dest_files=["res://.godot/imported/watchtower_1.jpg-f53c68ebbb7832426195a459ecbed9fd.s3tc.ctex", "res://.godot/imported/watchtower_1.jpg-f53c68ebbb7832426195a459ecbed9fd.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

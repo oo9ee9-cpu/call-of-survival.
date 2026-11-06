@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://t32kpnmxk5bc"
-path="res://.godot/imported/uaz_Pain_bump_baseColor.jpg-45f1b565c6bc064ee76d83c5046408df.ctex"
+path.s3tc="res://.godot/imported/uaz_Pain_bump_baseColor.jpg-45f1b565c6bc064ee76d83c5046408df.s3tc.ctex"
+path.etc2="res://.godot/imported/uaz_Pain_bump_baseColor.jpg-45f1b565c6bc064ee76d83c5046408df.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ea4832c820a4b6daeffd4ee46c04e53d"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/vehicles/uaz_Pain_bump_baseColor.jpg"
-dest_files=["res://.godot/imported/uaz_Pain_bump_baseColor.jpg-45f1b565c6bc064ee76d83c5046408df.ctex"]
+dest_files=["res://.godot/imported/uaz_Pain_bump_baseColor.jpg-45f1b565c6bc064ee76d83c5046408df.s3tc.ctex", "res://.godot/imported/uaz_Pain_bump_baseColor.jpg-45f1b565c6bc064ee76d83c5046408df.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

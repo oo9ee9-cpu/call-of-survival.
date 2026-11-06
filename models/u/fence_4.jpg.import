@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bexmr6sstjkb0"
-path="res://.godot/imported/fence_4.jpg-2ffae9a7f0164f21cb2394cfba999eaf.ctex"
+path.s3tc="res://.godot/imported/fence_4.jpg-2ffae9a7f0164f21cb2394cfba999eaf.s3tc.ctex"
+path.etc2="res://.godot/imported/fence_4.jpg-2ffae9a7f0164f21cb2394cfba999eaf.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "448e9915484125e3b2539b704624cca8"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/fence_4.jpg"
-dest_files=["res://.godot/imported/fence_4.jpg-2ffae9a7f0164f21cb2394cfba999eaf.ctex"]
+dest_files=["res://.godot/imported/fence_4.jpg-2ffae9a7f0164f21cb2394cfba999eaf.s3tc.ctex", "res://.godot/imported/fence_4.jpg-2ffae9a7f0164f21cb2394cfba999eaf.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bmdlx6i4dy3wf"
-path="res://.godot/imported/vest_0.jpg-1043aa3269e563fc122b29dffc572e9a.ctex"
+path.s3tc="res://.godot/imported/vest_0.jpg-1043aa3269e563fc122b29dffc572e9a.s3tc.ctex"
+path.etc2="res://.godot/imported/vest_0.jpg-1043aa3269e563fc122b29dffc572e9a.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "bd6cbc4a8941403e4c9e29664c84825b"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/vest_0.jpg"
-dest_files=["res://.godot/imported/vest_0.jpg-1043aa3269e563fc122b29dffc572e9a.ctex"]
+dest_files=["res://.godot/imported/vest_0.jpg-1043aa3269e563fc122b29dffc572e9a.s3tc.ctex", "res://.godot/imported/vest_0.jpg-1043aa3269e563fc122b29dffc572e9a.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

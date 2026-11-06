@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ct3wvopihb6dd"
-path="res://.godot/imported/cvn80_2.png-2a554bde685ff28b7c48e95451cee3af.ctex"
+path.s3tc="res://.godot/imported/cvn80_2.png-2a554bde685ff28b7c48e95451cee3af.s3tc.ctex"
+path.etc2="res://.godot/imported/cvn80_2.png-2a554bde685ff28b7c48e95451cee3af.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "f3540142b64fc154ccba5c171b57e660"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/cvn80_2.png"
-dest_files=["res://.godot/imported/cvn80_2.png-2a554bde685ff28b7c48e95451cee3af.ctex"]
+dest_files=["res://.godot/imported/cvn80_2.png-2a554bde685ff28b7c48e95451cee3af.s3tc.ctex", "res://.godot/imported/cvn80_2.png-2a554bde685ff28b7c48e95451cee3af.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

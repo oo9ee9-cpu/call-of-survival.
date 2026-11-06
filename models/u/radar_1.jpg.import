@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b2wearav5lrd5"
-path="res://.godot/imported/radar_1.jpg-f0de1cef79a744e04da5616d2c880227.ctex"
+path.s3tc="res://.godot/imported/radar_1.jpg-f0de1cef79a744e04da5616d2c880227.s3tc.ctex"
+path.etc2="res://.godot/imported/radar_1.jpg-f0de1cef79a744e04da5616d2c880227.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ca0fe4a6e8e38775d83fcf529489bfad"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/radar_1.jpg"
-dest_files=["res://.godot/imported/radar_1.jpg-f0de1cef79a744e04da5616d2c880227.ctex"]
+dest_files=["res://.godot/imported/radar_1.jpg-f0de1cef79a744e04da5616d2c880227.s3tc.ctex", "res://.godot/imported/radar_1.jpg-f0de1cef79a744e04da5616d2c880227.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

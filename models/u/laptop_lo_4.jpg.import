@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bdkal1ujidtqy"
-path="res://.godot/imported/laptop_lo_4.jpg-f2ce94191e0875fb7681cb9c61bae676.ctex"
+path.s3tc="res://.godot/imported/laptop_lo_4.jpg-f2ce94191e0875fb7681cb9c61bae676.s3tc.ctex"
+path.etc2="res://.godot/imported/laptop_lo_4.jpg-f2ce94191e0875fb7681cb9c61bae676.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6f9ff4e0207152919c952b420ffe3837"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/laptop_lo_4.jpg"
-dest_files=["res://.godot/imported/laptop_lo_4.jpg-f2ce94191e0875fb7681cb9c61bae676.ctex"]
+dest_files=["res://.godot/imported/laptop_lo_4.jpg-f2ce94191e0875fb7681cb9c61bae676.s3tc.ctex", "res://.godot/imported/laptop_lo_4.jpg-f2ce94191e0875fb7681cb9c61bae676.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

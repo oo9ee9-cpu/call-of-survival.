@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ctc6rl80bj3at"
-path="res://.godot/imported/car_wreck_uaz_roof_burnt.jpg-2b2615036a22575d724b75afc28a04e4.ctex"
+path.s3tc="res://.godot/imported/car_wreck_uaz_roof_burnt.jpg-2b2615036a22575d724b75afc28a04e4.s3tc.ctex"
+path.etc2="res://.godot/imported/car_wreck_uaz_roof_burnt.jpg-2b2615036a22575d724b75afc28a04e4.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "844d10fd9802256794cb31d661a292f1"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/car_wreck_uaz_roof_burnt.jpg"
-dest_files=["res://.godot/imported/car_wreck_uaz_roof_burnt.jpg-2b2615036a22575d724b75afc28a04e4.ctex"]
+dest_files=["res://.godot/imported/car_wreck_uaz_roof_burnt.jpg-2b2615036a22575d724b75afc28a04e4.s3tc.ctex", "res://.godot/imported/car_wreck_uaz_roof_burnt.jpg-2b2615036a22575d724b75afc28a04e4.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

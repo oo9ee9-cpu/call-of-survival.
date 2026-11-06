@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2fp7c4qg63i8"
-path="res://.godot/imported/cvn65_lo_8401d4c5_dds_normal.jpg-acb9c77a50bdede0dbcde35ed0ce32f1.ctex"
+path.s3tc="res://.godot/imported/cvn65_lo_8401d4c5_dds_normal.jpg-acb9c77a50bdede0dbcde35ed0ce32f1.s3tc.ctex"
+path.etc2="res://.godot/imported/cvn65_lo_8401d4c5_dds_normal.jpg-acb9c77a50bdede0dbcde35ed0ce32f1.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "44259dd9d7c0e48a1cefe50e97d75af9"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/cvn65_lo_8401d4c5_dds_normal.jpg"
-dest_files=["res://.godot/imported/cvn65_lo_8401d4c5_dds_normal.jpg-acb9c77a50bdede0dbcde35ed0ce32f1.ctex"]
+dest_files=["res://.godot/imported/cvn65_lo_8401d4c5_dds_normal.jpg-acb9c77a50bdede0dbcde35ed0ce32f1.s3tc.ctex", "res://.godot/imported/cvn65_lo_8401d4c5_dds_normal.jpg-acb9c77a50bdede0dbcde35ed0ce32f1.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

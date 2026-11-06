@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c2uytbgwokdtg"
-path="res://.godot/imported/cram_1.jpg-699f865979a316d9e9c62a5969dbc496.ctex"
+path.s3tc="res://.godot/imported/cram_1.jpg-699f865979a316d9e9c62a5969dbc496.s3tc.ctex"
+path.etc2="res://.godot/imported/cram_1.jpg-699f865979a316d9e9c62a5969dbc496.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "cbae51bf453d524d7821536634e8e8a6"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/cram_1.jpg"
-dest_files=["res://.godot/imported/cram_1.jpg-699f865979a316d9e9c62a5969dbc496.ctex"]
+dest_files=["res://.godot/imported/cram_1.jpg-699f865979a316d9e9c62a5969dbc496.s3tc.ctex", "res://.godot/imported/cram_1.jpg-699f865979a316d9e9c62a5969dbc496.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

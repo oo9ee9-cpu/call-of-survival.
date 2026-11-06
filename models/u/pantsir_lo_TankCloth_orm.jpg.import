@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://byvmrpkv2i6nr"
-path="res://.godot/imported/pantsir_lo_TankCloth_orm.jpg-4c412ef7bac21d160b725d373dfbcdbe.ctex"
+path.s3tc="res://.godot/imported/pantsir_lo_TankCloth_orm.jpg-4c412ef7bac21d160b725d373dfbcdbe.s3tc.ctex"
+path.etc2="res://.godot/imported/pantsir_lo_TankCloth_orm.jpg-4c412ef7bac21d160b725d373dfbcdbe.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e3709bd91aa17a1554e9337996677e57"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/pantsir_lo_TankCloth_orm.jpg"
-dest_files=["res://.godot/imported/pantsir_lo_TankCloth_orm.jpg-4c412ef7bac21d160b725d373dfbcdbe.ctex"]
+dest_files=["res://.godot/imported/pantsir_lo_TankCloth_orm.jpg-4c412ef7bac21d160b725d373dfbcdbe.s3tc.ctex", "res://.godot/imported/pantsir_lo_TankCloth_orm.jpg-4c412ef7bac21d160b725d373dfbcdbe.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

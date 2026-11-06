@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ufdavkucxnj4"
-path="res://.godot/imported/trooper_0.jpg-f183e9f7425c9575eea87f2f162716d5.ctex"
+path.s3tc="res://.godot/imported/trooper_0.jpg-f183e9f7425c9575eea87f2f162716d5.s3tc.ctex"
+path.etc2="res://.godot/imported/trooper_0.jpg-f183e9f7425c9575eea87f2f162716d5.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "9bee586c22eb560eb6779ecd875e85de"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/chars/trooper_0.jpg"
-dest_files=["res://.godot/imported/trooper_0.jpg-f183e9f7425c9575eea87f2f162716d5.ctex"]
+dest_files=["res://.godot/imported/trooper_0.jpg-f183e9f7425c9575eea87f2f162716d5.s3tc.ctex", "res://.godot/imported/trooper_0.jpg-f183e9f7425c9575eea87f2f162716d5.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

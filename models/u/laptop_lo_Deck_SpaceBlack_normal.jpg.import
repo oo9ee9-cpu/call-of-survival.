@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dck5cellxr762"
-path="res://.godot/imported/laptop_lo_Deck_SpaceBlack_normal.jpg-e38f3beab50d3c797fedc8b12b3c84bd.ctex"
+path.s3tc="res://.godot/imported/laptop_lo_Deck_SpaceBlack_normal.jpg-e38f3beab50d3c797fedc8b12b3c84bd.s3tc.ctex"
+path.etc2="res://.godot/imported/laptop_lo_Deck_SpaceBlack_normal.jpg-e38f3beab50d3c797fedc8b12b3c84bd.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "e36fc6c00e0f60538cb3d04849c0dd80"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/laptop_lo_Deck_SpaceBlack_normal.jpg"
-dest_files=["res://.godot/imported/laptop_lo_Deck_SpaceBlack_normal.jpg-e38f3beab50d3c797fedc8b12b3c84bd.ctex"]
+dest_files=["res://.godot/imported/laptop_lo_Deck_SpaceBlack_normal.jpg-e38f3beab50d3c797fedc8b12b3c84bd.s3tc.ctex", "res://.godot/imported/laptop_lo_Deck_SpaceBlack_normal.jpg-e38f3beab50d3c797fedc8b12b3c84bd.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

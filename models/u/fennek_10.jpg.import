@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dt0yyd8d007ef"
-path="res://.godot/imported/fennek_10.jpg-d478d439badc2037c5f71f5183645647.ctex"
+path.s3tc="res://.godot/imported/fennek_10.jpg-d478d439badc2037c5f71f5183645647.s3tc.ctex"
+path.etc2="res://.godot/imported/fennek_10.jpg-d478d439badc2037c5f71f5183645647.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "56e2e5b90c9e916fe7e722e1f347bb0c"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/fennek_10.jpg"
-dest_files=["res://.godot/imported/fennek_10.jpg-d478d439badc2037c5f71f5183645647.ctex"]
+dest_files=["res://.godot/imported/fennek_10.jpg-d478d439badc2037c5f71f5183645647.s3tc.ctex", "res://.godot/imported/fennek_10.jpg-d478d439badc2037c5f71f5183645647.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

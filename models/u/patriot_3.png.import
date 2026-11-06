@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://caqi800jnspuj"
-path="res://.godot/imported/patriot_3.png-8f94249e83741deaff51564c0cd6be1c.ctex"
+path.s3tc="res://.godot/imported/patriot_3.png-8f94249e83741deaff51564c0cd6be1c.s3tc.ctex"
+path.etc2="res://.godot/imported/patriot_3.png-8f94249e83741deaff51564c0cd6be1c.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "89c7be205cacb2b28c98466b69bd7f6b"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/patriot_3.png"
-dest_files=["res://.godot/imported/patriot_3.png-8f94249e83741deaff51564c0cd6be1c.ctex"]
+dest_files=["res://.godot/imported/patriot_3.png-8f94249e83741deaff51564c0cd6be1c.s3tc.ctex", "res://.godot/imported/patriot_3.png-8f94249e83741deaff51564c0cd6be1c.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

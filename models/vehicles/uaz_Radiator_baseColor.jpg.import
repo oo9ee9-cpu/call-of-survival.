@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbaibwl344wj1"
-path="res://.godot/imported/uaz_Radiator_baseColor.jpg-8bec9cb778d33256db384f8f158e6b5c.ctex"
+path.s3tc="res://.godot/imported/uaz_Radiator_baseColor.jpg-8bec9cb778d33256db384f8f158e6b5c.s3tc.ctex"
+path.etc2="res://.godot/imported/uaz_Radiator_baseColor.jpg-8bec9cb778d33256db384f8f158e6b5c.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a005dff1dabff5922aa586df6577427c"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/vehicles/uaz_Radiator_baseColor.jpg"
-dest_files=["res://.godot/imported/uaz_Radiator_baseColor.jpg-8bec9cb778d33256db384f8f158e6b5c.ctex"]
+dest_files=["res://.godot/imported/uaz_Radiator_baseColor.jpg-8bec9cb778d33256db384f8f158e6b5c.s3tc.ctex", "res://.godot/imported/uaz_Radiator_baseColor.jpg-8bec9cb778d33256db384f8f158e6b5c.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

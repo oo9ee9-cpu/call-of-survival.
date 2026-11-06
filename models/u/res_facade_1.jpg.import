@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://yufx462cluhb"
-path="res://.godot/imported/res_facade_1.jpg-0bad9b94fa1d7a74b7fc51ad4ccbb979.ctex"
+path.s3tc="res://.godot/imported/res_facade_1.jpg-0bad9b94fa1d7a74b7fc51ad4ccbb979.s3tc.ctex"
+path.etc2="res://.godot/imported/res_facade_1.jpg-0bad9b94fa1d7a74b7fc51ad4ccbb979.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d449546a1c492c667a5e4ca87fc01a6f"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/res_facade_1.jpg"
-dest_files=["res://.godot/imported/res_facade_1.jpg-0bad9b94fa1d7a74b7fc51ad4ccbb979.ctex"]
+dest_files=["res://.godot/imported/res_facade_1.jpg-0bad9b94fa1d7a74b7fc51ad4ccbb979.s3tc.ctex", "res://.godot/imported/res_facade_1.jpg-0bad9b94fa1d7a74b7fc51ad4ccbb979.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

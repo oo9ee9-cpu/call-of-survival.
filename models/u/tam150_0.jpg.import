@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://buiuwx2ck0xgy"
-path="res://.godot/imported/tam150_0.jpg-7892e9aa009f9ca6363e29a9baec9182.ctex"
+path.s3tc="res://.godot/imported/tam150_0.jpg-7892e9aa009f9ca6363e29a9baec9182.s3tc.ctex"
+path.etc2="res://.godot/imported/tam150_0.jpg-7892e9aa009f9ca6363e29a9baec9182.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b82f223e45f4c135843df23c85b28449"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/tam150_0.jpg"
-dest_files=["res://.godot/imported/tam150_0.jpg-7892e9aa009f9ca6363e29a9baec9182.ctex"]
+dest_files=["res://.godot/imported/tam150_0.jpg-7892e9aa009f9ca6363e29a9baec9182.s3tc.ctex", "res://.godot/imported/tam150_0.jpg-7892e9aa009f9ca6363e29a9baec9182.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

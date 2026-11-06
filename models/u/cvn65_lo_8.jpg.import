@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cko7m52r5xv1g"
-path="res://.godot/imported/cvn65_lo_8.jpg-8513ee2bbcae4a093ec513850f1b1577.ctex"
+path.s3tc="res://.godot/imported/cvn65_lo_8.jpg-8513ee2bbcae4a093ec513850f1b1577.s3tc.ctex"
+path.etc2="res://.godot/imported/cvn65_lo_8.jpg-8513ee2bbcae4a093ec513850f1b1577.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b1582565087d7d6e069a2c3fb70a53f0"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/cvn65_lo_8.jpg"
-dest_files=["res://.godot/imported/cvn65_lo_8.jpg-8513ee2bbcae4a093ec513850f1b1577.ctex"]
+dest_files=["res://.godot/imported/cvn65_lo_8.jpg-8513ee2bbcae4a093ec513850f1b1577.s3tc.ctex", "res://.godot/imported/cvn65_lo_8.jpg-8513ee2bbcae4a093ec513850f1b1577.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

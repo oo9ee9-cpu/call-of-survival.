@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfke301xralmb"
-path="res://.godot/imported/mi171_1.jpg-8fdfb02e7f94863f5998aa24624aafb2.ctex"
+path.s3tc="res://.godot/imported/mi171_1.jpg-8fdfb02e7f94863f5998aa24624aafb2.s3tc.ctex"
+path.etc2="res://.godot/imported/mi171_1.jpg-8fdfb02e7f94863f5998aa24624aafb2.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "3050250fd15cf066cd21e1803930cf6c"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/mi171_1.jpg"
-dest_files=["res://.godot/imported/mi171_1.jpg-8fdfb02e7f94863f5998aa24624aafb2.ctex"]
+dest_files=["res://.godot/imported/mi171_1.jpg-8fdfb02e7f94863f5998aa24624aafb2.s3tc.ctex", "res://.godot/imported/mi171_1.jpg-8fdfb02e7f94863f5998aa24624aafb2.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

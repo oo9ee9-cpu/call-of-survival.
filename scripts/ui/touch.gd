@@ -1,6 +1,7 @@
 class_name TouchControls
 extends Control
-## Phone controls, laid out like the reference: a floating stick on the left (push to the edge to sprint), drag anywhere
+## Phone controls, laid out like the reference: a floating stick on the left (push to the edge to sprint, or lock running
+## on with «ركض»), drag anywhere
 ## on the right to look; round icon buttons: fire on both sides (drag on it to aim while shooting), aim, reload, jump /
 ## climb, crouch and prone at the bottom right, «تغيير العدسة» and «تغيير السلاح» under the minimap, the backpack at
 ## the bottom left, interact, light, fire mode, view, medicine, the menu. In the transport only a big «قفز».
@@ -25,6 +26,7 @@ var buttons := {}         # name -> [centre, radius, label]
 # the layout editor (settings): drag a button to move it, + / - to size the chosen one; saved in Settings "hud_layout"
 signal editor_closed
 var editing := false
+var run_lock := false       # «ركض»: on, the soldier runs whenever the stick points forward
 var edit_sel := ""
 var edit_drag := -1
 var edit_layout := {}
@@ -71,6 +73,7 @@ func _layout() -> void:
 		"fire2": [Vector2(W - 300 * s, H - 330 * s), 44.0 * s, "صاروخ"],
 		"flare": [Vector2(W - 430 * s, H - 220 * s), 40.0 * s, "مشاعل"],
 		"heal": [Vector2(W * 0.5 - 250 * s, H - 75 * s), 34.0 * s, "علاج"],
+		"run": [Vector2(300 * s, H - 380 * s), 38.0 * s, "ركض"],
 	}
 	# the player's own layout: centre as a share of the screen, and a size factor
 	var lay: Dictionary = edit_layout if editing else (Settings.get_v("hud_layout") as Dictionary)
@@ -235,6 +238,13 @@ func _press(i: int, p: Vector2) -> void:
 					player.transport.jump()
 			"prone":
 				player.toggle_prone()
+				run_lock = false
+			"run":
+				run_lock = not run_lock
+				if run_lock:
+					player.crouching = false
+					if player.proning:
+						player.toggle_prone()
 			"lens":
 				player.cycle_sight()
 			"flare":
@@ -265,6 +275,7 @@ func _press(i: int, p: Vector2) -> void:
 			"crouch":
 				player.crouching = not player.crouching
 				player.proning = false
+				run_lock = false
 			"interact":
 				player.interact()
 			"light":
@@ -309,7 +320,7 @@ func _drag(i: int, p: Vector2, rel: Vector2) -> void:
 		stick_pos = p
 		var r := 85.0 * float(Settings.get_v("touch_scale"))
 		var v := (p - stick_origin) / r
-		player.touch_sprint = v.length() > 1.25 and v.y < -0.6
+		player.touch_sprint = (run_lock and v.y < -0.3) or (v.length() > 1.25 and v.y < -0.6)
 		if v.length() > 1.0:
 			v = v.normalized()
 		player.move_in = Vector2(v.x, -v.y)
@@ -325,12 +336,12 @@ func _draw() -> void:
 	if player == null or not player.active:
 		return
 	var op := float(Settings.get_v("touch_opacity"))
-	var font := UiTheme.font_bold
+	var font: Font = UiTheme.font_bold if UiTheme.font_bold else ThemeDB.fallback_font
 	for n in buttons:
 		var b: Array = buttons[n]
 		var c: Vector2 = b[0]
 		var r: float = b[1]
-		var on: bool = held.has(n) or (n == "aim" and player.weapon.aim_toggle) or (n == "light" and player.flashlight.visible) or (n == "crouch" and player.crouching) or (n == "prone" and player.proning)
+		var on: bool = held.has(n) or (n == "aim" and player.weapon.aim_toggle) or (n == "light" and player.flashlight.visible) or (n == "crouch" and player.crouching) or (n == "prone" and player.proning) or (n == "run" and run_lock)
 		if not _shown(n):
 			continue
 		if n == "interact" and player.interact_hint() == "":
@@ -385,6 +396,11 @@ func _draw_editor() -> void:
 
 func _icon(n: String, c: Vector2, s: float, col: Color) -> void:
 	match n:
+		"run":
+			# two chevrons pointing forward (up)
+			for k in 2:
+				var y0 := -s * 0.15 + k * s * 0.55
+				draw_polyline(PackedVector2Array([c + Vector2(-s * 0.75, y0 + s * 0.35), c + Vector2(0, y0 - s * 0.35), c + Vector2(s * 0.75, y0 + s * 0.35)]), col, 3.5, true)
 		"fire":
 			draw_rect(Rect2(c + Vector2(-s * 0.22, -s * 0.9), Vector2(s * 0.44, s * 1.4)), col)
 			draw_circle(c + Vector2(0, -s * 0.9), s * 0.22, col)

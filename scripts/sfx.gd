@@ -20,6 +20,12 @@ var _far_n := 0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	rescan()
+	_players()
+
+## every sound under res://sounds (again after the small app mounts the game's content: there were none before)
+func rescan() -> void:
+	banks.clear()
 	var d := DirAccess.open("res://sounds")
 	if d:
 		var names := {}
@@ -38,6 +44,8 @@ func _ready() -> void:
 				if not banks.has(key):
 					banks[key] = []
 				banks[key].append(st)
+
+func _players() -> void:
 	for i in 28:
 		var p := AudioStreamPlayer3D.new()
 		p.bus = "SFX"

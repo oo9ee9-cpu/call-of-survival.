@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ciy4u36vl1ktl"
-path="res://.godot/imported/uaz_Interior_4_baseColor.jpg-51cebb930b24e1100ba937d70a6667c0.ctex"
+path.s3tc="res://.godot/imported/uaz_Interior_4_baseColor.jpg-51cebb930b24e1100ba937d70a6667c0.s3tc.ctex"
+path.etc2="res://.godot/imported/uaz_Interior_4_baseColor.jpg-51cebb930b24e1100ba937d70a6667c0.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "808cabcd8f8f4e745b6ca1a6d1ebd910"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/vehicles/uaz_Interior_4_baseColor.jpg"
-dest_files=["res://.godot/imported/uaz_Interior_4_baseColor.jpg-51cebb930b24e1100ba937d70a6667c0.ctex"]
+dest_files=["res://.godot/imported/uaz_Interior_4_baseColor.jpg-51cebb930b24e1100ba937d70a6667c0.s3tc.ctex", "res://.godot/imported/uaz_Interior_4_baseColor.jpg-51cebb930b24e1100ba937d70a6667c0.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

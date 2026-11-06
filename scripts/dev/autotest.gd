@@ -31,7 +31,7 @@ func shot(name: String) -> void:
 	await _frames(3)
 	var img := get_viewport().get_texture().get_image()
 	img.save_png("%s/%s.png" % [out, name])
-	print("SHOT ", name, "  fps=", Engine.get_frames_per_second(), "  draws=", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), "  prims=", Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+	print("SHOT ", name, "  fps=", Engine.get_frames_per_second(), "  draws=", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), "  prims=", Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME), "  tex_mb=%d vid_mb=%d" % [int(Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0), int(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0)])
 
 func _touch(i: int, p: Vector2, down: bool) -> void:
 	var e := InputEventScreenTouch.new()
@@ -801,6 +801,16 @@ func _prims_test(w: World) -> void:
 	await _wait(0.5)
 	var base := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)
 	print("PRIMS all %d" % base)
+	# the textures taking the most video memory
+	# (a debug build's call: a release build has no such function, and naming it here would break this script there)
+	var usage: Array = RenderingServer.call("texture_debug_usage") if RenderingServer.has_method("texture_debug_usage") else []
+	usage.sort_custom(func(a, b): return int(a["bytes"]) > int(b["bytes"]))
+	var tot := 0
+	for u in usage:
+		tot += int(u["bytes"])
+	print("TEXMEM total %d MB in %d textures" % [tot / 1048576, usage.size()])
+	for u in usage.slice(0, 25):
+		print("TEXMEM %6.1f MB %dx%dx%d fmt %d %s" % [int(u["bytes"]) / 1048576.0, int(u["width"]), int(u["height"]), int(u["depth"]), int(u["format"]), String(u["path"])])
 	for g in groups:
 		var was := {}
 		for n in groups[g]:

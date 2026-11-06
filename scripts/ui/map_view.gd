@@ -41,7 +41,7 @@ func setup(w: World, p: Player, as_full: bool) -> void:
 	world = w
 	player = p
 	full = as_full
-	tex = load("res://textures/ui/map_valley.jpg") if ResourceLoader.exists("res://textures/ui/map_valley.jpg") else null
+	tex = UiTheme.picture("res://textures/ui/map_valley.jpg")
 	if tex:
 		tsize = float(tex.get_width())
 	half = float(w.lay.get("half", 4096.0)) if w.lay else 4096.0

@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dbladlfh2spmd"
-path="res://.godot/imported/z32_0.jpg-b12248ff72b74eaed878ac97e6610cfd.ctex"
+path.s3tc="res://.godot/imported/z32_0.jpg-b12248ff72b74eaed878ac97e6610cfd.s3tc.ctex"
+path.etc2="res://.godot/imported/z32_0.jpg-b12248ff72b74eaed878ac97e6610cfd.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "d2a70550489de356a2cd6bfc40711204"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/z32_0.jpg"
-dest_files=["res://.godot/imported/z32_0.jpg-b12248ff72b74eaed878ac97e6610cfd.ctex"]
+dest_files=["res://.godot/imported/z32_0.jpg-b12248ff72b74eaed878ac97e6610cfd.s3tc.ctex", "res://.godot/imported/z32_0.jpg-b12248ff72b74eaed878ac97e6610cfd.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

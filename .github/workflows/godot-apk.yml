@@ -1,0 +1,161 @@
+# The Godot game as phone apps, built from this branch (godot-front) on every push and by hand, published on the
+# prerelease «godot-latest» (never marked latest: the web app's updater reads …/releases/latest):
+#   CallOfSurvival-Godot.apk       the whole game inside
+#   CallOfSurvival-Godot-lite.apk  small; at its first start it downloads content-<run>.zip (the same game) from the
+#                                  same release, going on from where it stopped when the line drops (boot/boot.gd)
+# Everything is imported here for phones (ETC2/ASTC), so a phone never imports anything. Signed like the web app's
+# APKs (android/release.p12 on main, password in KEY_PASS), with v1+v2+v3 signatures.
+name: Godot APK
+
+on:
+  push:
+    branches: [godot-front]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: godot-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GODOT_VERSION: "4.7.2"
+      TAG: godot-latest
+      N: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Godot and its Android templates
+        run: |
+          set -e
+          V="${GODOT_VERSION}-stable"
+          U="https://github.com/godotengine/godot-builds/releases/download/$V"
+          curl -fsSL -o /tmp/godot.zip "$U/Godot_v${V}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d /tmp/godot_bin
+          mv "/tmp/godot_bin/Godot_v${V}_linux.x86_64" /tmp/godot && chmod +x /tmp/godot
+          curl -fsSL -o /tmp/tpl.tpz "$U/Godot_v${V}_export_templates.tpz"
+          D="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$D"
+          unzip -q -j /tmp/tpl.tpz templates/version.txt templates/android_release.apk templates/android_debug.apk -d "$D"
+          rm -f /tmp/tpl.tpz /tmp/godot.zip
+          ls -la "$D"
+          /tmp/godot --version
+
+      - name: Editor settings (Android SDK, Java, a debug key for the editor's checks)
+        run: |
+          set -e
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          echo "BT=$BT" >> "$GITHUB_ENV"
+          keytool -genkeypair -keystore /tmp/debug.keystore -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
+          mkdir -p "$HOME/.config/godot"
+          {
+            echo '[gd_resource type="EditorSettings" format=3]'
+            echo ''
+            echo '[resource]'
+            echo "export/android/android_sdk_path = \"$ANDROID_HOME\""
+            echo "export/android/java_sdk_path = \"$JAVA_HOME\""
+            echo 'export/android/debug_keystore = "/tmp/debug.keystore"'
+            echo 'export/android/debug_keystore_user = "androiddebugkey"'
+            echo 'export/android/debug_keystore_pass = "android"'
+          } > "$HOME/.config/godot/editor_settings-4.7.tres"
+          cat "$HOME/.config/godot/editor_settings-4.7.tres"
+
+      - name: Import every asset (for phones)
+        run: |
+          /tmp/godot --headless --path . --import > import.log 2>&1 || true
+          tail -3 import.log
+          grep -E "^ERROR" import.log | sort | uniq -c | sort -rn | head -20 || true
+          echo "imported files: $(ls .godot/imported | wc -l)"
+
+      - name: Export the content pack and the two APKs
+        run: |
+          set -e
+          mkdir -p build
+          sed -i "s/^version\/code=.*/version\/code=$N/; s/^version\/name=.*/version\/name=\"1.$N\"/" export_presets.cfg
+          /tmp/godot --headless --path . --export-pack "Android" "build/content-$N.zip" > export.log 2>&1 || true
+          test -s "build/content-$N.zip" || { tail -40 export.log; echo "::error::the content pack was not made"; exit 1; }
+          /tmp/godot --headless --path . --export-release "Android" build/full-unsigned.apk >> export.log 2>&1 || true
+          test -s build/full-unsigned.apk || { tail -40 export.log; echo "::error::the full APK was not made"; exit 1; }
+          python3 - <<'PY'
+          import hashlib, json, os
+          n = os.environ['N']
+          p = 'build/content-%s.zip' % n
+          h = hashlib.sha256()
+          with open(p, 'rb') as f:
+              for b in iter(lambda: f.read(1 << 20), b''):
+                  h.update(b)
+          repo = os.environ['GITHUB_REPOSITORY']
+          info = {'url': 'https://github.com/%s/releases/download/%s/content-%s.zip' % (repo, os.environ['TAG'], n),
+                  'size': os.path.getsize(p), 'sha256': h.hexdigest(), 'build': n,
+                  'page': 'https://github.com/%s/releases/tag/%s' % (repo, os.environ['TAG'])}
+          json.dump(info, open('boot/content.json', 'w'))
+          print(info)
+          PY
+          /tmp/godot --headless --path . --export-release "Android Lite" build/lite-unsigned.apk >> export.log 2>&1 || true
+          test -s build/lite-unsigned.apk || { tail -40 export.log; echo "::error::the small APK was not made"; exit 1; }
+          grep -E "^ERROR" export.log | sort | uniq -c | sort -rn | head -20 || true
+          ls -la build
+
+      - name: Sign (v1 + v2 + v3) and check like an installer
+        env:
+          KEY_PASS: ${{ secrets.KEY_PASS || vars.KEY_PASS }}
+        run: |
+          set -e
+          git fetch -q --depth=1 origin main || true
+          git show FETCH_HEAD:android/release.p12 > /tmp/release.p12 2>/dev/null || true
+          if [[ -n "$KEY_PASS" && -s /tmp/release.p12 ]]; then
+            KS=(--ks /tmp/release.p12 --ks-type PKCS12 --ks-key-alias cos --ks-pass env:KEY_PASS --key-pass env:KEY_PASS)
+          else
+            echo "::warning::KEY_PASS or android/release.p12 missing: signed with a key made for this build only (updates will need the app removed first)"
+            keytool -genkeypair -keystore /tmp/once.p12 -storetype PKCS12 -storepass once-only -alias cos -keypass once-only \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Call of Survival" >/dev/null 2>&1
+            KS=(--ks /tmp/once.p12 --ks-type PKCS12 --ks-key-alias cos --ks-pass pass:once-only --key-pass pass:once-only)
+          fi
+          for k in full:CallOfSurvival-Godot.apk lite:CallOfSurvival-Godot-lite.apk; do
+            "$BT/zipalign" -f -p 4 "build/${k%%:*}-unsigned.apk" "build/${k%%:*}-aligned.apk"
+            "$BT/apksigner" sign "${KS[@]}" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
+              --out "build/${k#*:}" "build/${k%%:*}-aligned.apk"
+            "$BT/apksigner" verify --min-sdk-version 24 "build/${k#*:}"
+            "$BT/zipalign" -c 4 "build/${k#*:}"
+            echo "::notice title=${k#*:}::$(( $(stat -c %s "build/${k#*:}") / 1048576 )) MB"
+          done
+          echo "::notice title=content-$N.zip::$(( $(stat -c %s "build/content-$N.zip") / 1048576 )) MB"
+
+      - name: Publish on the prerelease godot-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          cat > notes.md <<EOF
+          ## نداء البقاء — نسخة الهاتف (Godot)، البناء $N
+
+          **النسخة الصغيرة (أنصح بها):** نزّل \`CallOfSurvival-Godot-lite.apk\` وثبّته. عند أول تشغيل تنزّل اللعبة ملفاتها بنفسها
+          ($(( $(stat -c %s "build/content-$N.zip") / 1048576 )) ميغابايت) مع شريط تقدم، وإذا انقطع الإنترنت تكمل من حيث توقفت.
+
+          **النسخة الكاملة:** \`CallOfSurvival-Godot.apk\` ($(( $(stat -c %s build/CallOfSurvival-Godot.apk) / 1048576 )) ميغابايت) فيها كل شيء ولا تحتاج تنزيلاً بعد التثبيت.
+
+          الملف \`content-$N.zip\` تستعمله النسخة الصغيرة، لا تحتاج تنزيله بيدك.
+          عند التثبيت اسمح بتثبيت التطبيقات من هذا المصدر. النسخة الجديدة تُثبَّت فوق القديمة وتبقى بياناتك.
+          EOF
+          git tag -f "$TAG" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$TAG"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --prerelease --latest=false --title "نداء البقاء — نسخة الهاتف (Godot)" --notes-file notes.md
+          fi
+          gh release upload "$TAG" "build/content-$N.zip" build/CallOfSurvival-Godot.apk build/CallOfSurvival-Godot-lite.apk --clobber
+          gh release edit "$TAG" --prerelease --latest=false --notes-file notes.md
+          for a in $(gh release view "$TAG" --json assets -q '.assets[].name' | grep '^content-' || true); do
+            if [[ "$a" != "content-$N.zip" ]]; then gh release delete-asset "$TAG" "$a" -y; fi
+          done
+          gh release view "$TAG" --json assets -q '.assets[] | "\(.name) \(.size)"'

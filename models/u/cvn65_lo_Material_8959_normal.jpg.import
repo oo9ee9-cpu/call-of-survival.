@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ch80pkggpj6dh"
-path="res://.godot/imported/cvn65_lo_Material_8959_normal.jpg-99f30b1e9ca998d85a2a5c0cd7d55358.ctex"
+path.s3tc="res://.godot/imported/cvn65_lo_Material_8959_normal.jpg-99f30b1e9ca998d85a2a5c0cd7d55358.s3tc.ctex"
+path.etc2="res://.godot/imported/cvn65_lo_Material_8959_normal.jpg-99f30b1e9ca998d85a2a5c0cd7d55358.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "659e43c48f070e243305239ee876f5f1"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/cvn65_lo_Material_8959_normal.jpg"
-dest_files=["res://.godot/imported/cvn65_lo_Material_8959_normal.jpg-99f30b1e9ca998d85a2a5c0cd7d55358.ctex"]
+dest_files=["res://.godot/imported/cvn65_lo_Material_8959_normal.jpg-99f30b1e9ca998d85a2a5c0cd7d55358.s3tc.ctex", "res://.godot/imported/cvn65_lo_Material_8959_normal.jpg-99f30b1e9ca998d85a2a5c0cd7d55358.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

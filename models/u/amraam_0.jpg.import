@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b1i2qvvp3mpo2"
-path="res://.godot/imported/amraam_0.jpg-d9ffbed0d475423908e432a564439590.ctex"
+path.s3tc="res://.godot/imported/amraam_0.jpg-d9ffbed0d475423908e432a564439590.s3tc.ctex"
+path.etc2="res://.godot/imported/amraam_0.jpg-d9ffbed0d475423908e432a564439590.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "07ff862fa4f73682c02bf94ed0b63472"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/amraam_0.jpg"
-dest_files=["res://.godot/imported/amraam_0.jpg-d9ffbed0d475423908e432a564439590.ctex"]
+dest_files=["res://.godot/imported/amraam_0.jpg-d9ffbed0d475423908e432a564439590.s3tc.ctex", "res://.godot/imported/amraam_0.jpg-d9ffbed0d475423908e432a564439590.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -13,9 +13,31 @@ static var font_mono: Font
 static func fonts() -> void:
 	if font_regular:
 		return
-	font_regular = load("res://fonts/Vazirmatn-Regular.woff2")
-	font_bold = load("res://fonts/Vazirmatn-Bold.woff2")
-	font_mono = load("res://fonts/JetBrainsMono-Regular.woff2")
+	font_regular = _font("res://fonts/Vazirmatn-Regular.woff2")
+	font_bold = _font("res://fonts/Vazirmatn-Bold.woff2")
+	font_mono = _font("res://fonts/JetBrainsMono-Regular.woff2")
+
+## The font; when its import is missing (an editor that has not finished importing the project) the file itself read
+## at run time; failing that Godot's own font (the system's Arabic behind it). Never null: a null font in a _draw()
+## stops the drawing there, and the phone's controls vanished that way.
+static func _font(p: String) -> Font:
+	var f: Font = load(p) as Font if ResourceLoader.exists(p) else null
+	if f == null and FileAccess.file_exists(p):
+		var ff := FontFile.new()
+		if ff.load_dynamic_font(p) == OK:
+			f = ff
+	if f == null:
+		f = ThemeDB.fallback_font
+	return f
+
+## a picture for the interface: the imported texture, or the file itself when the import is missing, or null
+static func picture(p: String) -> Texture2D:
+	var t: Texture2D = load(p) as Texture2D if ResourceLoader.exists(p) else null
+	if t == null and FileAccess.file_exists(p):
+		var img := Image.load_from_file(p)
+		if img:
+			t = ImageTexture.create_from_image(img)
+	return t
 
 static func box(bg: Color, border := Color(0, 0, 0, 0), bw := 0, radius := 8, pad := 12.0) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()

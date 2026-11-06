@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ceyfxsd1jklaj"
-path="res://.godot/imported/pantsir_lo_Pantsyr_S1_orm.jpg-883335fd63792749940bf5f020bc6daa.ctex"
+path.s3tc="res://.godot/imported/pantsir_lo_Pantsyr_S1_orm.jpg-883335fd63792749940bf5f020bc6daa.s3tc.ctex"
+path.etc2="res://.godot/imported/pantsir_lo_Pantsyr_S1_orm.jpg-883335fd63792749940bf5f020bc6daa.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "ea85099cdced919b7b15cf5022b58b02"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/pantsir_lo_Pantsyr_S1_orm.jpg"
-dest_files=["res://.godot/imported/pantsir_lo_Pantsyr_S1_orm.jpg-883335fd63792749940bf5f020bc6daa.ctex"]
+dest_files=["res://.godot/imported/pantsir_lo_Pantsyr_S1_orm.jpg-883335fd63792749940bf5f020bc6daa.s3tc.ctex", "res://.godot/imported/pantsir_lo_Pantsyr_S1_orm.jpg-883335fd63792749940bf5f020bc6daa.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d05dwb1kr02hv"
-path="res://.godot/imported/jersey_1.jpg-fcf9b814a4f016ed989cb9f5e647dc0a.ctex"
+path.s3tc="res://.godot/imported/jersey_1.jpg-fcf9b814a4f016ed989cb9f5e647dc0a.s3tc.ctex"
+path.etc2="res://.godot/imported/jersey_1.jpg-fcf9b814a4f016ed989cb9f5e647dc0a.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "0d31a053985e49cc3fd0d26c9f9f0d3b"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://models/u/jersey_1.jpg"
-dest_files=["res://.godot/imported/jersey_1.jpg-fcf9b814a4f016ed989cb9f5e647dc0a.ctex"]
+dest_files=["res://.godot/imported/jersey_1.jpg-fcf9b814a4f016ed989cb9f5e647dc0a.s3tc.ctex", "res://.godot/imported/jersey_1.jpg-fcf9b814a4f016ed989cb9f5e647dc0a.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
